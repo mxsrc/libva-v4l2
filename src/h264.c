@@ -220,7 +220,6 @@ static void h264_va_picture_to_v4l2(struct request_data *driver_data,
 {
 	h264_fill_dpb(driver_data, context, decode);
 
-	decode->num_slices = surface->slices_count;
 	decode->top_field_order_cnt = VAPicture->CurrPic.TopFieldOrderCnt;
 	decode->bottom_field_order_cnt = VAPicture->CurrPic.BottomFieldOrderCnt;
 
