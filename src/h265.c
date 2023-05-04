@@ -36,7 +36,6 @@
 #include <sys/mman.h>
 
 #include <linux/videodev2.h>
-#include <hevc-ctrls.h>
 
 #include "v4l2.h"
 
