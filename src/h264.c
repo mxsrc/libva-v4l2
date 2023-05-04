@@ -436,29 +436,29 @@ int h264_set_controls(struct request_data *driver_data,
 			      &surface->params.h264.picture, &slice);
 
 	rc = v4l2_set_control(driver_data->video_fd, surface->request_fd,
-			      V4L2_CID_MPEG_VIDEO_H264_DECODE_PARAMS, &decode,
+			      V4L2_CID_STATELESS_H264_DECODE_PARAMS, &decode,
 			      sizeof(decode));
 	if (rc < 0)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	rc = v4l2_set_control(driver_data->video_fd, surface->request_fd,
-			      V4L2_CID_MPEG_VIDEO_H264_SLICE_PARAMS, &slice,
+			      V4L2_CID_STATELESS_H264_SLICE_PARAMS, &slice,
 			      sizeof(slice));
 	if (rc < 0)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	rc = v4l2_set_control(driver_data->video_fd, surface->request_fd,
-			      V4L2_CID_MPEG_VIDEO_H264_PPS, &pps, sizeof(pps));
+			      V4L2_CID_STATELESS_H264_PPS, &pps, sizeof(pps));
 	if (rc < 0)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	rc = v4l2_set_control(driver_data->video_fd, surface->request_fd,
-			      V4L2_CID_MPEG_VIDEO_H264_SPS, &sps, sizeof(sps));
+			      V4L2_CID_STATELESS_H264_SPS, &sps, sizeof(sps));
 	if (rc < 0)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	rc = v4l2_set_control(driver_data->video_fd, surface->request_fd,
-			      V4L2_CID_MPEG_VIDEO_H264_SCALING_MATRIX, &matrix,
+			      V4L2_CID_STATELESS_H264_SCALING_MATRIX, &matrix,
 			      sizeof(matrix));
 	if (rc < 0)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
