@@ -95,7 +95,7 @@ static struct h264_dpb_entry *dpb_find_entry(struct object_context *context)
 }
 
 static struct h264_dpb_entry *dpb_lookup(struct object_context *context,
-					 VAPictureH264 *pic, unsigned int *idx)
+					 VAPictureH264 *pic, struct v4l2_h264_reference *ref)
 {
 	unsigned int i;
 
@@ -106,8 +106,15 @@ static struct h264_dpb_entry *dpb_lookup(struct object_context *context,
 			continue;
 
 		if (entry->pic.picture_id == pic->picture_id) {
-			if (idx)
-				*idx = i;
+			if (ref) {
+				ref->index = i;
+				if (pic->flags & VA_BOTTOM_FIELD) {
+					ref->fields |= V4L2_H264_BOTTOM_FIELD_REF;
+				}
+				if (pic->flags & VA_TOP_FIELD) {
+					ref->fields |= V4L2_H264_TOP_FIELD_REF;
+				}
+			}
 
 			return entry;
 		}
@@ -348,13 +355,13 @@ static void h264_va_slice_to_v4l2(struct request_data *driver_data,
 		for (i = 0; i < VASlice->num_ref_idx_l0_active_minus1 + 1; i++) {
 			VAPictureH264 *pic = &VASlice->RefPicList0[i];
 			struct h264_dpb_entry *entry;
-			unsigned int idx;
+			struct v4l2_h264_reference ref;
 
-			entry = dpb_lookup(context, pic, &idx);
+			entry = dpb_lookup(context, pic, &ref);
 			if (!entry)
 				continue;
 
-			slice->ref_pic_list0[i] = idx;
+			slice->ref_pic_list0[i] = ref;
 		}
 	}
 
@@ -367,13 +374,13 @@ static void h264_va_slice_to_v4l2(struct request_data *driver_data,
 		for (i = 0; i < VASlice->num_ref_idx_l1_active_minus1 + 1; i++) {
 			VAPictureH264 *pic = &VASlice->RefPicList1[i];
 			struct h264_dpb_entry *entry;
-			unsigned int idx;
+			struct v4l2_h264_reference ref;
 
-			entry = dpb_lookup(context, pic, &idx);
+			entry = dpb_lookup(context, pic, &ref);
 			if (!entry)
 				continue;
 
-			slice->ref_pic_list1[i] = idx;
+			slice->ref_pic_list1[i] = ref;
 		}
 	}
 
