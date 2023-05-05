@@ -386,15 +386,21 @@ static void h264_va_slice_to_v4l2(struct request_data *driver_data,
 
 	if (VASlice->direct_spatial_mv_pred_flag)
 		slice->flags |= V4L2_H264_SLICE_FLAG_DIRECT_SPATIAL_MV_PRED;
+}
 
-	slice->pred_weight_table.chroma_log2_weight_denom =
-		VASlice->chroma_log2_weight_denom;
-	slice->pred_weight_table.luma_log2_weight_denom =
-		VASlice->luma_log2_weight_denom;
+
+static void h264_va_slice_to_predicted_weights(
+	VASliceParameterBufferH264* VASlice,
+	struct v4l2_ctrl_h264_slice_params *slice,
+	struct v4l2_ctrl_h264_pred_weights* weights
+) {
+
+	weights->chroma_log2_weight_denom = VASlice->chroma_log2_weight_denom;
+	weights->luma_log2_weight_denom = VASlice->luma_log2_weight_denom;
 
 	if (((VASlice->slice_type % 5) == H264_SLICE_P) ||
 	    ((VASlice->slice_type % 5) == H264_SLICE_B))
-		h264_copy_pred_table(&slice->pred_weight_table.weight_factors[0],
+		h264_copy_pred_table(&weights->weight_factors[0],
 				     slice->num_ref_idx_l0_active_minus1 + 1,
 				     VASlice->luma_weight_l0,
 				     VASlice->luma_offset_l0,
@@ -402,7 +408,7 @@ static void h264_va_slice_to_v4l2(struct request_data *driver_data,
 				     VASlice->chroma_offset_l0);
 
 	if ((VASlice->slice_type % 5) == H264_SLICE_B)
-		h264_copy_pred_table(&slice->pred_weight_table.weight_factors[1],
+		h264_copy_pred_table(&weights->weight_factors[1],
 				     slice->num_ref_idx_l1_active_minus1 + 1,
 				     VASlice->luma_weight_l1,
 				     VASlice->luma_offset_l1,
@@ -439,6 +445,16 @@ int h264_set_controls(struct request_data *driver_data,
 	h264_va_slice_to_v4l2(driver_data, context,
 			      &surface->params.h264.slice,
 			      &surface->params.h264.picture, &slice);
+
+	if (V4L2_H264_CTRL_PRED_WEIGHTS_REQUIRED(&pps, &slice)) {
+		struct v4l2_ctrl_h264_pred_weights weights = { 0 };
+		h264_va_slice_to_predicted_weights(&surface->params.h264.slice, &slice, &weights);
+		rc = v4l2_set_control(driver_data->video_fd, surface->request_fd,
+				      V4L2_CID_STATELESS_H264_DECODE_PARAMS, &decode,
+				      sizeof(decode));
+		if (rc < 0)
+			return VA_STATUS_ERROR_OPERATION_FAILED;
+	}
 
 	rc = v4l2_set_control(driver_data->video_fd, surface->request_fd,
 			      V4L2_CID_STATELESS_H264_DECODE_PARAMS, &decode,
