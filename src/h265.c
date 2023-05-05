@@ -96,8 +96,6 @@ static void h265_fill_sps(VAPictureParameterBufferHEVC *picture,
 	memset(sps, 0, sizeof(*sps));
 
 	sps->chroma_format_idc = picture->pic_fields.bits.chroma_format_idc;
-	sps->separate_colour_plane_flag =
-		picture->pic_fields.bits.separate_colour_plane_flag;
 	sps->pic_width_in_luma_samples = picture->pic_width_in_luma_samples;
 	sps->pic_height_in_luma_samples = picture->pic_height_in_luma_samples;
 	sps->bit_depth_luma_minus8 = picture->bit_depth_luma_minus8;
@@ -120,12 +118,6 @@ static void h265_fill_sps(VAPictureParameterBufferHEVC *picture,
 		picture->max_transform_hierarchy_depth_inter;
 	sps->max_transform_hierarchy_depth_intra =
 		picture->max_transform_hierarchy_depth_intra;
-	sps->scaling_list_enabled_flag =
-		picture->pic_fields.bits.scaling_list_enabled_flag;
-	sps->amp_enabled_flag = picture->pic_fields.bits.amp_enabled_flag;
-	sps->sample_adaptive_offset_enabled_flag =
-		picture->slice_parsing_fields.bits.sample_adaptive_offset_enabled_flag;
-	sps->pcm_enabled_flag = picture->pic_fields.bits.pcm_enabled_flag;
 	sps->pcm_sample_bit_depth_luma_minus1 =
 		picture->pcm_sample_bit_depth_luma_minus1;
 	sps->pcm_sample_bit_depth_chroma_minus1 =
@@ -134,16 +126,20 @@ static void h265_fill_sps(VAPictureParameterBufferHEVC *picture,
 		picture->log2_min_pcm_luma_coding_block_size_minus3;
 	sps->log2_diff_max_min_pcm_luma_coding_block_size =
 		picture->log2_diff_max_min_pcm_luma_coding_block_size;
-	sps->pcm_loop_filter_disabled_flag =
-		picture->pic_fields.bits.pcm_loop_filter_disabled_flag;
 	sps->num_short_term_ref_pic_sets = picture->num_short_term_ref_pic_sets;
-	sps->long_term_ref_pics_present_flag =
-		picture->slice_parsing_fields.bits.long_term_ref_pics_present_flag;
 	sps->num_long_term_ref_pics_sps = picture->num_long_term_ref_pic_sps;
-	sps->sps_temporal_mvp_enabled_flag =
-		picture->slice_parsing_fields.bits.sps_temporal_mvp_enabled_flag;
-	sps->strong_intra_smoothing_enabled_flag =
-		picture->pic_fields.bits.strong_intra_smoothing_enabled_flag;
+
+	sps->flags = (
+		(picture->pic_fields.bits.separate_colour_plane_flag ? V4L2_HEVC_SPS_FLAG_SEPARATE_COLOUR_PLANE : 0) |
+		(picture->pic_fields.bits.scaling_list_enabled_flag ? V4L2_HEVC_SPS_FLAG_SCALING_LIST_ENABLED : 0) |
+		(picture->pic_fields.bits.amp_enabled_flag ? V4L2_HEVC_SPS_FLAG_AMP_ENABLED : 0) |
+		(picture->slice_parsing_fields.bits.sample_adaptive_offset_enabled_flag ? V4L2_HEVC_SPS_FLAG_SAMPLE_ADAPTIVE_OFFSET : 0) |
+		(picture->pic_fields.bits.pcm_enabled_flag ? V4L2_HEVC_SPS_FLAG_PCM_ENABLED : 0) |
+		(picture->pic_fields.bits.pcm_loop_filter_disabled_flag ? V4L2_HEVC_SPS_FLAG_PCM_LOOP_FILTER_DISABLED : 0) |
+		(picture->slice_parsing_fields.bits.long_term_ref_pics_present_flag ? V4L2_HEVC_SPS_FLAG_LONG_TERM_REF_PICS_PRESENT : 0) |
+		(picture->slice_parsing_fields.bits.sps_temporal_mvp_enabled_flag ? V4L2_HEVC_SPS_FLAG_SPS_TEMPORAL_MVP_ENABLED : 0) |
+		(picture->pic_fields.bits.strong_intra_smoothing_enabled_flag ? V4L2_HEVC_SPS_FLAG_STRONG_INTRA_SMOOTHING_ENABLED : 0)
+	);
 }
 
 static void h265_fill_slice_params(VAPictureParameterBufferHEVC *picture,
