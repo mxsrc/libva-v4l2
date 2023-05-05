@@ -50,54 +50,44 @@ static void h265_fill_pps(VAPictureParameterBufferHEVC *picture,
 {
 	memset(pps, 0, sizeof(*pps));
 
-	pps->dependent_slice_segment_flag =
-		slice->LongSliceFlags.fields.dependent_slice_segment_flag;
-	pps->output_flag_present_flag =
-		picture->slice_parsing_fields.bits.output_flag_present_flag;
 	pps->num_extra_slice_header_bits =
 		picture->num_extra_slice_header_bits;
-	pps->sign_data_hiding_enabled_flag =
-		picture->pic_fields.bits.sign_data_hiding_enabled_flag;
-	pps->cabac_init_present_flag =
-		picture->slice_parsing_fields.bits.cabac_init_present_flag;
 	pps->init_qp_minus26 = picture->init_qp_minus26;
-	pps->constrained_intra_pred_flag =
-		picture->pic_fields.bits.constrained_intra_pred_flag;
-	pps->transform_skip_enabled_flag =
-		picture->pic_fields.bits.transform_skip_enabled_flag;
-	pps->cu_qp_delta_enabled_flag =
-		picture->pic_fields.bits.cu_qp_delta_enabled_flag;
 	pps->diff_cu_qp_delta_depth = picture->diff_cu_qp_delta_depth;
 	pps->pps_cb_qp_offset = picture->pps_cb_qp_offset;
 	pps->pps_cr_qp_offset = picture->pps_cr_qp_offset;
-	pps->pps_slice_chroma_qp_offsets_present_flag =
-		picture->slice_parsing_fields.bits.pps_slice_chroma_qp_offsets_present_flag;
-	pps->weighted_pred_flag =
-		picture->pic_fields.bits.weighted_pred_flag;
-	pps->weighted_bipred_flag =
-		picture->pic_fields.bits.weighted_bipred_flag;
-	pps->transquant_bypass_enabled_flag =
-		picture->pic_fields.bits.transquant_bypass_enabled_flag;
-	pps->tiles_enabled_flag =
-		picture->pic_fields.bits.tiles_enabled_flag;
-	pps->entropy_coding_sync_enabled_flag =
-		picture->pic_fields.bits.entropy_coding_sync_enabled_flag;
 	pps->num_tile_columns_minus1 = picture->num_tile_columns_minus1;
 	pps->num_tile_rows_minus1 = picture->num_tile_rows_minus1;
-	pps->loop_filter_across_tiles_enabled_flag =
-		picture->pic_fields.bits.loop_filter_across_tiles_enabled_flag;
-	pps->pps_loop_filter_across_slices_enabled_flag =
-		picture->pic_fields.bits.pps_loop_filter_across_slices_enabled_flag;
-	pps->deblocking_filter_override_enabled_flag =
-		picture->slice_parsing_fields.bits.deblocking_filter_override_enabled_flag;
-	pps->pps_disable_deblocking_filter_flag =
-		picture->slice_parsing_fields.bits.pps_disable_deblocking_filter_flag;
 	pps->pps_beta_offset_div2 = picture->pps_beta_offset_div2;
 	pps->pps_tc_offset_div2 = picture->pps_tc_offset_div2;
-	pps->lists_modification_present_flag =
-		picture->slice_parsing_fields.bits.lists_modification_present_flag;
 	pps->log2_parallel_merge_level_minus2 =
 		picture->log2_parallel_merge_level_minus2;
+
+	// TODO:
+	// - does the `slice->LongSliceFlags.fields.slice_deblocking_filter_disabled_flag` corrsepond to `V4L2_HEVC_PPS_FLAG_DEBLOCKING_FILTER_CONTROL_PRESENT`?
+	// 	- the relevant linux commit also introduces the the `num_ref_idx_l{0,1}_active_minus1` fields.
+	// - VA comment mentions `uniform_spacing_flag`, but it's not present. Might correspond to `V4L2_HEVC_PPS_FLAG_UNIFORM_SPACING`?
+	pps->flags = (
+		(slice->LongSliceFlags.fields.dependent_slice_segment_flag ? V4L2_HEVC_PPS_FLAG_DEPENDENT_SLICE_SEGMENT_ENABLED : 0) |
+		(picture->slice_parsing_fields.bits.output_flag_present_flag ? V4L2_HEVC_PPS_FLAG_OUTPUT_FLAG_PRESENT : 0) |
+		(picture->pic_fields.bits.sign_data_hiding_enabled_flag ? V4L2_HEVC_PPS_FLAG_SIGN_DATA_HIDING_ENABLED : 0) |
+		(picture->slice_parsing_fields.bits.cabac_init_present_flag ? V4L2_HEVC_PPS_FLAG_CABAC_INIT_PRESENT : 0) |
+		(picture->pic_fields.bits.constrained_intra_pred_flag ? V4L2_HEVC_PPS_FLAG_CONSTRAINED_INTRA_PRED : 0) |
+		(picture->pic_fields.bits.transform_skip_enabled_flag ? V4L2_HEVC_PPS_FLAG_TRANSFORM_SKIP_ENABLED : 0) |
+		(picture->pic_fields.bits.cu_qp_delta_enabled_flag ? V4L2_HEVC_PPS_FLAG_CU_QP_DELTA_ENABLED : 0) |
+		(picture->slice_parsing_fields.bits.pps_slice_chroma_qp_offsets_present_flag ? V4L2_HEVC_PPS_FLAG_PPS_SLICE_CHROMA_QP_OFFSETS_PRESENT : 0) |
+		(picture->pic_fields.bits.weighted_pred_flag ? V4L2_HEVC_PPS_FLAG_WEIGHTED_PRED : 0) |
+		(picture->pic_fields.bits.weighted_bipred_flag ? V4L2_HEVC_PPS_FLAG_WEIGHTED_BIPRED : 0) |
+		(picture->pic_fields.bits.transquant_bypass_enabled_flag ? V4L2_HEVC_PPS_FLAG_TRANSQUANT_BYPASS_ENABLED : 0) |
+		(picture->pic_fields.bits.tiles_enabled_flag ? V4L2_HEVC_PPS_FLAG_TILES_ENABLED : 0) |
+		(picture->pic_fields.bits.entropy_coding_sync_enabled_flag ? V4L2_HEVC_PPS_FLAG_ENTROPY_CODING_SYNC_ENABLED : 0) |
+		(picture->pic_fields.bits.loop_filter_across_tiles_enabled_flag ? V4L2_HEVC_PPS_FLAG_LOOP_FILTER_ACROSS_TILES_ENABLED : 0) |
+		(picture->pic_fields.bits.pps_loop_filter_across_slices_enabled_flag ? V4L2_HEVC_PPS_FLAG_PPS_LOOP_FILTER_ACROSS_SLICES_ENABLED : 0) |
+		(picture->slice_parsing_fields.bits.deblocking_filter_override_enabled_flag ? V4L2_HEVC_PPS_FLAG_DEBLOCKING_FILTER_OVERRIDE_ENABLED : 0) |
+		(picture->slice_parsing_fields.bits.pps_disable_deblocking_filter_flag ? V4L2_HEVC_PPS_FLAG_PPS_DISABLE_DEBLOCKING_FILTER : 0) |
+		(picture->slice_parsing_fields.bits.lists_modification_present_flag ? V4L2_HEVC_PPS_FLAG_LISTS_MODIFICATION_PRESENT : 0) |
+		(picture->slice_parsing_fields.bits.slice_segment_header_extension_present_flag ? V4L2_HEVC_PPS_FLAG_SLICE_SEGMENT_HEADER_EXTENSION_PRESENT : 0)
+	);
 }
 
 static void h265_fill_sps(VAPictureParameterBufferHEVC *picture,
