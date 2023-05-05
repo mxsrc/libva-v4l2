@@ -38,6 +38,20 @@
 
 #include "v4l2.h"
 
+
+static const uint8_t default_non_intra_quantisation_matrix_value = 16;
+static const uint8_t default_intra_quantisation_matrix[] = {
+	 8, 16, 19, 22, 26, 27, 29, 34,
+	16, 16, 22, 24, 27, 29, 34, 37,
+	19, 22, 26, 27, 29, 34, 34, 38,
+	22, 22, 26, 27, 29, 34, 37, 40,
+	22, 26, 27, 29, 32, 35, 40, 48,
+	26, 27, 29, 32, 35, 40, 48, 58,
+	26, 27, 29, 34, 38, 46, 56, 69,
+	27, 29, 35, 38, 46, 56, 69, 83,
+};
+
+
 int mpeg2_set_controls(struct request_data *driver_data,
 		       struct object_context *context_object,
 		       struct object_surface *surface_object)
@@ -49,7 +63,7 @@ int mpeg2_set_controls(struct request_data *driver_data,
 	bool iqmatrix_set = surface_object->params.mpeg2.iqmatrix_set;
 	struct v4l2_ctrl_mpeg2_picture picture = { 0 };
 	struct v4l2_ctrl_mpeg2_sequence sequence = { 0 };
-	struct v4l2_ctrl_mpeg2_quantization quantization;
+	struct v4l2_ctrl_mpeg2_quantisation quantisation = { 0 };
 	struct object_surface *forward_reference_surface;
 	struct object_surface *backward_reference_surface;
 	unsigned int i;
@@ -110,31 +124,22 @@ int mpeg2_set_controls(struct request_data *driver_data,
 	if (rc < 0)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
-	if (iqmatrix_set) {
-		quantization.load_intra_quantiser_matrix =
-			iqmatrix->load_intra_quantiser_matrix;
-		quantization.load_non_intra_quantiser_matrix =
-			iqmatrix->load_non_intra_quantiser_matrix;
-		quantization.load_chroma_intra_quantiser_matrix =
-			iqmatrix->load_chroma_intra_quantiser_matrix;
-		quantization.load_chroma_non_intra_quantiser_matrix =
-			iqmatrix->load_chroma_non_intra_quantiser_matrix;
 
+	if (iqmatrix_set) {
 		for (i = 0; i < 64; i++) {
-			quantization.intra_quantiser_matrix[i] =
-				iqmatrix->intra_quantiser_matrix[i];
-			quantization.non_intra_quantiser_matrix[i] =
-				iqmatrix->non_intra_quantiser_matrix[i];
-			quantization.chroma_intra_quantiser_matrix[i] =
-				iqmatrix->chroma_intra_quantiser_matrix[i];
-			quantization.chroma_non_intra_quantiser_matrix[i] =
-				iqmatrix->chroma_non_intra_quantiser_matrix[i];
+			// The V4L2 API allows to set all or none of the quantisation matrices, so use default values for matrices that are not to be loaded.
+			quantisation.intra_quantiser_matrix[i] = iqmatrix->load_intra_quantiser_matrix ? iqmatrix->intra_quantiser_matrix[i] : default_non_intra_quantisation_matrix_value;
+			quantisation.non_intra_quantiser_matrix[i] = iqmatrix->load_non_intra_quantiser_matrix ? iqmatrix->non_intra_quantiser_matrix[i] : default_non_intra_quantisation_matrix_value;
+			quantisation.chroma_intra_quantiser_matrix[i] = iqmatrix->load_chroma_intra_quantiser_matrix ? iqmatrix->chroma_intra_quantiser_matrix[i] : default_intra_quantisation_matrix[i];
+			quantisation.chroma_non_intra_quantiser_matrix[i] = iqmatrix->load_chroma_non_intra_quantiser_matrix ? iqmatrix->chroma_non_intra_quantiser_matrix[i] : default_intra_quantisation_matrix[i];
 		}
 
 		rc = v4l2_set_control(driver_data->video_fd,
 				      surface_object->request_fd,
-				      V4L2_CID_MPEG_VIDEO_MPEG2_QUANTIZATION,
-				      &quantization, sizeof(quantization));
+				      V4L2_CID_STATELESS_MPEG2_QUANTISATION,
+				      &quantisation, sizeof(quantisation));
+		if (rc < 0)
+			return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 
 	return 0;
