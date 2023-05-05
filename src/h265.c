@@ -329,9 +329,6 @@ int h265_set_controls(struct request_data *driver_data,
 		&surface_object->params.h265.picture;
 	VASliceParameterBufferHEVC *slice =
 		&surface_object->params.h265.slice;
-	VAIQMatrixBufferHEVC *iqmatrix =
-		&surface_object->params.h265.iqmatrix;
-	bool iqmatrix_set = surface_object->params.h265.iqmatrix_set;
 	struct v4l2_ctrl_hevc_pps pps;
 	struct v4l2_ctrl_hevc_sps sps;
 	struct v4l2_ctrl_hevc_slice_params slice_params;
