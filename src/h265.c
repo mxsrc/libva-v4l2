@@ -152,7 +152,6 @@ static void h265_fill_slice_params(VAPictureParameterBufferHEVC *picture,
 	VAPictureHEVC *hevc_picture;
 	uint8_t nal_unit_type;
 	uint8_t nuh_temporal_id_plus1;
-	uint32_t data_bit_offset;
 	uint8_t pic_struct;
 	uint8_t field_pic;
 	uint8_t slice_type;
@@ -162,7 +161,7 @@ static void h265_fill_slice_params(VAPictureParameterBufferHEVC *picture,
 	unsigned int num_rps_poc_lt_curr;
 	uint8_t *b;
 	unsigned int count;
-	unsigned int o, i, j;
+	unsigned int i, j;
 
 	/* Extract the missing NAL header information. */
 
@@ -173,30 +172,10 @@ static void h265_fill_slice_params(VAPictureParameterBufferHEVC *picture,
 	nuh_temporal_id_plus1 = (b[1] >> H265_NUH_TEMPORAL_ID_PLUS1_SHIFT) &
 				H265_NUH_TEMPORAL_ID_PLUS1_MASK;
 
-	/*
-	 * VAAPI only provides a byte-aligned value for the slice segment data
-	 * offset, although it appears that the offset is not always aligned.
-	 * Search for the first one bit in the previous byte, that marks the
-	 * start of the slice segment to correct the value.
-	 */
-
-	b = source_data + (slice->slice_data_offset +
-			   slice->slice_data_byte_offset) - 1;
-
-	for (o = 0; o < 8; o++)
-		if (*b & (1 << o))
-			break;
-
-	/* Include the one bit. */
-	o++;
-
-	data_bit_offset = (slice->slice_data_offset +
-			   slice->slice_data_byte_offset) * 8 - o;
-
 	memset(slice_params, 0, sizeof(*slice_params));
 
 	slice_params->bit_size = slice->slice_data_size * 8;
-	slice_params->data_bit_offset = data_bit_offset;
+	slice_params->data_byte_offset = slice->slice_data_offset + slice->slice_data_byte_offset;
 	slice_params->nal_unit_type = nal_unit_type;
 	slice_params->nuh_temporal_id_plus1 = nuh_temporal_id_plus1;
 
