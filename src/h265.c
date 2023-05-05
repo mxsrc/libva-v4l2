@@ -186,38 +186,34 @@ static void h265_fill_slice_params(VAPictureParameterBufferHEVC *picture,
 		slice->LongSliceFlags.fields.color_plane_id;
 	slice_params->slice_pic_order_cnt =
 		picture->CurrPic.pic_order_cnt;
-	slice_params->slice_sao_luma_flag =
-		slice->LongSliceFlags.fields.slice_sao_luma_flag;
-	slice_params->slice_sao_chroma_flag =
-		slice->LongSliceFlags.fields.slice_sao_chroma_flag;
-	slice_params->slice_temporal_mvp_enabled_flag =
-		slice->LongSliceFlags.fields.slice_temporal_mvp_enabled_flag;
 	slice_params->num_ref_idx_l0_active_minus1 =
 		slice->num_ref_idx_l0_active_minus1;
 	slice_params->num_ref_idx_l1_active_minus1 =
 		slice->num_ref_idx_l1_active_minus1;
-	slice_params->mvd_l1_zero_flag =
-		slice->LongSliceFlags.fields.mvd_l1_zero_flag;
-	slice_params->cabac_init_flag =
-		slice->LongSliceFlags.fields.cabac_init_flag;
-	slice_params->collocated_from_l0_flag =
-		slice->LongSliceFlags.fields.collocated_from_l0_flag;
 	slice_params->collocated_ref_idx = slice->collocated_ref_idx;
 	slice_params->five_minus_max_num_merge_cand =
 		slice->five_minus_max_num_merge_cand;
-	slice_params->use_integer_mv_flag = 0;
 	slice_params->slice_qp_delta = slice->slice_qp_delta;
 	slice_params->slice_cb_qp_offset = slice->slice_cb_qp_offset;
 	slice_params->slice_cr_qp_offset = slice->slice_cr_qp_offset;
 	slice_params->slice_act_y_qp_offset = 0;
 	slice_params->slice_act_cb_qp_offset = 0;
 	slice_params->slice_act_cr_qp_offset = 0;
-	slice_params->slice_deblocking_filter_disabled_flag =
-		slice->LongSliceFlags.fields.slice_deblocking_filter_disabled_flag;
 	slice_params->slice_beta_offset_div2 = slice->slice_beta_offset_div2;
 	slice_params->slice_tc_offset_div2 = slice->slice_tc_offset_div2;
-	slice_params->slice_loop_filter_across_slices_enabled_flag =
-		slice->LongSliceFlags.fields.slice_loop_filter_across_slices_enabled_flag;
+
+	slice_params->flags = (
+		(slice->LongSliceFlags.fields.slice_sao_luma_flag ? V4L2_HEVC_SLICE_PARAMS_FLAG_SLICE_SAO_LUMA : 0) |
+		(slice->LongSliceFlags.fields.slice_sao_chroma_flag ? V4L2_HEVC_SLICE_PARAMS_FLAG_SLICE_SAO_CHROMA : 0) |
+		(slice->LongSliceFlags.fields.slice_temporal_mvp_enabled_flag ? V4L2_HEVC_SLICE_PARAMS_FLAG_SLICE_TEMPORAL_MVP_ENABLED : 0) |
+		(slice->LongSliceFlags.fields.mvd_l1_zero_flag ? V4L2_HEVC_SLICE_PARAMS_FLAG_MVD_L1_ZERO : 0) |
+		(slice->LongSliceFlags.fields.cabac_init_flag ? V4L2_HEVC_SLICE_PARAMS_FLAG_CABAC_INIT : 0) |
+		(slice->LongSliceFlags.fields.collocated_from_l0_flag ? V4L2_HEVC_SLICE_PARAMS_FLAG_COLLOCATED_FROM_L0 : 0) |
+		(slice->LongSliceFlags.fields.dependent_slice_segment_flag ? V4L2_HEVC_SLICE_PARAMS_FLAG_DEPENDENT_SLICE_SEGMENT : 0) |
+		(false ? V4L2_HEVC_SLICE_PARAMS_FLAG_USE_INTEGER_MV : 0) |  // dead code for consistency and documentation. Present in `VASliceParameterBufferHEVCRext`
+		(slice->LongSliceFlags.fields.slice_deblocking_filter_disabled_flag ? V4L2_HEVC_SLICE_PARAMS_FLAG_SLICE_DEBLOCKING_FILTER_DISABLED : 0) |
+		(slice->LongSliceFlags.fields.slice_loop_filter_across_slices_enabled_flag ? V4L2_HEVC_SLICE_PARAMS_FLAG_SLICE_LOOP_FILTER_ACROSS_SLICES_ENABLED : 0)
+	);
 
 	if (picture->CurrPic.flags & VA_PICTURE_HEVC_FIELD_PIC) {
 		if (picture->CurrPic.flags & VA_PICTURE_HEVC_BOTTOM_FIELD)
