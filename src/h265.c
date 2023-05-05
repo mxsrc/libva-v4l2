@@ -146,7 +146,8 @@ static void h265_fill_slice_params(VAPictureParameterBufferHEVC *picture,
 				   VASliceParameterBufferHEVC *slice,
 				   struct object_heap *surface_heap,
 				   void *source_data,
-				   struct v4l2_ctrl_hevc_slice_params *slice_params)
+				   struct v4l2_ctrl_hevc_slice_params *slice_params,
+				   struct v4l2_ctrl_hevc_decode_params *decode_params)
 {
 	struct object_surface *surface_object;
 	VAPictureHEVC *hevc_picture;
@@ -247,34 +248,30 @@ static void h265_fill_slice_params(VAPictureParameterBufferHEVC *picture,
 			break;
 
 		timestamp = v4l2_timeval_to_ns(&surface_object->timestamp);
-		slice_params->dpb[i].timestamp = timestamp;
+		decode_params->dpb[i].timestamp = timestamp;
 
 		if ((hevc_picture->flags & VA_PICTURE_HEVC_RPS_ST_CURR_BEFORE) != 0) {
-			slice_params->dpb[i].rps =
-				V4L2_HEVC_DPB_ENTRY_RPS_ST_CURR_BEFORE;
+			decode_params->poc_st_curr_before[i] = true;
 			num_rps_poc_st_curr_before++;
 		} else if ((hevc_picture->flags & VA_PICTURE_HEVC_RPS_ST_CURR_AFTER) != 0) {
-			slice_params->dpb[i].rps =
-				V4L2_HEVC_DPB_ENTRY_RPS_ST_CURR_AFTER;
+			decode_params->poc_st_curr_after[i] = true;
 			num_rps_poc_st_curr_after++;
 		} else if ((hevc_picture->flags & VA_PICTURE_HEVC_RPS_LT_CURR) != 0) {
-			slice_params->dpb[i].rps =
-				V4L2_HEVC_DPB_ENTRY_RPS_LT_CURR;
+			decode_params->poc_lt_curr[i] = true;
 			num_rps_poc_lt_curr++;
 		}
 
 		field_pic = !!(hevc_picture->flags & VA_PICTURE_HEVC_FIELD_PIC);
 
-		slice_params->dpb[i].field_pic = field_pic;
+		decode_params->dpb[i].field_pic = field_pic;
 
 		/* TODO: Interleaved: Get the POC for each field. */
-		slice_params->dpb[i].pic_order_cnt[0] =
-			hevc_picture->pic_order_cnt;
+		decode_params->dpb[i].pic_order_cnt_val = hevc_picture->pic_order_cnt;
 
 		num_active_dpb_entries++;
 	}
 
-	slice_params->num_active_dpb_entries = num_active_dpb_entries;
+	decode_params->num_active_dpb_entries = num_active_dpb_entries;
 
 	count = slice_params->num_ref_idx_l0_active_minus1 + 1;
 
@@ -286,9 +283,9 @@ static void h265_fill_slice_params(VAPictureParameterBufferHEVC *picture,
 	for (i = 0; i < count && slice_type == V4L2_HEVC_SLICE_TYPE_B ; i++)
 		slice_params->ref_idx_l1[i] = slice->RefPicList[1][i];
 
-	slice_params->num_rps_poc_st_curr_before = num_rps_poc_st_curr_before;
-	slice_params->num_rps_poc_st_curr_after = num_rps_poc_st_curr_after;
-	slice_params->num_rps_poc_lt_curr = num_rps_poc_lt_curr;
+	decode_params->num_poc_st_curr_before = num_rps_poc_st_curr_before;
+	decode_params->num_poc_st_curr_after = num_rps_poc_st_curr_after;
+	decode_params->num_poc_lt_curr = num_rps_poc_lt_curr;
 
 	slice_params->pred_weight_table.luma_log2_weight_denom =
 		slice->luma_log2_weight_denom;
@@ -338,6 +335,7 @@ int h265_set_controls(struct request_data *driver_data,
 	struct v4l2_ctrl_hevc_pps pps;
 	struct v4l2_ctrl_hevc_sps sps;
 	struct v4l2_ctrl_hevc_slice_params slice_params;
+	struct v4l2_ctrl_hevc_decode_params decode_params = { 0 };
 	int rc;
 
 	h265_fill_pps(picture, slice, &pps);
@@ -355,7 +353,7 @@ int h265_set_controls(struct request_data *driver_data,
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	h265_fill_slice_params(picture, slice, &driver_data->surface_heap,
-			       surface_object->source_data, &slice_params);
+			       surface_object->source_data, &slice_params, &decode_params);
 
 	rc = v4l2_set_control(driver_data->video_fd, surface_object->request_fd,
 			      V4L2_CID_MPEG_VIDEO_HEVC_SLICE_PARAMS,
