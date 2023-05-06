@@ -26,6 +26,7 @@
 #define _VIDEO_H_
 
 #include <stdbool.h>
+#include <stdint.h>
 
 struct video_format {
 	char *description;
