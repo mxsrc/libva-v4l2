@@ -32,8 +32,6 @@
 #include "subpicture.h"
 #include "surface.h"
 
-#include "autoconfig.h"
-
 #include <va/va_backend.h>
 
 #include "request.h"

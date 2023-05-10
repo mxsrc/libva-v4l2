@@ -37,8 +37,6 @@
 #include "utils.h"
 #include "v4l2.h"
 
-#include "autoconfig.h"
-
 VAStatus RequestCreateConfig(VADriverContextP context, VAProfile profile,
 			     VAEntrypoint entrypoint,
 			     VAConfigAttrib *attributes, int attributes_count,

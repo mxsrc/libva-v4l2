@@ -42,8 +42,6 @@
 #include "utils.h"
 #include "v4l2.h"
 
-#include "autoconfig.h"
-
 VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 			      int picture_width, int picture_height, int flags,
 			      VASurfaceID *surfaces_ids, int surfaces_count,

@@ -48,8 +48,6 @@
 #include "utils.h"
 #include "v4l2.h"
 
-#include "autoconfig.h"
-
 static VAStatus codec_store_buffer(struct request_data *driver_data,
 				   VAProfile profile,
 				   struct object_surface *surface_object,

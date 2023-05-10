@@ -20,13 +20,6 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-autoconf_data = configuration_data()
-autoconf_data.set('VA_DRIVER_INIT_FUNC', va_driver_init_func)
-
-autoconf = configure_file(
-	output: 'autoconfig.h',
-	configuration: autoconf_data)
-
 sources = [
 	'request.c',
 	'object_heap.c',
@@ -69,7 +62,8 @@ headers = [
 
 cflags = [
 	'-Wall',
-	'-fvisibility=hidden'
+	'-fvisibility=hidden',
+        '-DVA_DRIVER_INIT_FUNC=' + va_driver_init_func
 ]
 
 deps = [
@@ -83,5 +77,5 @@ v4l2_request_drv_video = shared_module('v4l2_request_drv_video',
 	install: true,
 	install_dir: join_paths(get_option('libdir'), 'dri'),
 	c_args: cflags,
-	sources: [ sources, headers, autoconf ],
+	sources: [ sources, headers ],
 	dependencies: deps)
