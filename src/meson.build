@@ -67,7 +67,6 @@ cflags = [
 ]
 
 deps = [
-	kernel_headers_dep,
 	libva_dep,
 	libdrm_dep
 ]

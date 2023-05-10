@@ -26,16 +26,6 @@ project('libva-v4l2-request', 'c',
 
 cc = meson.get_compiler('c')
 
-# Let user specify kernel sources for newer UAPI headers
-kernel_headers_inc = include_directories()
-kernel_headers_dep = dependency('', required : false)
-kernel_headers = get_option('kernel_headers')
-if kernel_headers != ''
-    kernel_headers_inc = include_directories(join_paths(kernel_headers, 'include'))
-    kernel_headers_dep = declare_dependency(include_directories : kernel_headers_inc)
-endif
-
-
 # has_header_symbol() does not support the 'required' keyword
 # until Meson 0.50. Meanwhile Debian Buster is still at 0.49.
 # This is why if statements are used here.
