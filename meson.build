@@ -22,7 +22,7 @@
 
 project('libva-v4l2-request', 'c',
 	version: '1.0.0',
-	meson_version: '>= 0.43.0')
+	meson_version: '>= 0.56.0')
 
 cc = meson.get_compiler('c')
 
@@ -41,3 +41,4 @@ va_driver_init_func = '__vaDriverInit_@0@_@1@'.format(va_api_major_version,
 						      va_api_minor_version)
 
 subdir('src')
+subdir('test')
