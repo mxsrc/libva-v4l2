@@ -6,7 +6,7 @@ env = environment({
   'GST_VAAPI_ALL_DRIVERS': '1',
 })
 
-vainfo = find_program('vainfo', required: false, disable: true)
+vainfo = find_program('vainfo', required: false, disabler: true)
 test(
   'vainfo',
   vainfo,
@@ -15,7 +15,7 @@ test(
 )
 
 # Running vaapi-fits depends on the environment providing its dependencies: tests should be run from within a python virtualenv (see `requirements.txt`)
-vaapi_fits = find_program('vaapi-fits', dirs: [meson.current_source_dir()/'vaapi-fits'], required: false, disable: true)
+vaapi_fits = find_program('vaapi-fits', dirs: [meson.current_source_dir()/'vaapi-fits'], required: false, disabler: true)
 test(
   'ffmpeg decoding',
   vaapi_fits,
