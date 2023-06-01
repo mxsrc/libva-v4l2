@@ -41,6 +41,7 @@
 
 #include "utils.h"
 #include "v4l2.h"
+#include <va/va.h>
 
 VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 			      int picture_width, int picture_height, int flags,
@@ -115,6 +116,12 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 	if (rc < 0) {
 		status = VA_STATUS_ERROR_OPERATION_FAILED;
 		goto error;
+	}
+
+	// Now that the output format is set, we can set the capture format and allocate the surfaces.
+	VAStatus result = RequestCreateSurfacesReally(context, surfaces_ids, surfaces_count);
+	if (result != VA_STATUS_SUCCESS) {
+		return result;
 	}
 
 	rc = v4l2_create_buffers(driver_data->video_fd, output_type,
