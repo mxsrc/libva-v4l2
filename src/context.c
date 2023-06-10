@@ -218,7 +218,6 @@ VAStatus RequestDestroyContext(VADriverContextP context, VAContextID context_id)
 	struct object_context *context_object;
 	struct video_format *video_format;
 	unsigned int output_type, capture_type;
-	VAStatus status;
 	int rc;
 
 	video_format = driver_data->video_format;
@@ -240,25 +239,10 @@ VAStatus RequestDestroyContext(VADriverContextP context, VAContextID context_id)
 	if (rc < 0)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
-	/* Buffers liberation */
-
-	status = RequestDestroySurfaces(context, context_object->surfaces_ids,
-					context_object->surfaces_count);
-	if (status != VA_STATUS_SUCCESS)
-		return VA_STATUS_ERROR_OPERATION_FAILED;
-
 	free(context_object->surfaces_ids);
 
 	object_heap_free(&driver_data->context_heap,
 			 (struct object_base *)context_object);
-
-	rc = v4l2_request_buffers(driver_data->video_fd, output_type, 0);
-	if (rc < 0)
-		return VA_STATUS_ERROR_OPERATION_FAILED;
-
-	rc = v4l2_request_buffers(driver_data->video_fd, capture_type, 0);
-	if (rc < 0)
-		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	return VA_STATUS_SUCCESS;
 }
