@@ -38,6 +38,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
+#include <va/va.h>
 #include <va/va_drmcommon.h>
 #include <linux/videodev2.h>
 
@@ -61,6 +62,7 @@ VAStatus RequestCreateBuffer(VADriverContextP context, VAContextID context_id,
 	case VASliceParameterBufferType:
 	case VASliceDataBufferType:
 	case VAImageBufferType:
+	case VAProbabilityBufferType:
 		break;
 
 	default:

@@ -37,7 +37,8 @@ sources = [
 	'v4l2.c',
 	'mpeg2.c',
 	'h264.c',
-	'h265.c'
+	'h265.c',
+	'vp8.c'
 ]
 
 headers = [
@@ -57,7 +58,8 @@ headers = [
 	'v4l2.h',
 	'mpeg2.h',
 	'h264.h',
-	'h265.h'
+	'h265.h',
+	'vp8.h'
 ]
 
 cflags = [

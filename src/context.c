@@ -107,6 +107,10 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 		pixelformat = V4L2_PIX_FMT_HEVC_SLICE;
 		break;
 
+	case VAProfileVP8Version0_3:
+		pixelformat = V4L2_PIX_FMT_VP8_FRAME;
+		break;
+
 	default:
 		status = VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
 		goto error;

@@ -82,6 +82,12 @@ struct object_surface {
 			VAIQMatrixBufferHEVC iqmatrix;
 			bool iqmatrix_set;
 		} h265;
+		struct {
+			VAPictureParameterBufferVP8 picture;
+			VASliceParameterBufferVP8 slice;
+			VAProbabilityDataBufferVP8 probabilities;
+			VAIQMatrixBufferVP8 iq_matrix;
+		} vp8;
 	} params;
 
 	int request_fd;

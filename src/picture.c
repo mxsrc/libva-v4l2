@@ -48,7 +48,7 @@
 #include "utils.h"
 #include "v4l2.h"
 
-VAStatus codec_store_buffer(struct request_data *driver_data,
+static VAStatus codec_store_buffer(struct request_data *driver_data,
 				   VAProfile profile,
 				   struct object_surface *surface_object,
 				   struct object_buffer *buffer_object)
@@ -92,6 +92,9 @@ static VAStatus codec_set_controls(struct request_data *driver_data,
 
 	case VAProfileHEVCMain:
 		return h265_set_controls(driver_data, context, surface_object);
+
+	case VAProfileVP8Version0_3:
+		return vp8_set_controls(driver_data, context, surface_object);
 
 	default:
 		return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
