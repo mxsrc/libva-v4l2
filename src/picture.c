@@ -34,6 +34,7 @@
 #include "h264.h"
 #include "h265.h"
 #include "mpeg2.h"
+#include "vp8.h"
 
 #include <assert.h>
 #include <string.h>
@@ -67,6 +68,9 @@ static VAStatus codec_store_buffer(struct request_data *driver_data,
 
 	case VAProfileHEVCMain:
 		return h265_store_buffer(driver_data, surface_object, buffer_object);
+
+	case VAProfileVP8Version0_3:
+		return vp8_store_buffer(driver_data, surface_object, buffer_object);
 
 	default:
 		return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;

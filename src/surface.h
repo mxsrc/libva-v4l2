@@ -27,6 +27,8 @@
 #ifndef _SURFACE_H_
 #define _SURFACE_H_
 
+#include <stdbool.h>
+
 #include <linux/videodev2.h>
 
 #include <va/va_backend.h>
@@ -86,7 +88,7 @@ struct object_surface {
 			VAPictureParameterBufferVP8 picture;
 			VASliceParameterBufferVP8 slice;
 			VAProbabilityDataBufferVP8 probabilities;
-			VAIQMatrixBufferVP8 iq_matrix;
+			VAIQMatrixBufferVP8 iqmatrix;
 		} vp8;
 	} params;
 

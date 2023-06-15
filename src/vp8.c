@@ -5,6 +5,7 @@
 #include <linux/v4l2-controls.h>
 #include <va/va.h>
 
+#include "buffer.h"
 #include "request.h"
 #include "context.h"
 #include "surface.h"
@@ -54,15 +55,15 @@ static struct v4l2_vp8_loop_filter lf(VAPictureParameterBufferVP8* picture) {
 }
 
 
-static struct v4l2_vp8_quantization quant(VAIQMatrixBufferVP8* iq_matrix) {
+static struct v4l2_vp8_quantization quant(VAIQMatrixBufferVP8* iqmatrix) {
 	// FIXME: Which segment?
 	struct v4l2_vp8_quantization result = {
-		.y_ac_qi = iq_matrix->quantization_index[0][0],
-		.y_dc_delta = iq_matrix->quantization_index[0][1],
-		.y2_dc_delta = iq_matrix->quantization_index[0][2],
-		.y2_ac_delta = iq_matrix->quantization_index[0][3],
-		.uv_dc_delta = iq_matrix->quantization_index[0][4],
-		.uv_ac_delta = iq_matrix->quantization_index[0][5],
+		.y_ac_qi = iqmatrix->quantization_index[0][0],
+		.y_dc_delta = iqmatrix->quantization_index[0][1],
+		.y2_dc_delta = iqmatrix->quantization_index[0][2],
+		.y2_ac_delta = iqmatrix->quantization_index[0][3],
+		.uv_dc_delta = iqmatrix->quantization_index[0][4],
+		.uv_ac_delta = iqmatrix->quantization_index[0][5],
 	};
 	return result;
 }
@@ -88,7 +89,7 @@ static struct v4l2_vp8_entropy_coder_state coder_state(VABoolCoderContextVPX* bo
 }
 
 
-static struct v4l2_ctrl_vp8_frame va_to_v4l2_frame(struct request_data *data, VAPictureParameterBufferVP8 *picture, VASliceParameterBufferVP8 *slice, VAIQMatrixBufferVP8 *iq_matrix, VAProbabilityDataBufferVP8 *probabilities) {
+static struct v4l2_ctrl_vp8_frame va_to_v4l2_frame(struct request_data *data, VAPictureParameterBufferVP8 *picture, VASliceParameterBufferVP8 *slice, VAIQMatrixBufferVP8 *iqmatrix, VAProbabilityDataBufferVP8 *probabilities) {
 	struct object_surface* last_ref = SURFACE(data, picture->last_ref_frame);
 	struct object_surface* golden_ref = SURFACE(data, picture->golden_ref_frame);
 	struct object_surface* alt_ref = SURFACE(data, picture->alt_ref_frame);
@@ -99,7 +100,7 @@ static struct v4l2_ctrl_vp8_frame va_to_v4l2_frame(struct request_data *data, VA
 	struct v4l2_ctrl_vp8_frame result = {
 		.segment = segment(picture),
 		.lf = lf(picture),
-		.quant = quant(iq_matrix),
+		.quant = quant(iqmatrix),
 		.entropy = entropy(picture, probabilities),
 		.coder_state = coder_state(&picture->bool_coder_ctx),
 		.width = picture->frame_width,
@@ -131,13 +132,64 @@ static struct v4l2_ctrl_vp8_frame va_to_v4l2_frame(struct request_data *data, VA
 }
 
 
+VAStatus vp8_store_buffer(struct request_data *driver_data,
+			  struct object_surface *surface_object,
+			  struct object_buffer *buffer_object)
+{
+	switch (buffer_object->type) {
+	case VASliceDataBufferType:
+		/*
+		 * Since there is no guarantee that the allocation
+		 * order is the same as the submission order (via
+		 * RenderPicture), we can't use a V4L2 buffer directly
+		 * and have to copy from a regular buffer.
+		 */
+		memcpy(surface_object->source_data +
+			       surface_object->slices_size,
+		       buffer_object->data,
+		       buffer_object->size * buffer_object->count);
+		surface_object->slices_size +=
+			buffer_object->size * buffer_object->count;
+		surface_object->slices_count++;
+		break;
+
+	case VAPictureParameterBufferType:
+		memcpy(&surface_object->params.vp8.picture,
+		       buffer_object->data,
+		       sizeof(surface_object->params.vp8.picture));
+		break;
+
+	case VASliceParameterBufferType:
+		memcpy(&surface_object->params.vp8.slice,
+		       buffer_object->data,
+		       sizeof(surface_object->params.vp8.slice));
+		break;
+
+	case VAIQMatrixBufferType:
+		memcpy(&surface_object->params.vp8.iqmatrix,
+		       buffer_object->data,
+		       sizeof(surface_object->params.vp8.iqmatrix));
+		break;
+
+	case VAProbabilityBufferType:
+		memcpy(&surface_object->params.vp8.probabilities,
+		       buffer_object->data,
+		       sizeof(surface_object->params.vp8.probabilities));
+		break;
+
+	default:
+		return VA_STATUS_ERROR_UNSUPPORTED_BUFFERTYPE;
+	}
+
+	return VA_STATUS_SUCCESS;
+}
 
 int vp8_set_controls(struct request_data *data, struct object_context *context, struct object_surface *surface) {
 	struct v4l2_ctrl_vp8_frame frame = va_to_v4l2_frame(
 		data,
 		&surface->params.vp8.picture,
 		&surface->params.vp8.slice,
-		&surface->params.vp8.iq_matrix,
+		&surface->params.vp8.iqmatrix,
 		&surface->params.vp8.probabilities
 	);
 
