@@ -116,9 +116,9 @@ static struct v4l2_ctrl_vp8_frame va_to_v4l2_frame(struct request_data *data, VA
 		.first_part_size = 0,  //  FIXME slice->partition_size[0]?
 		.first_part_header_bits = 0, // FIXME?
 		.dct_part_sizes = { 0 },  // FIXME slice->partition_size[1:]?
-		.last_frame_ts = v4l2_timeval_to_ns(&last_ref->timestamp),
-		.golden_frame_ts = v4l2_timeval_to_ns(&golden_ref->timestamp),
-		.alt_frame_ts = v4l2_timeval_to_ns(&alt_ref->timestamp),
+		.last_frame_ts = last_ref ? v4l2_timeval_to_ns(&last_ref->timestamp): 0,
+		.golden_frame_ts = golden_ref ? v4l2_timeval_to_ns(&golden_ref->timestamp) : 0,
+		.alt_frame_ts = alt_ref ? v4l2_timeval_to_ns(&alt_ref->timestamp) : 0,
 		.flags = 
 			(picture->pic_fields.bits.key_frame ? V4L2_VP8_FRAME_FLAG_KEY_FRAME : 0) |
 			(false ? V4L2_VP8_FRAME_FLAG_EXPERIMENTAL : 0) |
