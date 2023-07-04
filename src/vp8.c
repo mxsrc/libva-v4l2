@@ -112,10 +112,9 @@ static struct v4l2_ctrl_vp8_frame va_to_v4l2_frame(struct request_data *data, VA
 		.prob_intra = picture->prob_intra,
 		.prob_last = picture->prob_last,
 		.prob_gf = picture->prob_gf,
-		.num_dct_parts = slice->num_of_partitions,  // FIXME: -1?
-		.first_part_size = 0,  //  FIXME slice->partition_size[0]?
-		.first_part_header_bits = 0, // FIXME?
-		.dct_part_sizes = { 0 },  // FIXME slice->partition_size[1:]?
+		.num_dct_parts = slice->num_of_partitions - 1,
+		.first_part_size = slice->partition_size[0],
+		.first_part_header_bits = slice->macroblock_offset,
 		.last_frame_ts = last_ref ? v4l2_timeval_to_ns(&last_ref->timestamp): 0,
 		.golden_frame_ts = golden_ref ? v4l2_timeval_to_ns(&golden_ref->timestamp) : 0,
 		.alt_frame_ts = alt_ref ? v4l2_timeval_to_ns(&alt_ref->timestamp) : 0,
@@ -127,6 +126,7 @@ static struct v4l2_ctrl_vp8_frame va_to_v4l2_frame(struct request_data *data, VA
 			(picture->pic_fields.bits.sign_bias_alternate ? V4L2_VP8_FRAME_FLAG_SIGN_BIAS_ALT : 0) |
 			(picture->pic_fields.bits.sign_bias_golden ? V4L2_VP8_FRAME_FLAG_SIGN_BIAS_GOLDEN : 0),
 	};
+	memcpy(result.dct_part_sizes, slice->partition_size + 1, sizeof(result.dct_part_sizes));
 
 	return result;
 }
