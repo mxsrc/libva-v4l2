@@ -33,6 +33,7 @@
 #include <string.h>
 
 #include <assert.h>
+#include <errno.h>
 
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -240,6 +241,18 @@ VAStatus RequestDestroyContext(VADriverContextP context, VAContextID context_id)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	free(context_object->surfaces_ids);
+
+	struct v4l2_requestbuffers reqbuf = {
+		.count = 0,
+		.type = capture_type,
+		.memory = V4L2_MEMORY_MMAP,
+	};
+
+	rc = ioctl(driver_data->video_fd, VIDIOC_REQBUFS, &reqbuf);
+	if (rc < 0) {
+		request_log("Unable to free buffers: %s\n", strerror(errno));
+		return -1;
+	}
 
 	object_heap_free(&driver_data->context_heap,
 			 (struct object_base *)context_object);
