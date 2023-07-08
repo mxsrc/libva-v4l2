@@ -44,6 +44,7 @@
 #include <sys/ioctl.h>
 
 #include <linux/videodev2.h>
+#include <va/va.h>
 
 #include "media.h"
 #include "utils.h"
