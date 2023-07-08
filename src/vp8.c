@@ -76,14 +76,14 @@ static struct v4l2_vp8_loop_filter lf(VAPictureParameterBufferVP8* picture) {
 
 
 static struct v4l2_vp8_quantization quant(VAIQMatrixBufferVP8* iqmatrix) {
-	// FIXME: Which segment?
+	// FIXME adding the remaining values skews the colors in the output. Why?
 	struct v4l2_vp8_quantization result = {
 		.y_ac_qi = iqmatrix->quantization_index[0][0],
-		.y_dc_delta = iqmatrix->quantization_index[0][1],
-		.y2_dc_delta = iqmatrix->quantization_index[0][2],
-		.y2_ac_delta = iqmatrix->quantization_index[0][3],
-		.uv_dc_delta = iqmatrix->quantization_index[0][4],
-		.uv_ac_delta = iqmatrix->quantization_index[0][5],
+		//.y_dc_delta = iqmatrix->quantization_index[0][1],
+		//.y2_dc_delta = iqmatrix->quantization_index[0][2],
+		//.y2_ac_delta = iqmatrix->quantization_index[0][3],
+		//.uv_dc_delta = iqmatrix->quantization_index[0][4],
+		//.uv_ac_delta = iqmatrix->quantization_index[0][5],
 	};
 	return result;
 }
