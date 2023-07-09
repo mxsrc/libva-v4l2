@@ -118,7 +118,7 @@ static struct v4l2_ctrl_vp8_frame va_to_v4l2_frame(struct request_data *data, VA
 		.prob_last = picture->prob_last,
 		.prob_gf = picture->prob_gf,
 		.num_dct_parts = slice->num_of_partitions - 1,
-		.first_part_size = slice->partition_size[0] + 258,
+		.first_part_size = slice->slice_data_size - slice->partition_size[1],  // FIXME: Needs to be sum of all partitions
 		.first_part_header_bits = slice->macroblock_offset,
 		.last_frame_ts = last_ref ? v4l2_timeval_to_ns(&last_ref->timestamp): 0,
 		.golden_frame_ts = golden_ref ? v4l2_timeval_to_ns(&golden_ref->timestamp) : 0,
@@ -126,7 +126,7 @@ static struct v4l2_ctrl_vp8_frame va_to_v4l2_frame(struct request_data *data, VA
 		.flags = 
 			((picture->pic_fields.bits.key_frame == VP8_KEYFRAME) ? V4L2_VP8_FRAME_FLAG_KEY_FRAME : 0) |
 			(false ? V4L2_VP8_FRAME_FLAG_EXPERIMENTAL : 0) |
-			(true ? V4L2_VP8_FRAME_FLAG_SHOW_FRAME : 0) |
+			(true ? V4L2_VP8_FRAME_FLAG_SHOW_FRAME : 0) |  // not provided by libva, assume all frames are shown
 			(picture->pic_fields.bits.mb_no_coeff_skip ? V4L2_VP8_FRAME_FLAG_MB_NO_SKIP_COEFF : 0) |
 			(picture->pic_fields.bits.sign_bias_alternate ? V4L2_VP8_FRAME_FLAG_SIGN_BIAS_ALT : 0) |
 			(picture->pic_fields.bits.sign_bias_golden ? V4L2_VP8_FRAME_FLAG_SIGN_BIAS_GOLDEN : 0),
@@ -144,13 +144,15 @@ static struct v4l2_ctrl_vp8_frame va_to_v4l2_frame(struct request_data *data, VA
  * V4L2 expects it to be present though, so we reconstruct it here.
  */
 static size_t prefix_data(uint8_t* data, const VAPictureParameterBufferVP8* picture, const VASliceParameterBufferVP8* slice) {
+	const uint32_t first_part_size = slice->slice_data_size - slice->partition_size[1];  // FIXME: Needs to be sum of all partitions
+
 	data[0] =
-		((picture->pic_fields.bits.key_frame & 0x01) << 7) |
-		((picture->pic_fields.bits.version & 0x07) << 4) |
-		((true & 0x01) << 3) |  // not provided by libva, assume all frames are shown
-		((slice->partition_size[0] >> 16) & 0x07);
-	data[1] = slice->partition_size[0] >> 8;
-	data[2] = slice->partition_size[0] >> 0;
+		(picture->pic_fields.bits.key_frame & 0x01) |
+		((picture->pic_fields.bits.version & 0x07) << 1) |
+		((true & 0x01) << 4) |  // not provided by libva, assume all frames are shown
+		(((first_part_size >> 0) & 0x07) << 5);
+	data[1] = first_part_size >> 3;
+	data[2] = first_part_size >> 11;
 
 	if (picture->pic_fields.bits.key_frame == VP8_INTERFRAME) {
 		return 3;
@@ -159,10 +161,10 @@ static size_t prefix_data(uint8_t* data, const VAPictureParameterBufferVP8* pict
 	data[3] = 0x9d;
 	data[4] = 0x01;
 	data[5] = 0x2a;
-	data[6] = picture->frame_width >> 8;
-	data[7] = picture->frame_height >> 0;
-	data[8] = picture->frame_width >> 8;
-	data[9] = picture->frame_height >> 0;
+	data[6] = picture->frame_width >> 0;
+	data[7] = picture->frame_width >> 8;
+	data[8] = picture->frame_height >> 0;
+	data[9] = picture->frame_height >> 8;
 
 	return 10;
 }
@@ -180,8 +182,11 @@ VAStatus vp8_store_buffer(struct request_data *driver_data,
 		 * RenderPicture), we can't use a V4L2 buffer directly
 		 * and have to copy from a regular buffer.
 		 */
-		surface_object->slices_size += prefix_data(surface_object->source_data + surface_object->slices_size, &surface_object->params.vp8.picture, &surface_object->params.vp8.slice);
-
+		surface_object->slices_size += prefix_data(
+			surface_object->source_data + surface_object->slices_size,
+			&surface_object->params.vp8.picture,
+			&surface_object->params.vp8.slice
+		);
 
 		memcpy(surface_object->source_data +
 			       surface_object->slices_size,
