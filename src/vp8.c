@@ -24,21 +24,6 @@ enum {
 	VP8_INTERFRAME = 1,
 };
 
-struct __attribute__((packed, aligned(1))) vp8_uncompressed_data_chunk_common {
-            uint8_t key_frame : 1;
-            uint8_t version : 3;
-            uint8_t show_frame : 1;
-            uint8_t first_data_partition_size_first : 3;
-            uint16_t first_data_partition_size_second;
-
-};
-
-struct __attribute__((packed, aligned(1))) vp8_uncompressed_data_chunk_key {
-	    uint8_t start_code[3];
-	    uint16_t horizontal_dimension;
-	    uint16_t vertical_dimension;
-};
-
 static struct v4l2_vp8_segment segment(VAPictureParameterBufferVP8* picture) {
 	struct v4l2_vp8_segment result = {
 		.quant_update = { 0 },  // FIXME
@@ -152,6 +137,37 @@ static struct v4l2_ctrl_vp8_frame va_to_v4l2_frame(struct request_data *data, VA
 }
 
 
+/**
+ * Reconstruct uncompressed data chunk.
+ *
+ * This is stripped from the data by libva, since it's (mostly) represented by the provided parsed buffers.
+ * V4L2 expects it to be present though, so we reconstruct it here.
+ */
+static size_t prefix_data(uint8_t* data, const VAPictureParameterBufferVP8* picture, const VASliceParameterBufferVP8* slice) {
+	data[0] =
+		((picture->pic_fields.bits.key_frame & 0x01) << 7) |
+		((picture->pic_fields.bits.version & 0x07) << 4) |
+		((true & 0x01) << 3) |  // not provided by libva, assume all frames are shown
+		((slice->partition_size[0] >> 16) & 0x07);
+	data[1] = slice->partition_size[0] >> 8;
+	data[2] = slice->partition_size[0] >> 0;
+
+	if (picture->pic_fields.bits.key_frame == VP8_INTERFRAME) {
+		return 3;
+	}
+
+	data[3] = 0x9d;
+	data[4] = 0x01;
+	data[5] = 0x2a;
+	data[6] = picture->frame_width >> 8;
+	data[7] = picture->frame_height >> 0;
+	data[8] = picture->frame_width >> 8;
+	data[9] = picture->frame_height >> 0;
+
+	return 10;
+}
+
+
 VAStatus vp8_store_buffer(struct request_data *driver_data,
 			  struct object_surface *surface_object,
 			  struct object_buffer *buffer_object)
@@ -164,44 +180,8 @@ VAStatus vp8_store_buffer(struct request_data *driver_data,
 		 * RenderPicture), we can't use a V4L2 buffer directly
 		 * and have to copy from a regular buffer.
 		 */
+		surface_object->slices_size += prefix_data(surface_object->source_data + surface_object->slices_size, &surface_object->params.vp8.picture, &surface_object->params.vp8.slice);
 
-		/**
-		 * Reconstruct uncompressed data chunk.
-		 *
-		 * This is stripped from the data by libva, since it's (mostly) represented by the provided parsed buffers.
-		 * V4L2 expects it to be present though, so we reconstruct it here.
-		 */
-		{
-			uint32_t first_data_partition_size = surface_object->params.vp8.slice.partition_size[0] + 258;
-			struct vp8_uncompressed_data_chunk_common prefix_common = {
-				.key_frame = surface_object->params.vp8.picture.pic_fields.bits.key_frame,
-				.version = surface_object->params.vp8.picture.pic_fields.bits.version,
-				.show_frame = true,  // not provided by libva, assume always shown
-				.first_data_partition_size_first = first_data_partition_size >> 16,
-				.first_data_partition_size_second = (uint16_t) first_data_partition_size,
-			};
-			memcpy(surface_object->source_data + surface_object->slices_size,
-			       &prefix_common, sizeof(prefix_common));
-			surface_object->slices_size += sizeof(prefix_common);
-
-			if (surface_object->params.vp8.picture.pic_fields.bits.key_frame == VP8_KEYFRAME) {
-				struct vp8_uncompressed_data_chunk_key prefix_keyframe = {
-					.start_code = {0x9d, 0x01, 0x2a},
-					.horizontal_dimension = surface_object->params.vp8.picture.frame_width,  // scale not provided by libva
-					.vertical_dimension = surface_object->params.vp8.picture.frame_height,  // scale not provided by libva
-				};
-				memcpy(surface_object->source_data + surface_object->slices_size,
-				       &prefix_keyframe, sizeof(prefix_keyframe));
-				surface_object->slices_size += sizeof(prefix_keyframe);
-			}
-		}
-
-		//const char prefix[] = {0xf0, 0xcf, 0x03, 0x9d, 0x01, 0x2a, 0x80, 0x07, 0x38, 0x04};
-
-		//memcpy(surface_object->source_data + surface_object->slices_size,
-		//       prefix,
-		//       sizeof(prefix));
-		//surface_object->slices_size += sizeof(prefix);
 
 		memcpy(surface_object->source_data +
 			       surface_object->slices_size,
