@@ -502,7 +502,7 @@ int h264_set_controls(struct request_data *driver_data,
 		struct v4l2_ctrl_h264_pred_weights weights = { 0 };
 		h264_va_slice_to_predicted_weights(&surface->params.h264.slice, &slice, &weights);
 		rc = v4l2_set_control(driver_data->video_fd, surface->request_fd,
-				      V4L2_CID_STATELESS_H264_DECODE_PARAMS, &decode,
+				      V4L2_CID_STATELESS_H264_PRED_WEIGHTS, &weights,
 				      sizeof(decode));
 		if (rc < 0)
 			return VA_STATUS_ERROR_OPERATION_FAILED;
