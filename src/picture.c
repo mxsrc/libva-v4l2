@@ -78,37 +78,24 @@ static VAStatus codec_set_controls(struct request_data *driver_data,
 				   VAProfile profile,
 				   struct object_surface *surface_object)
 {
-	int rc;
-
 	switch (profile) {
 	case VAProfileMPEG2Simple:
 	case VAProfileMPEG2Main:
-		rc = mpeg2_set_controls(driver_data, context, surface_object);
-		if (rc < 0)
-			return VA_STATUS_ERROR_OPERATION_FAILED;
-		break;
+		return mpeg2_set_controls(driver_data, context, surface_object);
 
 	case VAProfileH264Main:
 	case VAProfileH264High:
 	case VAProfileH264ConstrainedBaseline:
 	case VAProfileH264MultiviewHigh:
 	case VAProfileH264StereoHigh:
-		rc = h264_set_controls(driver_data, context, surface_object);
-		if (rc < 0)
-			return VA_STATUS_ERROR_OPERATION_FAILED;
-		break;
+		return h264_set_controls(driver_data, context, surface_object);
 
 	case VAProfileHEVCMain:
-		rc = h265_set_controls(driver_data, context, surface_object);
-		if (rc < 0)
-			return VA_STATUS_ERROR_OPERATION_FAILED;
-		break;
+		return h265_set_controls(driver_data, context, surface_object);
 
 	default:
 		return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
 	}
-
-	return VA_STATUS_SUCCESS;
 }
 
 VAStatus RequestBeginPicture(VADriverContextP context, VAContextID context_id,
