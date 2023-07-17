@@ -25,6 +25,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "h264.h"
+
 #include <assert.h>
 #include <limits.h>
 #include <string.h>
@@ -35,9 +37,11 @@
 #include <time.h>
 #include <linux/videodev2.h>
 
+#include "buffer.h"
 #include "request.h"
 #include "surface.h"
 #include "v4l2.h"
+#include <va/va.h>
 
 enum h264_slice_type {
 	H264_SLICE_P    = 0,
@@ -415,6 +419,54 @@ static void h264_va_slice_to_predicted_weights(
 				     VASlice->chroma_weight_l1,
 				     VASlice->chroma_offset_l1);
 }
+
+
+VAStatus h264_store_buffer(struct request_data *driver_data,
+				   struct object_surface *surface_object,
+				   struct object_buffer *buffer_object)
+{
+	switch (buffer_object->type) {
+	case VASliceDataBufferType:
+		/*
+		 * Since there is no guarantee that the allocation
+		 * order is the same as the submission order (via
+		 * RenderPicture), we can't use a V4L2 buffer directly
+		 * and have to copy from a regular buffer.
+		 */
+		memcpy(surface_object->source_data +
+			       surface_object->slices_size,
+		       buffer_object->data,
+		       buffer_object->size * buffer_object->count);
+		surface_object->slices_size +=
+			buffer_object->size * buffer_object->count;
+		surface_object->slices_count++;
+		break;
+
+	case VAPictureParameterBufferType:
+		memcpy(&surface_object->params.h264.picture,
+		       buffer_object->data,
+		       sizeof(surface_object->params.h264.picture));
+		break;
+
+	case VASliceParameterBufferType:
+		memcpy(&surface_object->params.h264.slice,
+		       buffer_object->data,
+		       sizeof(surface_object->params.h264.slice));
+		break;
+
+	case VAIQMatrixBufferType:
+		memcpy(&surface_object->params.h264.matrix,
+		       buffer_object->data,
+		       sizeof(surface_object->params.h264.matrix));
+		break;
+
+	default:
+		return VA_STATUS_ERROR_UNSUPPORTED_BUFFERTYPE;
+	}
+
+	return VA_STATUS_SUCCESS;
+}
+
 
 int h264_set_controls(struct request_data *driver_data,
 		      struct object_context *context,

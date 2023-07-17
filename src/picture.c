@@ -48,118 +48,29 @@
 #include "utils.h"
 #include "v4l2.h"
 
-static VAStatus codec_store_buffer(struct request_data *driver_data,
+VAStatus codec_store_buffer(struct request_data *driver_data,
 				   VAProfile profile,
 				   struct object_surface *surface_object,
 				   struct object_buffer *buffer_object)
 {
-	switch (buffer_object->type) {
-	case VASliceDataBufferType:
-		/*
-		 * Since there is no guarantee that the allocation
-		 * order is the same as the submission order (via
-		 * RenderPicture), we can't use a V4L2 buffer directly
-		 * and have to copy from a regular buffer.
-		 */
-		memcpy(surface_object->source_data +
-			       surface_object->slices_size,
-		       buffer_object->data,
-		       buffer_object->size * buffer_object->count);
-		surface_object->slices_size +=
-			buffer_object->size * buffer_object->count;
-		surface_object->slices_count++;
-		break;
+	switch (profile) {
+	case VAProfileMPEG2Simple:
+	case VAProfileMPEG2Main:
+		return mpeg2_store_buffer(driver_data, surface_object, buffer_object);
 
-	case VAPictureParameterBufferType:
-		switch (profile) {
-		case VAProfileMPEG2Simple:
-		case VAProfileMPEG2Main:
-			memcpy(&surface_object->params.mpeg2.picture,
-			       buffer_object->data,
-			       sizeof(surface_object->params.mpeg2.picture));
-			break;
+	case VAProfileH264Main:
+	case VAProfileH264High:
+	case VAProfileH264ConstrainedBaseline:
+	case VAProfileH264MultiviewHigh:
+	case VAProfileH264StereoHigh:
+		return h264_store_buffer(driver_data, surface_object, buffer_object);
 
-		case VAProfileH264Main:
-		case VAProfileH264High:
-		case VAProfileH264ConstrainedBaseline:
-		case VAProfileH264MultiviewHigh:
-		case VAProfileH264StereoHigh:
-			memcpy(&surface_object->params.h264.picture,
-			       buffer_object->data,
-			       sizeof(surface_object->params.h264.picture));
-			break;
-
-		case VAProfileHEVCMain:
-			memcpy(&surface_object->params.h265.picture,
-			       buffer_object->data,
-			       sizeof(surface_object->params.h265.picture));
-			break;
-
-		default:
-			break;
-		}
-		break;
-
-	case VASliceParameterBufferType:
-		switch (profile) {
-		case VAProfileH264Main:
-		case VAProfileH264High:
-		case VAProfileH264ConstrainedBaseline:
-		case VAProfileH264MultiviewHigh:
-		case VAProfileH264StereoHigh:
-			memcpy(&surface_object->params.h264.slice,
-			       buffer_object->data,
-			       sizeof(surface_object->params.h264.slice));
-			break;
-
-		case VAProfileHEVCMain:
-			memcpy(&surface_object->params.h265.slice,
-			       buffer_object->data,
-			       sizeof(surface_object->params.h265.slice));
-			break;
-
-		default:
-			break;
-		}
-		break;
-
-	case VAIQMatrixBufferType:
-		switch (profile) {
-		case VAProfileMPEG2Simple:
-		case VAProfileMPEG2Main:
-			memcpy(&surface_object->params.mpeg2.iqmatrix,
-			       buffer_object->data,
-			       sizeof(surface_object->params.mpeg2.iqmatrix));
-			surface_object->params.mpeg2.iqmatrix_set = true;
-			break;
-
-		case VAProfileH264Main:
-		case VAProfileH264High:
-		case VAProfileH264ConstrainedBaseline:
-		case VAProfileH264MultiviewHigh:
-		case VAProfileH264StereoHigh:
-			memcpy(&surface_object->params.h264.matrix,
-			       buffer_object->data,
-			       sizeof(surface_object->params.h264.matrix));
-			break;
-
-		case VAProfileHEVCMain:
-			memcpy(&surface_object->params.h265.iqmatrix,
-			       buffer_object->data,
-			       sizeof(surface_object->params.h265.iqmatrix));
-			surface_object->params.h265.iqmatrix_set = true;
-			break;
-
-		default:
-			break;
-		}
-		break;
+	case VAProfileHEVCMain:
+		return h265_store_buffer(driver_data, surface_object, buffer_object);
 
 	default:
-		break;
+		return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
 	}
-
-	return VA_STATUS_SUCCESS;
 }
 
 static VAStatus codec_set_controls(struct request_data *driver_data,

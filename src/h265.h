@@ -27,10 +27,16 @@
 #ifndef _H265_H_
 #define _H265_H_
 
+#include <va/va.h>
+
+struct object_buffer;
 struct object_context;
 struct object_surface;
 struct request_data;
 
+VAStatus h265_store_buffer(struct request_data *driver_data,
+			   struct object_surface *surface_object,
+			   struct object_buffer *buffer_object);
 int h265_set_controls(struct request_data *driver_data,
 		      struct object_context *context_object,
 		      struct object_surface *surface_object);

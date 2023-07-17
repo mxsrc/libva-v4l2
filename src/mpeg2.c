@@ -24,6 +24,8 @@
  */
 
 #include "mpeg2.h"
+
+#include "buffer.h"
 #include "context.h"
 #include "request.h"
 #include "surface.h"
@@ -50,6 +52,48 @@ static const uint8_t default_intra_quantisation_matrix[] = {
 	26, 27, 29, 34, 38, 46, 56, 69,
 	27, 29, 35, 38, 46, 56, 69, 83,
 };
+
+
+VAStatus mpeg2_store_buffer(struct request_data *driver_data,
+				   struct object_surface *surface_object,
+				   struct object_buffer *buffer_object)
+{
+	switch (buffer_object->type) {
+	case VASliceDataBufferType:
+		/*
+		 * Since there is no guarantee that the allocation
+		 * order is the same as the submission order (via
+		 * RenderPicture), we can't use a V4L2 buffer directly
+		 * and have to copy from a regular buffer.
+		 */
+		memcpy(surface_object->source_data +
+			       surface_object->slices_size,
+		       buffer_object->data,
+		       buffer_object->size * buffer_object->count);
+		surface_object->slices_size +=
+			buffer_object->size * buffer_object->count;
+		surface_object->slices_count++;
+		break;
+
+	case VAPictureParameterBufferType:
+		memcpy(&surface_object->params.mpeg2.picture,
+		       buffer_object->data,
+		       sizeof(surface_object->params.mpeg2.picture));
+		break;
+
+	case VAIQMatrixBufferType:
+		memcpy(&surface_object->params.mpeg2.iqmatrix,
+		       buffer_object->data,
+		       sizeof(surface_object->params.mpeg2.iqmatrix));
+		surface_object->params.mpeg2.iqmatrix_set = true;
+		break;
+
+	default:
+		return VA_STATUS_ERROR_UNSUPPORTED_BUFFERTYPE;
+	}
+
+	return VA_STATUS_SUCCESS;
+}
 
 
 int mpeg2_set_controls(struct request_data *driver_data,
