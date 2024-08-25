@@ -1,0 +1,62 @@
+import os
+import subprocess
+
+from more_itertools import split_before
+import parse
+
+
+mapping = {
+    'S264': 'avc',
+    'MG2S': 'mpeg2',
+    'VP8F': 'vp8',
+}
+
+CODEC_FORMAT = "\t[{index:d}]: '{fourcc}' ({description})"
+
+# Only stepwise for now, will fail at discrete/continuous size specifications
+SIZE_FORMAT = "\t\tSize: Stepwise {lower.width:d}x{lower.height:d} - {upper.width:d}x{upper.height:d} with step {step.width:d}/{step.height:d}"
+
+
+def codec_maxsize(description):
+    """Parse a v4l2-ctl description for the maximum size supported for the codec"""
+
+    codec_spec = parse.parse(CODEC_FORMAT, description[0])
+
+    if len(description) == 1:  # Make assumptions when no framesizes are enumerated
+        return codec_spec.named['fourcc'], (1920, 1080)
+
+    size_spec = parse.parse(SIZE_FORMAT, description[1])
+
+    if len(description) != 2 or codec_spec is None or size_spec is None:
+        raise ValueError('Invalid input')
+
+    return codec_spec.named['fourcc'], (size_spec.named['upper.width'], size_spec.named['upper.height'])
+
+
+def decodable():
+    device = os.getenv('LIBVA_V4L2_REQUEST_VIDEO_PATH')
+    cmd = f'v4l2-ctl -d {device} --list-formats-out-ext'
+    result = subprocess.check_output(cmd.split(' '), text=True)
+    max_resolutions = [
+        codec_maxsize(entry)
+        for entry
+        in split_before(
+            result.splitlines()[3:],
+            lambda line: line.startswith('\t[')
+        )
+    ]
+
+    # Assume common set of output formats for all capture (i.e. decodable) formats. V4L2 allows for different sets
+    cmd2 = f'v4l2-ctl -d {device} --list-formats'
+    result2 = subprocess.check_output(cmd2.split(' '), text=True)
+    formats = [parse.parse(CODEC_FORMAT, line).named['fourcc'] for line in result2.splitlines()[3:]]
+
+    return {
+        mapping[fourcc]: dict(maxres=maxres, fmts=formats)
+        for fourcc, maxres
+        in max_resolutions
+        if fourcc in mapping
+    }
+
+
+caps = dict(decode=decodable())
