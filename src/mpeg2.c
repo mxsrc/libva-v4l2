@@ -59,6 +59,25 @@ VAStatus mpeg2_store_buffer(struct request_data *driver_data,
 				   struct object_buffer *buffer_object)
 {
 	switch (buffer_object->type) {
+	case VAPictureParameterBufferType:
+		memcpy(&surface_object->params.mpeg2.picture,
+		       buffer_object->data,
+		       sizeof(surface_object->params.mpeg2.picture));
+		break;
+
+	case VAIQMatrixBufferType:
+		memcpy(&surface_object->params.mpeg2.iqmatrix,
+		       buffer_object->data,
+		       sizeof(surface_object->params.mpeg2.iqmatrix));
+		surface_object->params.mpeg2.iqmatrix_set = true;
+		break;
+
+	case VASliceParameterBufferType:
+		// FIXME: This is passed by libva but ignoring it works for the
+		// current test media. If you are looking for a reason why MPEG2
+		// decoding isn't working, this is likely it.
+		break;
+
 	case VASliceDataBufferType:
 		/*
 		 * Since there is no guarantee that the allocation
@@ -73,19 +92,6 @@ VAStatus mpeg2_store_buffer(struct request_data *driver_data,
 		surface_object->slices_size +=
 			buffer_object->size * buffer_object->count;
 		surface_object->slices_count++;
-		break;
-
-	case VAPictureParameterBufferType:
-		memcpy(&surface_object->params.mpeg2.picture,
-		       buffer_object->data,
-		       sizeof(surface_object->params.mpeg2.picture));
-		break;
-
-	case VAIQMatrixBufferType:
-		memcpy(&surface_object->params.mpeg2.iqmatrix,
-		       buffer_object->data,
-		       sizeof(surface_object->params.mpeg2.iqmatrix));
-		surface_object->params.mpeg2.iqmatrix_set = true;
 		break;
 
 	default:
