@@ -254,7 +254,7 @@ VAStatus RequestDestroyContext(VADriverContextP context, VAContextID context_id)
 
 	rc = ioctl(driver_data->video_fd, VIDIOC_REQBUFS, &reqbuf);
 	if (rc < 0) {
-		request_log("Unable to free buffers: %s\n", strerror(errno));
+		error_log(context, "Unable to free buffers: %s\n", strerror(errno));
 		return -1;
 	}
 

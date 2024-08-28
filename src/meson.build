@@ -65,7 +65,8 @@ headers = [
 cflags = [
 	'-Wall',
 	'-fvisibility=hidden',
-        '-DVA_DRIVER_INIT_FUNC=' + va_driver_init_func
+        '-DVA_DRIVER_INIT_FUNC=' + va_driver_init_func,
+        '-D__STDC_WANT_LIB_EXT2__',
 ]
 
 deps = [

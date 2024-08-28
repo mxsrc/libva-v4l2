@@ -161,7 +161,7 @@ VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 	capabilities_required = V4L2_CAP_STREAMING;
 
 	if ((capabilities & capabilities_required) != capabilities_required) {
-		request_log("Missing required driver capabilities\n");
+		error_log(context, "Missing required driver capabilities\n");
 		status = VA_STATUS_ERROR_OPERATION_FAILED;
 		goto error;
 	}

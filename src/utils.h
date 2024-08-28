@@ -26,6 +26,21 @@
 #ifndef _UTILS_H_
 #define _UTILS_H_
 
+#include <va/va_backend.h>
+
+/**
+ * libVA-independent error log.
+ */
 void request_log(const char *format, ...);
+
+/**
+ * Utility function to access the libVA info callback.
+ */
+void info_log(VADriverContextP ctx, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
+
+/**
+ * Utility function to access the libVA error callback.
+ */
+void error_log(VADriverContextP ctx, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
 
 #endif

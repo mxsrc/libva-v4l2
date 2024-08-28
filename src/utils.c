@@ -40,3 +40,35 @@ void request_log(const char *format, ...)
 	vfprintf(stderr, format, arguments);
 	va_end(arguments);
 }
+
+void info_log(VADriverContextP ctx, const char *format, ...) {
+    char* string;
+    va_list args;
+
+    va_start(args, format);
+    if(0 > vasprintf(&string, format, args)) string = NULL;    //this is for logging, so failed allocation is not fatal
+    va_end(args);
+
+    if(string) {
+        ctx->info_callback(ctx, string);
+        free(string);
+    } else {
+        ctx->error_callback(ctx, "Error while logging a message: Memory allocation failed.\n");
+    }
+}
+
+void error_log(VADriverContextP ctx, const char *format, ...) {
+    char* string;
+    va_list args;
+
+    va_start(args, format);
+    if(0 > vasprintf(&string, format, args)) string = NULL;    //this is for logging, so failed allocation is not fatal
+    va_end(args);
+
+    if(string) {
+        ctx->error_callback(ctx, string);
+        free(string);
+    } else {
+        ctx->error_callback(ctx, "Error while logging a message: Memory allocation failed.\n");
+    }
+}
