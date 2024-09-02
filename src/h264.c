@@ -36,17 +36,52 @@
 
 #include <time.h>
 #include <linux/videodev2.h>
+#include <va/va.h>
 
-#include "buffer.h"
+#include "config.h"
 #include "request.h"
+#include "buffer.h"
 #include "surface.h"
 #include "v4l2.h"
-#include <va/va.h>
 
 enum h264_slice_type {
 	H264_SLICE_P    = 0,
 	H264_SLICE_B    = 1,
 };
+
+enum h264_profile {
+	H264_PROFILE_BASELINE = 66,
+	H264_PROFILE_MAIN = 77,
+	H264_PROFILE_SCALABLE_BASELINE = 83,
+	H264_PROFILE_SCALABLE_HIGH = 86,
+	H264_PROFILE_EXTENDED = 88,
+	H264_PROFILE_HIGH = 100,
+	H264_PROFILE_HIGH10 = 110,
+	H264_PROFILE_HIGH_422 = 122,
+	H264_PROFILE_MULTIVIEW_HIGH = 118,
+	H264_PROFILE_STEREO_HIGH = 128,
+	H264_PROFILE_HIGH_444 = 244,
+};
+
+static uint8_t va_profile_to_profile_idc  (VAProfile profile) {
+	switch (profile) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+		case VAProfileH264Baseline:
+#pragma GCC diagnostic pop
+			return H264_PROFILE_BASELINE;
+		case VAProfileH264High:
+			return H264_PROFILE_HIGH;
+		case VAProfileH264Main:
+			return H264_PROFILE_MAIN;
+		case VAProfileH264MultiviewHigh:
+			return H264_PROFILE_MULTIVIEW_HIGH;
+		case VAProfileH264StereoHigh:
+			return H264_PROFILE_STEREO_HIGH;
+		default:
+			return 0;
+	}
+}
 
 static bool is_picture_null(VAPictureH264 *pic)
 {
@@ -472,6 +507,10 @@ int h264_set_controls(struct request_data *driver_data,
 		      struct object_context *context,
 		      struct object_surface *surface)
 {
+	struct object_config* config_object = CONFIG(driver_data, context->config_id);
+	if (config_object == NULL) {
+		return VA_STATUS_ERROR_OPERATION_FAILED;
+	}
 	struct v4l2_ctrl_h264_scaling_matrix matrix = { 0 };
 	struct v4l2_ctrl_h264_decode_params decode = { 0 };
 	struct v4l2_ctrl_h264_slice_params slice = { 0 };
@@ -497,6 +536,8 @@ int h264_set_controls(struct request_data *driver_data,
 	h264_va_slice_to_v4l2(driver_data, context,
 			      &surface->params.h264.slice,
 			      &surface->params.h264.picture, &slice);
+
+	sps.profile_idc = va_profile_to_profile_idc(config_object->profile);
 
 	if (V4L2_H264_CTRL_PRED_WEIGHTS_REQUIRED(&pps, &slice)) {
 		struct v4l2_ctrl_h264_pred_weights weights = { 0 };
