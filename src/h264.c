@@ -540,6 +540,14 @@ int h264_set_controls(struct request_data *driver_data,
 			      &surface->params.h264.picture, &slice);
 
 	sps.profile_idc = va_profile_to_profile_idc(config_object->profile);
+	switch (surface->params.h264.slice.slice_type % 5) {
+		case H264_SLICE_P:
+			decode.flags |= V4L2_H264_DECODE_PARAM_FLAG_PFRAME;
+			break;
+		case H264_SLICE_B:
+			decode.flags |= V4L2_H264_DECODE_PARAM_FLAG_BFRAME;
+			break;
+	}
 
 	if (V4L2_H264_CTRL_PRED_WEIGHTS_REQUIRED(&pps, &slice)) {
 		struct v4l2_ctrl_h264_pred_weights weights = { 0 };
