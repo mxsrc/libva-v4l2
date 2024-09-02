@@ -56,6 +56,7 @@ int v4l2_export_buffer(int video_fd, unsigned int type, unsigned int index,
 		       unsigned int export_fds_count);
 int v4l2_set_control(int video_fd, int request_fd, unsigned int id, void *data,
 		     unsigned int size);
+int v4l2_set_controls(int video_fd, int request_fd, struct v4l2_ext_control*,  unsigned int count);
 int v4l2_set_stream(int video_fd, unsigned int type, bool enable);
 
 #endif

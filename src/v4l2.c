@@ -459,6 +459,29 @@ int v4l2_set_control(int video_fd, int request_fd, unsigned int id, void *data,
 	return 0;
 }
 
+int v4l2_set_controls(int video_fd, int request_fd, struct v4l2_ext_control* controls,
+		     unsigned int count)
+{
+	struct v4l2_ext_controls meta = { 0 };
+	int rc;
+
+	meta.controls = controls;
+	meta.count = count;
+
+	if (request_fd >= 0) {
+		meta.which = V4L2_CTRL_WHICH_REQUEST_VAL;
+		meta.request_fd = request_fd;
+	}
+
+	rc = ioctl(video_fd, VIDIOC_S_EXT_CTRLS, &meta);
+	if (rc < 0) {
+		request_log("Unable to set control: %s\n", strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
 int v4l2_set_stream(int video_fd, unsigned int type, bool enable)
 {
 	enum v4l2_buf_type buf_type = type;

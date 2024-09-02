@@ -517,6 +517,8 @@ int h264_set_controls(struct request_data *driver_data,
 	struct v4l2_ctrl_h264_pps pps = { 0 };
 	struct v4l2_ctrl_h264_sps sps = { 0 };
 	struct h264_dpb_entry *output;
+	struct v4l2_ext_control controls[8] = { 0 };
+	int i = 0;
 	int rc;
 
 	output = dpb_lookup(context, &surface->params.h264.picture.CurrPic,
@@ -542,40 +544,42 @@ int h264_set_controls(struct request_data *driver_data,
 	if (V4L2_H264_CTRL_PRED_WEIGHTS_REQUIRED(&pps, &slice)) {
 		struct v4l2_ctrl_h264_pred_weights weights = { 0 };
 		h264_va_slice_to_predicted_weights(&surface->params.h264.slice, &slice, &weights);
-		rc = v4l2_set_control(driver_data->video_fd, surface->request_fd,
-				      V4L2_CID_STATELESS_H264_PRED_WEIGHTS, &weights,
-				      sizeof(decode));
-		if (rc < 0)
-			return VA_STATUS_ERROR_OPERATION_FAILED;
+
+		controls[i++] = (struct v4l2_ext_control){
+			.id = V4L2_CID_STATELESS_H264_PRED_WEIGHTS,
+			.ptr = &weights,
+			.size = sizeof(decode),
+		};
 	}
 
-	rc = v4l2_set_control(driver_data->video_fd, surface->request_fd,
-			      V4L2_CID_STATELESS_H264_DECODE_PARAMS, &decode,
-			      sizeof(decode));
-	if (rc < 0)
-		return VA_STATUS_ERROR_OPERATION_FAILED;
+	controls[i++] = (struct v4l2_ext_control) {
+		.id = V4L2_CID_STATELESS_H264_DECODE_PARAMS,
+		.ptr = &decode,
+		.size = sizeof(decode),
+	};
 
-	rc = v4l2_set_control(driver_data->video_fd, surface->request_fd,
-			      V4L2_CID_STATELESS_H264_SLICE_PARAMS, &slice,
-			      sizeof(slice));
-	if (rc < 0)
-		return VA_STATUS_ERROR_OPERATION_FAILED;
+	controls[i++] = (struct v4l2_ext_control){
+		.id = V4L2_CID_STATELESS_H264_PPS,
+		.ptr = &pps,
+		.size = sizeof(pps),
+	};
 
-	rc = v4l2_set_control(driver_data->video_fd, surface->request_fd,
-			      V4L2_CID_STATELESS_H264_PPS, &pps, sizeof(pps));
-	if (rc < 0)
-		return VA_STATUS_ERROR_OPERATION_FAILED;
+	controls[i++] = (struct v4l2_ext_control){
+		.id = V4L2_CID_STATELESS_H264_SPS,
+		.ptr = &sps,
+		.size = sizeof(sps),
+	};
 
-	rc = v4l2_set_control(driver_data->video_fd, surface->request_fd,
-			      V4L2_CID_STATELESS_H264_SPS, &sps, sizeof(sps));
-	if (rc < 0)
-		return VA_STATUS_ERROR_OPERATION_FAILED;
+	controls[i++] = (struct v4l2_ext_control){
+		.id = V4L2_CID_STATELESS_H264_SCALING_MATRIX,
+		.ptr = &matrix,
+		.size = sizeof(matrix),
+	};
 
-	rc = v4l2_set_control(driver_data->video_fd, surface->request_fd,
-			      V4L2_CID_STATELESS_H264_SCALING_MATRIX, &matrix,
-			      sizeof(matrix));
-	if (rc < 0)
+	rc = v4l2_set_controls(driver_data->video_fd, surface->request_fd, controls, i);
+	if (rc < 0) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
+	}
 
 	dpb_insert(context, &surface->params.h264.picture.CurrPic, output);
 
