@@ -83,6 +83,13 @@ static uint8_t va_profile_to_profile_idc  (VAProfile profile) {
 	}
 }
 
+static size_t prefix_data(uint8_t* data) {
+	data[0] = 0;
+	data[1] = 0;
+	data[2] = 1;
+	return 3;
+}
+
 static bool is_picture_null(VAPictureH264 *pic)
 {
 	return pic->picture_id == VA_INVALID_SURFACE;
@@ -470,6 +477,10 @@ VAStatus h264_store_buffer(struct request_data *driver_data,
 		 * RenderPicture), we can't use a V4L2 buffer directly
 		 * and have to copy from a regular buffer.
 		 */
+		surface_object->slices_size += prefix_data(
+			surface_object->source_data + surface_object->slices_size
+		);
+
 		memcpy(surface_object->source_data +
 			       surface_object->slices_size,
 		       buffer_object->data,
