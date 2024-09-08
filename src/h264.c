@@ -569,7 +569,7 @@ int h264_set_controls(struct request_data *driver_data,
 		controls[i++] = (struct v4l2_ext_control){
 			.id = V4L2_CID_STATELESS_H264_PRED_WEIGHTS,
 			.ptr = &weights,
-			.size = sizeof(decode),
+			.size = sizeof(weights),
 		};
 	}
 
