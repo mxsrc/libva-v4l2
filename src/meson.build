@@ -38,7 +38,8 @@ sources = [
 	'mpeg2.c',
 	'h264.c',
 	'h265.c',
-	'vp8.c'
+	'vp8.c',
+	'vp9.c',
 ]
 
 headers = [
@@ -59,7 +60,8 @@ headers = [
 	'mpeg2.h',
 	'h264.h',
 	'h265.h',
-	'vp8.h'
+	'vp8.h',
+	'vp9.h',
 ]
 
 cflags = [
@@ -67,11 +69,13 @@ cflags = [
 	'-fvisibility=hidden',
         '-DVA_DRIVER_INIT_FUNC=' + va_driver_init_func,
         '-D__STDC_WANT_LIB_EXT2__',
+        '-DGST_USE_UNSTABLE_API',
 ]
 
 deps = [
 	libva_dep,
-	libdrm_dep
+	libdrm_dep,
+	libgst_dep,
 ]
 
 v4l2_request_drv_video = shared_module('v4l2_request_drv_video',
@@ -79,5 +83,6 @@ v4l2_request_drv_video = shared_module('v4l2_request_drv_video',
 	install: true,
 	install_dir: join_paths(get_option('libdir'), 'dri'),
 	c_args: cflags,
+	link_args: ['-lgstcodecs-1.0'],
 	sources: [ sources, headers ],
 	dependencies: deps)

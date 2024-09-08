@@ -35,6 +35,7 @@
 #include "h265.h"
 #include "mpeg2.h"
 #include "vp8.h"
+#include "vp9.h"
 
 #include <assert.h>
 #include <string.h>
@@ -73,6 +74,12 @@ static VAStatus codec_store_buffer(struct request_data *driver_data,
 	case VAProfileVP8Version0_3:
 		return vp8_store_buffer(driver_data, surface_object, buffer_object);
 
+	case VAProfileVP9Profile0:
+	case VAProfileVP9Profile1:
+	case VAProfileVP9Profile2:
+	case VAProfileVP9Profile3:
+		return vp9_store_buffer(driver_data, surface_object, buffer_object);
+
 	default:
 		return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
 	}
@@ -100,6 +107,12 @@ static VAStatus codec_set_controls(struct request_data *driver_data,
 
 	case VAProfileVP8Version0_3:
 		return vp8_set_controls(driver_data, context, surface_object);
+
+	case VAProfileVP9Profile0:
+	case VAProfileVP9Profile1:
+	case VAProfileVP9Profile2:
+	case VAProfileVP9Profile3:
+		return vp9_set_controls(driver_data, context, surface_object);
 
 	default:
 		return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;

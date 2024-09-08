@@ -39,6 +39,8 @@
 	((struct object_surface *)object_heap_lookup(&(data)->surface_heap, id))
 #define SURFACE_ID_OFFSET		0x04000000
 
+#define SURFACE_ID_INVALID -1
+
 struct object_surface {
 	struct object_base base;
 
@@ -90,6 +92,10 @@ struct object_surface {
 			VAProbabilityDataBufferVP8 probabilities;
 			VAIQMatrixBufferVP8 iqmatrix;
 		} vp8;
+		struct {
+			VADecPictureParameterBufferVP9 picture;
+			VASliceParameterBufferVP9 slice;
+		} vp9;
 	} params;
 
 	int request_fd;

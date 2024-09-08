@@ -32,6 +32,7 @@ endif
 
 libva_dep = dependency('libva', version : '>= 1.1.0')
 libdrm_dep = dependency('libdrm', version : '>= 2.4.52')
+libgst_dep = dependency('gstreamer-codecparsers-1.0', version : '>= 1.12')
 
 va_api_version_array = libva_dep.version().split('.')
 va_api_major_version = va_api_version_array[0]

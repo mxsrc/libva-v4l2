@@ -9,6 +9,7 @@ mapping = {
     'S264': 'avc',
     'MG2S': 'mpeg2',
     'VP8F': 'vp8',
+    'VP9F': 'vp9_8',
 }
 
 CODEC_FORMAT = "\t[{index:d}]: '{fourcc}' ({description})"
