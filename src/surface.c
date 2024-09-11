@@ -66,16 +66,19 @@ VAStatus RequestCreateSurfaces2(VADriverContextP context, unsigned int format,
         if (!driver_data->video_format) {
 		if (v4l2_find_format(driver_data->video_fd,
 				     V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-				     V4L2_PIX_FMT_SUNXI_TILED_NV12))
+				     V4L2_PIX_FMT_SUNXI_TILED_NV12)) {
 			driver_data->video_format = video_format_find(V4L2_PIX_FMT_SUNXI_TILED_NV12);
-
-		if (v4l2_find_format(driver_data->video_fd,
+		} else if (v4l2_find_format(driver_data->video_fd,
 				     V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-				     V4L2_PIX_FMT_NV12))
+				     V4L2_PIX_FMT_NV12)) {
 			driver_data->video_format = video_format_find(V4L2_PIX_FMT_NV12);
-
-		if (driver_data->video_format == NULL)
+		} else if (v4l2_find_format(driver_data->video_fd,
+				     V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
+				     V4L2_PIX_FMT_NV12M)) {
+			driver_data->video_format = video_format_find(V4L2_PIX_FMT_NV12M);
+		} else {
 			return VA_STATUS_ERROR_OPERATION_FAILED;
+		}
         }
 
 	for (int i = 0; i < surfaces_count; i++) {
