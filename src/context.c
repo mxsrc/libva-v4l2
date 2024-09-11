@@ -86,10 +86,9 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 		status = VA_STATUS_ERROR_ALLOCATION_FAILED;
 		goto error;
 	}
-	memset(&context_object->dpb, 0, sizeof(context_object->dpb));
+	memset(&context_object->codec_state, 0, sizeof(context_object->codec_state));
 
 	switch (config_object->profile) {
-
 	case VAProfileMPEG2Simple:
 	case VAProfileMPEG2Main:
 		pixelformat = V4L2_PIX_FMT_MPEG2_SLICE;

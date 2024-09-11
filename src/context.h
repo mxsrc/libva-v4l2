@@ -48,8 +48,11 @@ struct object_context {
 	int picture_height;
 	int flags;
 
-	/* H264 only */
-	struct h264_dpb dpb;
+	union {
+		struct {
+			struct h264_dpb dpb;
+		} h264;
+	} codec_state;
 };
 
 VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,

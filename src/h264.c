@@ -101,7 +101,7 @@ dpb_find_invalid_entry(struct object_context *context)
 	unsigned int i;
 
 	for (i = 0; i < H264_DPB_SIZE; i++) {
-		struct h264_dpb_entry *entry = &context->dpb.entries[i];
+		struct h264_dpb_entry *entry = &context->codec_state.h264.dpb.entries[i];
 
 		if (!entry->valid && !entry->reserved)
 			return entry;
@@ -118,7 +118,7 @@ dpb_find_oldest_unused_entry(struct object_context *context)
 	struct h264_dpb_entry *match = NULL;
 
 	for (i = 0; i < H264_DPB_SIZE; i++) {
-		struct h264_dpb_entry *entry = &context->dpb.entries[i];
+		struct h264_dpb_entry *entry = &context->codec_state.h264.dpb.entries[i];
 
 		if (!entry->used && (entry->age < min_age)) {
 			min_age = entry->age;
@@ -146,7 +146,7 @@ static struct h264_dpb_entry *dpb_lookup(struct object_context *context,
 	unsigned int i;
 
 	for (i = 0; i < H264_DPB_SIZE; i++) {
-		struct h264_dpb_entry *entry = &context->dpb.entries[i];
+		struct h264_dpb_entry *entry = &context->codec_state.h264.dpb.entries[i];
 
 		if (!entry->valid)
 			continue;
@@ -190,7 +190,7 @@ static void dpb_insert(struct object_context *context, VAPictureH264 *pic,
 		entry = dpb_find_entry(context);
 
 	memcpy(&entry->pic, pic, sizeof(entry->pic));
-	entry->age = context->dpb.age;
+	entry->age = context->codec_state.h264.dpb.age;
 	entry->valid = true;
 	entry->reserved = false;
 
@@ -203,10 +203,10 @@ static void dpb_update(struct object_context *context,
 {
 	unsigned int i;
 
-	context->dpb.age++;
+	context->codec_state.h264.dpb.age++;
 
 	for (i = 0; i < H264_DPB_SIZE; i++) {
-		struct h264_dpb_entry *entry = &context->dpb.entries[i];
+		struct h264_dpb_entry *entry = &context->codec_state.h264.dpb.entries[i];
 
 		entry->used = false;
 	}
@@ -220,7 +220,7 @@ static void dpb_update(struct object_context *context,
 
 		entry = dpb_lookup(context, pic, NULL);
 		if (entry) {
-			entry->age = context->dpb.age;
+			entry->age = context->codec_state.h264.dpb.age;
 			entry->used = true;
 		} else {
 			dpb_insert(context, pic, NULL);
@@ -236,7 +236,7 @@ static void h264_fill_dpb(struct request_data *data,
 
 	for (i = 0; i < H264_DPB_SIZE; i++) {
 		struct v4l2_h264_dpb_entry *dpb = &decode->dpb[i];
-		struct h264_dpb_entry *entry = &context->dpb.entries[i];
+		struct h264_dpb_entry *entry = &context->codec_state.h264.dpb.entries[i];
 		struct object_surface *surface =
 			SURFACE(data, entry->pic.picture_id);
 		uint64_t timestamp;
