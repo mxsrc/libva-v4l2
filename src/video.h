@@ -36,7 +36,6 @@ struct video_format {
 	unsigned int drm_format;
 	uint64_t drm_modifier;
 	unsigned int planes_count;
-	unsigned int bpp;
 };
 
 struct video_format *video_format_find(unsigned int pixelformat);

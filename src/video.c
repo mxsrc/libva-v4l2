@@ -43,7 +43,6 @@ static struct video_format formats[] = {
 		.drm_format		= DRM_FORMAT_NV12,
 		.drm_modifier		= DRM_FORMAT_MOD_NONE,
 		.planes_count		= 2,
-		.bpp			= 16,
 	},
 // Code to handle this DRM_FORMAT is __arm__ only
 #ifdef __arm__
@@ -55,7 +54,6 @@ static struct video_format formats[] = {
 		.drm_format		= DRM_FORMAT_NV12,
 		.drm_modifier		= DRM_FORMAT_MOD_ALLWINNER_TILED,
 		.planes_count		= 2,
-		.bpp			= 16
 	},
 #endif
 };
