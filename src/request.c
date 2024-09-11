@@ -154,7 +154,6 @@ VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 
 	rc = v4l2_query_capabilities(video_fd, &capabilities);
 	if (rc < 0) {
-		status = VA_STATUS_ERROR_OPERATION_FAILED;
 		goto error;
 	}
 
@@ -162,17 +161,19 @@ VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 
 	if ((capabilities & capabilities_required) != capabilities_required) {
 		error_log(context, "Missing required driver capabilities\n");
-		status = VA_STATUS_ERROR_OPERATION_FAILED;
 		goto error;
 	}
 
 	media_path = getenv("LIBVA_V4L2_REQUEST_MEDIA_PATH");
-	if (media_path == NULL)
-		media_path = "/dev/media0";
-
-	media_fd = open(media_path, O_RDWR | O_NONBLOCK);
-	if (media_fd < 0)
-		return VA_STATUS_ERROR_OPERATION_FAILED;
+	if (media_path != NULL) {
+		media_fd = open(media_path, O_RDWR | O_NONBLOCK);
+		if (media_fd < 0) {
+			error_log(context, "Failed to open media device\n");
+			goto error;
+		}
+	} else {
+		media_fd = -1;
+	}
 
 	driver_data->video_fd = video_fd;
 	driver_data->media_fd = media_fd;

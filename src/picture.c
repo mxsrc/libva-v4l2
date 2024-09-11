@@ -216,18 +216,20 @@ VAStatus RequestEndPicture(VADriverContextP context, VAContextID context_id)
 	gettimeofday(&surface_object->timestamp, NULL);
 
 	request_fd = surface_object->request_fd;
-	if (request_fd < 0) {
-		request_fd = media_request_alloc(driver_data->media_fd);
-		if (request_fd < 0)
-			return VA_STATUS_ERROR_OPERATION_FAILED;
+	if (driver_data->media_fd >= 0) {
+		if (request_fd < 0) {
+			request_fd = media_request_alloc(driver_data->media_fd);
+			if (request_fd < 0)
+				return VA_STATUS_ERROR_OPERATION_FAILED;
 
-		surface_object->request_fd = request_fd;
+			surface_object->request_fd = request_fd;
+		}
+
+		rc = codec_set_controls(driver_data, context_object,
+					config_object->profile, surface_object);
+		if (rc != VA_STATUS_SUCCESS)
+			return rc;
 	}
-
-	rc = codec_set_controls(driver_data, context_object,
-				config_object->profile, surface_object);
-	if (rc != VA_STATUS_SUCCESS)
-		return rc;
 
 	rc = v4l2_queue_buffer(driver_data->video_fd, -1, capture_type, NULL,
 			       surface_object->destination_index, 0,

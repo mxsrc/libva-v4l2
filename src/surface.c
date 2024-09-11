@@ -276,7 +276,6 @@ VAStatus RequestSyncSurface(VADriverContextP context, VASurfaceID surface_id)
 	VAStatus status;
 	struct video_format *video_format;
 	unsigned int output_type, capture_type;
-	int request_fd = -1;
 	int rc;
 
 	video_format = driver_data->video_format;
@@ -299,28 +298,24 @@ VAStatus RequestSyncSurface(VADriverContextP context, VASurfaceID surface_id)
 		goto complete;
 	}
 
-	request_fd = surface_object->request_fd;
-	if (request_fd < 0) {
-		status = VA_STATUS_ERROR_OPERATION_FAILED;
-		goto error;
-	}
+	if (surface_object->request_fd >= 0) {
+		rc = media_request_queue(surface_object->request_fd);
+		if (rc < 0) {
+			status = VA_STATUS_ERROR_OPERATION_FAILED;
+			goto error;
+		}
 
-	rc = media_request_queue(request_fd);
-	if (rc < 0) {
-		status = VA_STATUS_ERROR_OPERATION_FAILED;
-		goto error;
-	}
+		rc = media_request_wait_completion(surface_object->request_fd);
+		if (rc < 0) {
+			status = VA_STATUS_ERROR_OPERATION_FAILED;
+			goto error;
+		}
 
-	rc = media_request_wait_completion(request_fd);
-	if (rc < 0) {
-		status = VA_STATUS_ERROR_OPERATION_FAILED;
-		goto error;
-	}
-
-	rc = media_request_reinit(request_fd);
-	if (rc < 0) {
-		status = VA_STATUS_ERROR_OPERATION_FAILED;
-		goto error;
+		rc = media_request_reinit(surface_object->request_fd);
+		if (rc < 0) {
+			status = VA_STATUS_ERROR_OPERATION_FAILED;
+			goto error;
+		}
 	}
 
 	rc = v4l2_dequeue_buffer(driver_data->video_fd, -1, output_type,
@@ -344,8 +339,8 @@ VAStatus RequestSyncSurface(VADriverContextP context, VASurfaceID surface_id)
 	goto complete;
 
 error:
-	if (request_fd >= 0) {
-		close(request_fd);
+	if (surface_object->request_fd >= 0) {
+		close(surface_object->request_fd);
 		surface_object->request_fd = -1;
 	}
 
