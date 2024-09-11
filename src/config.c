@@ -48,6 +48,7 @@ VAStatus RequestCreateConfig(VADriverContextP context, VAProfile profile,
 	VAConfigID id;
 	int i, index;
 
+ 	// TODO: Should check whether profile is actually supported by driver in use.
 	switch (profile) {
 	case VAProfileMPEG2Simple:
 	case VAProfileMPEG2Main:
@@ -118,18 +119,17 @@ VAStatus RequestQueryConfigProfiles(VADriverContextP context,
 	unsigned int index = 0;
 	bool found;
 
-	found = v4l2_find_format(driver_data->video_fd,
-				 V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-				 V4L2_PIX_FMT_MPEG2_SLICE);
+	found = v4l2_find_format(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_MPEG2) ||
+		v4l2_find_format(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_MPEG2_SLICE);
 	if (found && index < (V4L2_REQUEST_MAX_CONFIG_ATTRIBUTES - 2)) {
 		profiles[index++] = VAProfileMPEG2Simple;
 		profiles[index++] = VAProfileMPEG2Main;
 	}
 
-	found = v4l2_find_format(driver_data->video_fd,
-				 V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-				 V4L2_PIX_FMT_H264_SLICE);
+	found = v4l2_find_format(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_H264) ||
+		v4l2_find_format(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_H264_SLICE);
 	if (found && index < (V4L2_REQUEST_MAX_CONFIG_ATTRIBUTES - 5)) {
+		// TODO: Query `h264_profile` to determine exact supported profile set
 		profiles[index++] = VAProfileH264Main;
 		profiles[index++] = VAProfileH264High;
 		profiles[index++] = VAProfileH264ConstrainedBaseline;
@@ -137,23 +137,18 @@ VAStatus RequestQueryConfigProfiles(VADriverContextP context,
 		profiles[index++] = VAProfileH264StereoHigh;
 	}
 
-	found = v4l2_find_format(driver_data->video_fd,
-				 V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-				 V4L2_PIX_FMT_HEVC_SLICE);
+	found = v4l2_find_format(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_HEVC_SLICE);
 	if (found && index < (V4L2_REQUEST_MAX_CONFIG_ATTRIBUTES - 1)) {
 		profiles[index++] = VAProfileHEVCMain;
 	}
 
-	found = v4l2_find_format(driver_data->video_fd,
-				 V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-				 V4L2_PIX_FMT_VP8_FRAME);
+	found = v4l2_find_format(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP8_FRAME);
 	if (found && index < (V4L2_REQUEST_MAX_CONFIG_ATTRIBUTES - 1)) {
 		profiles[index++] = VAProfileVP8Version0_3;
 	}
 
-	found = v4l2_find_format(driver_data->video_fd,
-				 V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-				 V4L2_PIX_FMT_VP9_FRAME);
+	found = v4l2_find_format(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP9) ||
+		v4l2_find_format(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP9_FRAME);
 	if (found && index < (V4L2_REQUEST_MAX_CONFIG_ATTRIBUTES - 1)) {
 		// TODO: Query `vp9_profile` to determine exact supported profile set
 		profiles[index++] = VAProfileVP9Profile0;
@@ -182,6 +177,11 @@ VAStatus RequestQueryConfigEntrypoints(VADriverContextP context,
 	case VAProfileH264MultiviewHigh:
 	case VAProfileH264StereoHigh:
 	case VAProfileHEVCMain:
+	case VAProfileVP8Version0_3:
+	case VAProfileVP9Profile0:
+	case VAProfileVP9Profile1:
+	case VAProfileVP9Profile2:
+	case VAProfileVP9Profile3:
 		entrypoints[0] = VAEntrypointVLD;
 		*entrypoints_count = 1;
 		break;
