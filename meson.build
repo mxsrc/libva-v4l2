@@ -27,19 +27,22 @@ project('libva-v4l2-request', 'c',
 cc = meson.get_compiler('c')
 
 if not (cc.get_define('LINUX_VERSION_MAJOR', prefix: '#include <linux/version.h>').to_int() >= 6)
-    error('Require at least Linux 6.0')
+	error('Require at least Linux 6.0')
 endif
 
 libva_dep = dependency('libva', version : '>= 1.1.0')
 libdrm_dep = dependency('libdrm', version : '>= 2.4.52')
-libgst_dep = dependency('gstreamer-codecparsers-1.0', version : '>= 1.12')
+libgstcodecparsers_dep = dependency('gstreamer-codecparsers-1.0', version : '>= 1.12')
+libgstcodecs_dep = cc.find_library('gstcodecs-1.0',  # Present but not advertised via pkgconfig.
+	has_headers: ['gst/codecs/gstvp9statefulparser.h'],
+	header_dependencies: libgstcodecparsers_dep,
+)
 
 va_api_version_array = libva_dep.version().split('.')
 va_api_major_version = va_api_version_array[0]
 va_api_minor_version = va_api_version_array[1]
 
-va_driver_init_func = '__vaDriverInit_@0@_@1@'.format(va_api_major_version,
-						      va_api_minor_version)
+va_driver_init_func = '__vaDriverInit_@0@_@1@'.format(va_api_major_version, va_api_minor_version)
 
 subdir('src')
 subdir('test')

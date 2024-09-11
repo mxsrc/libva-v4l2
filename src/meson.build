@@ -64,25 +64,21 @@ headers = [
 	'vp9.h',
 ]
 
-cflags = [
-	'-Wall',
-	'-fvisibility=hidden',
-        '-DVA_DRIVER_INIT_FUNC=' + va_driver_init_func,
-        '-D__STDC_WANT_LIB_EXT2__',
-        '-DGST_USE_UNSTABLE_API',
-]
-
-deps = [
-	libva_dep,
-	libdrm_dep,
-	libgst_dep,
-]
-
 v4l2_request_drv_video = shared_module('v4l2_request_drv_video',
 	name_prefix: '',
 	install: true,
 	install_dir: join_paths(get_option('libdir'), 'dri'),
-	c_args: cflags,
-	link_args: ['-lgstcodecs-1.0'],
+	c_args: [
+		'-Wall',
+		'-fvisibility=hidden',
+		'-DVA_DRIVER_INIT_FUNC=' + va_driver_init_func,
+		'-D__STDC_WANT_LIB_EXT2__',
+		'-DGST_USE_UNSTABLE_API',
+	],
 	sources: [ sources, headers ],
-	dependencies: deps)
+	dependencies: [
+		libva_dep,
+		libdrm_dep,
+		libgstcodecparsers_dep,
+		libgstcodecs_dep,
+	])
