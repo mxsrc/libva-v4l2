@@ -275,7 +275,6 @@ VAStatus RequestSyncSurface(VADriverContextP context, VASurfaceID surface_id)
 	struct object_surface *surface_object;
 	VAStatus status;
 	struct video_format *video_format;
-	unsigned int output_type, capture_type;
 	int rc;
 
 	video_format = driver_data->video_format;
@@ -283,9 +282,6 @@ VAStatus RequestSyncSurface(VADriverContextP context, VASurfaceID surface_id)
 		status = VA_STATUS_ERROR_OPERATION_FAILED;
 		goto error;
 	}
-
-	output_type = v4l2_type_video_output(video_format->v4l2_mplane);
-	capture_type = v4l2_type_video_capture(video_format->v4l2_mplane);
 
 	surface_object = SURFACE(driver_data, surface_id);
 	if (surface_object == NULL) {
@@ -318,14 +314,14 @@ VAStatus RequestSyncSurface(VADriverContextP context, VASurfaceID surface_id)
 		}
 	}
 
-	rc = v4l2_dequeue_buffer(driver_data->video_fd, -1, output_type,
+	rc = v4l2_dequeue_buffer(driver_data->video_fd, -1, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
 				 surface_object->source_index, 1);
 	if (rc < 0) {
 		status = VA_STATUS_ERROR_OPERATION_FAILED;
 		goto error;
 	}
 
-	rc = v4l2_dequeue_buffer(driver_data->video_fd, -1, capture_type,
+	rc = v4l2_dequeue_buffer(driver_data->video_fd, -1, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
 				 surface_object->destination_index,
 				 surface_object->destination_buffers_count);
 	if (rc < 0) {
@@ -478,7 +474,6 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 	int *export_fds = NULL;
 	unsigned int export_fds_count;
 	unsigned int planes_count;
-	unsigned int capture_type;
 	unsigned int size;
 	unsigned int i;
 	VAStatus status;
@@ -498,9 +493,7 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 	export_fds_count = surface_object->destination_buffers_count;
 	export_fds = malloc(export_fds_count * sizeof(*export_fds));
 
-	capture_type = v4l2_type_video_capture(video_format->v4l2_mplane);
-
-	rc = v4l2_export_buffer(driver_data->video_fd, capture_type,
+	rc = v4l2_export_buffer(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
 				surface_object->destination_index, O_RDONLY,
 				export_fds, export_fds_count);
 	if (rc < 0) {

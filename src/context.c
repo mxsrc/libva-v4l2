@@ -60,7 +60,6 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 	VASurfaceID *ids = NULL;
 	VAContextID id;
 	VAStatus status;
-	unsigned int output_type, capture_type;
 	unsigned int pixelformat;
 	unsigned int index_base;
 	unsigned int index;
@@ -70,9 +69,6 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 	video_format = driver_data->video_format;
 	if (video_format == NULL)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
-
-	output_type = v4l2_type_video_output(video_format->v4l2_mplane);
-	capture_type = v4l2_type_video_capture(video_format->v4l2_mplane);
 
 	config_object = CONFIG(driver_data, config_id);
 	if (config_object == NULL) {
@@ -99,9 +95,9 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 	case VAProfileH264ConstrainedBaseline:
 	case VAProfileH264MultiviewHigh:
 	case VAProfileH264StereoHigh:
-		if (v4l2_find_format(driver_data->video_fd, output_type, V4L2_PIX_FMT_H264)) {
+		if (v4l2_find_format(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_H264)) {
 			pixelformat = V4L2_PIX_FMT_H264;
-		} else if (v4l2_find_format(driver_data->video_fd, output_type, V4L2_PIX_FMT_H264_SLICE)) {
+		} else if (v4l2_find_format(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_H264_SLICE)) {
 			pixelformat = V4L2_PIX_FMT_H264_SLICE;
 		} else {
 			status = VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
@@ -121,9 +117,9 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 	case VAProfileVP9Profile1:
 	case VAProfileVP9Profile2:
 	case VAProfileVP9Profile3:
-		if (v4l2_find_format(driver_data->video_fd, output_type, V4L2_PIX_FMT_VP9)) {
+		if (v4l2_find_format(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP9)) {
 			pixelformat = V4L2_PIX_FMT_VP9;
-		} else if (v4l2_find_format(driver_data->video_fd, output_type, V4L2_PIX_FMT_VP9_FRAME)) {
+		} else if (v4l2_find_format(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP9_FRAME)) {
 			pixelformat = V4L2_PIX_FMT_VP9_FRAME;
 		} else {
 			status = VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
@@ -136,7 +132,7 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 		goto error;
 	}
 
-	rc = v4l2_set_format(driver_data->video_fd, output_type, pixelformat,
+	rc = v4l2_set_format(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, pixelformat,
 			     picture_width, picture_height);
 	if (rc < 0) {
 		status = VA_STATUS_ERROR_OPERATION_FAILED;
@@ -149,7 +145,7 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 		return result;
 	}
 
-	rc = v4l2_create_buffers(driver_data->video_fd, output_type,
+	rc = v4l2_create_buffers(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
 				 surfaces_count, &index_base);
 	if (rc < 0) {
 		status = VA_STATUS_ERROR_ALLOCATION_FAILED;
@@ -178,7 +174,7 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 			goto error;
 		}
 
-		rc = v4l2_query_buffer(driver_data->video_fd, output_type,
+		rc = v4l2_query_buffer(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
 				       index, &length, &offset, 1);
 		if (rc < 0) {
 			status = VA_STATUS_ERROR_ALLOCATION_FAILED;
@@ -197,13 +193,13 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 		surface_object->source_size = length;
 	}
 
-	rc = v4l2_set_stream(driver_data->video_fd, output_type, true);
+	rc = v4l2_set_stream(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, true);
 	if (rc < 0) {
 		status = VA_STATUS_ERROR_OPERATION_FAILED;
 		goto error;
 	}
 
-	rc = v4l2_set_stream(driver_data->video_fd, capture_type, true);
+	rc = v4l2_set_stream(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, true);
 	if (rc < 0) {
 		status = VA_STATUS_ERROR_OPERATION_FAILED;
 		goto error;
@@ -242,25 +238,21 @@ VAStatus RequestDestroyContext(VADriverContextP context, VAContextID context_id)
 	struct request_data *driver_data = context->pDriverData;
 	struct object_context *context_object;
 	struct video_format *video_format;
-	unsigned int output_type, capture_type;
 	int rc;
 
 	video_format = driver_data->video_format;
 	if (video_format == NULL)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
-	output_type = v4l2_type_video_output(video_format->v4l2_mplane);
-	capture_type = v4l2_type_video_capture(video_format->v4l2_mplane);
-
 	context_object = CONTEXT(driver_data, context_id);
 	if (context_object == NULL)
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
 
-	rc = v4l2_set_stream(driver_data->video_fd, output_type, false);
+	rc = v4l2_set_stream(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, false);
 	if (rc < 0)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
-	rc = v4l2_set_stream(driver_data->video_fd, capture_type, false);
+	rc = v4l2_set_stream(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, false);
 	if (rc < 0)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
@@ -268,7 +260,7 @@ VAStatus RequestDestroyContext(VADriverContextP context, VAContextID context_id)
 
 	struct v4l2_requestbuffers reqbuf = {
 		.count = 0,
-		.type = capture_type,
+		.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
 		.memory = V4L2_MEMORY_MMAP,
 	};
 

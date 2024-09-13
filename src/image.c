@@ -49,7 +49,6 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 	unsigned int planes_count;
 	unsigned int format_width, format_height;
 	unsigned int size;
-	unsigned int capture_type;
 	struct video_format *video_format;
 	struct object_image *image_object;
 	VABufferID buffer_id;
@@ -62,13 +61,11 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 	if (video_format == NULL)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
-	capture_type = v4l2_type_video_capture(video_format->v4l2_mplane);
-
 	/*
 	 * FIXME: This should be replaced by per-pixelformat hadling to
 	 * determine the logical plane offsets and sizes;
 	 */
-	rc = v4l2_get_format(driver_data->video_fd, capture_type,
+	rc = v4l2_get_format(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
 			     &format_width, &format_height,
 			     destination_bytesperlines, destination_sizes,
 			     &planes_count);

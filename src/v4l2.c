@@ -56,18 +56,6 @@ static bool v4l2_type_is_mplane(unsigned int type)
 	}
 }
 
-unsigned int v4l2_type_video_output(bool mplane)
-{
-	return mplane ? V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE :
-			V4L2_BUF_TYPE_VIDEO_OUTPUT;
-}
-
-unsigned int v4l2_type_video_capture(bool mplane)
-{
-	return mplane ? V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE :
-			V4L2_BUF_TYPE_VIDEO_CAPTURE;
-}
-
 int v4l2_query_capabilities(int video_fd, unsigned int *capabilities)
 {
 	struct v4l2_capability capability;
