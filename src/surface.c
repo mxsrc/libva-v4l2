@@ -159,15 +159,16 @@ VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surf
 			continue;
 		}
 
+		unsigned buffer_count = 0;
 		if (v4l2_query_buffer(driver_data->video_fd,
 				      V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
 				      index,
 				      surface_object->destination_map_lengths,
 				      surface_object->destination_map_offsets,
-				      driver_data->video_format->v4l2_buffers_count) < 0)
+				      &buffer_count) < 0)
 			return VA_STATUS_ERROR_ALLOCATION_FAILED;
 
-		for (int j = 0; j < driver_data->video_format->v4l2_buffers_count; j++) {
+		for (int j = 0; j < buffer_count; j++) {
 			surface_object->destination_map[j] =
 				mmap(NULL,
 				     surface_object->destination_map_lengths[j],
@@ -185,7 +186,7 @@ VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surf
 		 * in terms of (logical) planes.
 		 */
 
-		if (driver_data->video_format->v4l2_buffers_count == 1) {
+		if (buffer_count == 1) {
 			destination_sizes[0] = destination_bytesperlines[0] *
 					       format_height;
 
@@ -203,7 +204,7 @@ VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surf
 				surface_object->destination_bytesperlines[j] =
 					destination_bytesperlines[0];
 			}
-		} else if (driver_data->video_format->v4l2_buffers_count == driver_data->video_format->planes_count) {
+		} else if (buffer_count == driver_data->video_format->planes_count) {
 			for (int j = 0; j < driver_data->video_format->planes_count; j++) {
 				surface_object->destination_offsets[j] = 0;
 				surface_object->destination_data[j] =
@@ -221,8 +222,7 @@ VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surf
 
 		surface_object->destination_planes_count =
 			driver_data->video_format->planes_count;
-		surface_object->destination_buffers_count =
-			driver_data->video_format->v4l2_buffers_count;
+		surface_object->destination_buffers_count = buffer_count;
 	}
 
 	return VA_STATUS_SUCCESS;

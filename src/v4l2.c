@@ -256,21 +256,17 @@ int v4l2_create_buffers(int video_fd, unsigned int type,
 
 int v4l2_query_buffer(int video_fd, unsigned int type, unsigned int index,
 		      unsigned int *lengths, unsigned int *offsets,
-		      unsigned int buffers_count)
+		      unsigned* buffers_count)
 {
-	struct v4l2_plane planes[buffers_count];
-	struct v4l2_buffer buffer;
+	struct v4l2_plane planes[VIDEO_MAX_PLANES] = {0};
+	struct v4l2_buffer buffer = {
+		.type = type,
+		.index = index,
+		.length = VIDEO_MAX_PLANES,
+		.m.planes = planes,
+	};
 	unsigned int i;
 	int rc;
-
-	memset(planes, 0, sizeof(planes));
-	memset(&buffer, 0, sizeof(buffer));
-
-	buffer.type = type;
-	buffer.memory = V4L2_MEMORY_MMAP;
-	buffer.index = index;
-	buffer.length = buffers_count;
-	buffer.m.planes = planes;
 
 	rc = ioctl(video_fd, VIDIOC_QUERYBUF, &buffer);
 	if (rc < 0) {
@@ -278,6 +274,7 @@ int v4l2_query_buffer(int video_fd, unsigned int type, unsigned int index,
 		return -1;
 	}
 
+	*buffers_count = buffer.length;
 	if (v4l2_type_is_mplane(type)) {
 		if (lengths != NULL)
 			for (i = 0; i < buffer.length; i++)
