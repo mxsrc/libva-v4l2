@@ -66,10 +66,6 @@ VAStatus RequestCreateSurfaces2(VADriverContextP context, unsigned int format,
         if (!driver_data->video_format) {
 		if (v4l2_find_format(driver_data->video_fd,
 				     V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-				     V4L2_PIX_FMT_SUNXI_TILED_NV12)) {
-			driver_data->video_format = video_format_find(V4L2_PIX_FMT_SUNXI_TILED_NV12);
-		} else if (v4l2_find_format(driver_data->video_fd,
-				     V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
 				     V4L2_PIX_FMT_NV12)) {
 			driver_data->video_format = video_format_find(V4L2_PIX_FMT_NV12);
 		} else if (v4l2_find_format(driver_data->video_fd,

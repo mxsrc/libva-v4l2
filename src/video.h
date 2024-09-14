@@ -37,6 +37,5 @@ struct video_format {
 };
 
 struct video_format *video_format_find(unsigned int pixelformat);
-bool video_format_is_linear(struct video_format *format);
 
 #endif
