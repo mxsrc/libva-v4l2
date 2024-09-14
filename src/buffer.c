@@ -208,10 +208,6 @@ VAStatus RequestAcquireBufferHandle(VADriverContextP context,
 	if (video_format == NULL)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
-	if (buffer_info->mem_type != VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME ||
-	    !video_format_is_linear(driver_data->video_format))
-		return VA_STATUS_ERROR_UNSUPPORTED_MEMORY_TYPE;
-
 	buffer_object = BUFFER(driver_data, buffer_id);
 	if (buffer_object == NULL || buffer_object->type != VAImageBufferType)
 		return VA_STATUS_ERROR_INVALID_BUFFER;

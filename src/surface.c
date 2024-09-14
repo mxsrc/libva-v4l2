@@ -394,16 +394,7 @@ VAStatus RequestQuerySurfaceAttributes(VADriverContextP context,
 				   VA_SURFACE_ATTRIB_SETTABLE;
 	attributes_list[i].value.type = VAGenericValueTypeInteger;
 
-	memory_types = VA_SURFACE_ATTRIB_MEM_TYPE_VA |
-		VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2;
-
-	/*
-	 * First version of DRM prime export does not handle modifiers,
-	 * that are required for supporting the tiled output format.
-	 */
-
-	if (video_format_is_linear(driver_data->video_format))
-		memory_types |= VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME;
+	memory_types = VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2;
 
 	attributes_list[i].value.value.i = memory_types;
 	i++;
