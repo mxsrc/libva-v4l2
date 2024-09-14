@@ -205,7 +205,7 @@ int vp9_set_controls(struct request_data *data,
 		.ptr = &hdr,
 		.size = sizeof(hdr),
 	};
-	int rc = v4l2_set_controls(data->video_fd, surface->request_fd, controls, 2);
+	int rc = v4l2_set_controls(data->device.video_fd, surface->request_fd, controls, 2);
 	if (rc < 0) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}

@@ -32,6 +32,7 @@
 #include "context.h"
 #include "object_heap.h"
 #include "video.h"
+#include "v4l2.h"
 #include <va/va.h>
 
 #include <linux/videodev2.h>
@@ -51,8 +52,7 @@ struct request_data {
 	struct object_heap surface_heap;
 	struct object_heap buffer_heap;
 	struct object_heap image_heap;
-	int video_fd;
-	int media_fd;
+	struct v4l2_m2m_device device;
 
 	struct video_format *video_format;
 };

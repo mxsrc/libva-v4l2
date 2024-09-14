@@ -32,6 +32,7 @@
 #include "subpicture.h"
 #include "surface.h"
 
+#include <va/va.h>
 #include <va/va_backend.h>
 
 #include "request.h"
@@ -59,14 +60,6 @@ VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 {
 	struct request_data *driver_data;
 	struct VADriverVTable *vtable = context->vtable;
-	VAStatus status;
-	unsigned int capabilities;
-	unsigned int capabilities_required;
-	int video_fd = -1;
-	int media_fd = -1;
-	char *video_path;
-	char *media_path;
-	int rc;
 
 	context->version_major = VA_MAJOR_VERSION;
 	context->version_minor = VA_MINOR_VERSION;
@@ -144,54 +137,17 @@ VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 	object_heap_init(&driver_data->image_heap, sizeof(struct object_image),
 			 IMAGE_ID_OFFSET);
 
-	video_path = getenv("LIBVA_V4L2_REQUEST_VIDEO_PATH");
-	if (video_path == NULL)
+	char* video_path = getenv("LIBVA_V4L2_REQUEST_VIDEO_PATH");
+	if (!video_path) {
 		video_path = "/dev/video0";
+	}
+	char* media_path = getenv("LIBVA_V4L2_REQUEST_MEDIA_PATH");
 
-	video_fd = open(video_path, O_RDWR | O_NONBLOCK);
-	if (video_fd < 0)
+	if (v4l2_m2m_device_open(&driver_data->device, video_path, media_path) < 0) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
-
-	rc = v4l2_query_capabilities(video_fd, &capabilities);
-	if (rc < 0) {
-		goto error;
 	}
 
-	capabilities_required = V4L2_CAP_STREAMING;
-
-	if ((capabilities & capabilities_required) != capabilities_required) {
-		error_log(context, "Missing required driver capabilities\n");
-		goto error;
-	}
-
-	media_path = getenv("LIBVA_V4L2_REQUEST_MEDIA_PATH");
-	if (media_path != NULL) {
-		media_fd = open(media_path, O_RDWR | O_NONBLOCK);
-		if (media_fd < 0) {
-			error_log(context, "Failed to open media device\n");
-			goto error;
-		}
-	} else {
-		media_fd = -1;
-	}
-
-	driver_data->video_fd = video_fd;
-	driver_data->media_fd = media_fd;
-
-	status = VA_STATUS_SUCCESS;
-	goto complete;
-
-error:
-	status = VA_STATUS_ERROR_OPERATION_FAILED;
-
-	if (video_fd >= 0)
-		close(video_fd);
-
-	if (media_fd >= 0)
-		close(media_fd);
-
-complete:
-	return status;
+	return VA_STATUS_SUCCESS;
 }
 
 VAStatus RequestTerminate(VADriverContextP context)
@@ -204,8 +160,7 @@ VAStatus RequestTerminate(VADriverContextP context)
 	struct object_config *config_object;
 	int iterator;
 
-	close(driver_data->video_fd);
-	close(driver_data->media_fd);
+	v4l2_m2m_device_close(&driver_data->device);
 
 	/* Cleanup leftover buffers. */
 

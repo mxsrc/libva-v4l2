@@ -237,7 +237,7 @@ int vp8_set_controls(struct request_data *data, struct object_context *context, 
 		&surface->params.vp8.probabilities
 	);
 
-	int rc = v4l2_set_control(data->video_fd,
+	int rc = v4l2_set_control(data->device.video_fd,
 			      surface->request_fd,
 			      V4L2_CID_STATELESS_VP8_FRAME,
 			      &frame, sizeof(frame));

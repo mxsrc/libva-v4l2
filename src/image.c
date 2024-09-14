@@ -62,7 +62,7 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 	 * FIXME: This should be replaced by per-pixelformat hadling to
 	 * determine the logical plane offsets and sizes;
 	 */
-	rc = v4l2_get_format(driver_data->video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
+	rc = v4l2_get_format(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
 			     &format_width, &format_height,
 			     destination_bytesperlines, destination_sizes,
 			     &planes_count);

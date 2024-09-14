@@ -26,11 +26,74 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
-
 #include <linux/videodev2.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "utils.h"
 #include "v4l2.h"
+
+static int query_capabilities(int video_fd, unsigned int *capabilities)
+{
+	struct v4l2_capability capability = {0};
+	int rc = ioctl(video_fd, VIDIOC_QUERYCAP, &capability);
+	if (rc < 0) {
+		return -1;
+	}
+
+	if (capabilities != NULL) {
+		if ((capability.capabilities & V4L2_CAP_DEVICE_CAPS) != 0) {
+			*capabilities = capability.device_caps;
+		} else {
+			*capabilities = capability.capabilities;
+		}
+	}
+
+	return 0;
+}
+
+int v4l2_m2m_device_open(struct v4l2_m2m_device* dev, const char* video_path, const char* media_path) {
+	dev->video_fd = open(video_path, O_RDWR | O_NONBLOCK);
+	if (dev->video_fd < 0) {
+		return -1;
+	}
+
+	unsigned capabilities;
+	int rc = query_capabilities(dev->video_fd, &capabilities);
+	if (rc < 0) {
+		goto error;
+	}
+
+	if (!(capabilities & (V4L2_CAP_VIDEO_M2M | V4L2_CAP_VIDEO_M2M_MPLANE))) {
+		goto error;
+	}
+
+	if (media_path != NULL) {
+		dev->media_fd = open(media_path, O_RDWR | O_NONBLOCK);
+		if (dev->media_fd < 0) {
+			goto error;
+		}
+	} else {
+		dev->media_fd = -1;
+	}
+
+	return 0;
+
+error:
+	close(dev->video_fd);
+	return -1;
+}
+
+void v4l2_m2m_device_close(struct v4l2_m2m_device* dev) {
+	if (dev->video_fd >= 0) {
+		close(dev->video_fd);
+		dev->video_fd = -1;
+	}
+	if (dev->media_fd >= 0) {
+		close(dev->media_fd);
+		dev->media_fd = -1;
+	}
+}
 
 static bool v4l2_type_is_output(unsigned int type)
 {
@@ -54,27 +117,6 @@ static bool v4l2_type_is_mplane(unsigned int type)
 	default:
 		return false;
 	}
-}
-
-int v4l2_query_capabilities(int video_fd, unsigned int *capabilities)
-{
-	struct v4l2_capability capability;
-	int rc;
-
-	memset(&capability, 0, sizeof(capability));
-
-	rc = ioctl(video_fd, VIDIOC_QUERYCAP, &capability);
-	if (rc < 0)
-		return -1;
-
-	if (capabilities != NULL) {
-		if ((capability.capabilities & V4L2_CAP_DEVICE_CAPS) != 0)
-			*capabilities = capability.device_caps;
-		else
-			*capabilities = capability.capabilities;
-	}
-
-	return 0;
 }
 
 static void v4l2_setup_format(struct v4l2_format *format, unsigned int type,

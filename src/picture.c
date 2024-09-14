@@ -205,9 +205,9 @@ VAStatus RequestEndPicture(VADriverContextP context, VAContextID context_id)
 	gettimeofday(&surface_object->timestamp, NULL);
 
 	request_fd = surface_object->request_fd;
-	if (driver_data->media_fd >= 0) {
+	if (driver_data->device.media_fd >= 0) {
 		if (request_fd < 0) {
-			request_fd = media_request_alloc(driver_data->media_fd);
+			request_fd = media_request_alloc(driver_data->device.media_fd);
 			if (request_fd < 0)
 				return VA_STATUS_ERROR_OPERATION_FAILED;
 
@@ -220,13 +220,13 @@ VAStatus RequestEndPicture(VADriverContextP context, VAContextID context_id)
 			return rc;
 	}
 
-	rc = v4l2_queue_buffer(driver_data->video_fd, -1, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, NULL,
+	rc = v4l2_queue_buffer(driver_data->device.video_fd, -1, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, NULL,
 			       surface_object->destination_index, 0,
 			       surface_object->destination_buffers_count);
 	if (rc < 0)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
-	rc = v4l2_queue_buffer(driver_data->video_fd, request_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+	rc = v4l2_queue_buffer(driver_data->device.video_fd, request_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
 			       &surface_object->timestamp,
 			       surface_object->source_index,
 			       surface_object->slices_size, 1);

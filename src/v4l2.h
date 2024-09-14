@@ -25,11 +25,19 @@
 #ifndef _V4L2_H_
 #define _V4L2_H_
 
+#include <linux/videodev2.h>
 #include <stdbool.h>
 
 #define SOURCE_SIZE_MAX						(1024 * 1024)
 
-int v4l2_query_capabilities(int video_fd, unsigned int *capabilities);
+struct v4l2_m2m_device {
+	int video_fd;
+	int media_fd;
+};
+
+int v4l2_m2m_device_open(struct v4l2_m2m_device* dev, const char* video_path, const char* media_path);
+void v4l2_m2m_device_close(struct v4l2_m2m_device* dev);
+
 bool v4l2_find_format(int video_fd, unsigned int type,
 		      unsigned int pixelformat);
 int v4l2_set_format(int video_fd, unsigned int type, unsigned int pixelformat,

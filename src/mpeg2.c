@@ -126,7 +126,7 @@ int mpeg2_set_controls(struct request_data *driver_data,
 	sequence.profile_and_level_indication = 0;
 	sequence.chroma_format = 1; // 4:2:0
 
-	rc = v4l2_set_control(driver_data->video_fd,
+	rc = v4l2_set_control(driver_data->device.video_fd,
 			      surface_object->request_fd,
 			      V4L2_CID_STATELESS_MPEG2_SEQUENCE,
 			      &sequence, sizeof(sequence));
@@ -167,7 +167,7 @@ int mpeg2_set_controls(struct request_data *driver_data,
 		(va_picture->picture_coding_extension.bits.progressive_frame ? V4L2_MPEG2_PIC_FLAG_PROGRESSIVE : 0)
 	);
 
-	rc = v4l2_set_control(driver_data->video_fd,
+	rc = v4l2_set_control(driver_data->device.video_fd,
 			      surface_object->request_fd,
 			      V4L2_CID_STATELESS_MPEG2_PICTURE,
 			      &picture, sizeof(picture));
@@ -184,7 +184,7 @@ int mpeg2_set_controls(struct request_data *driver_data,
 			quantisation.chroma_non_intra_quantiser_matrix[i] = iqmatrix->load_chroma_non_intra_quantiser_matrix ? iqmatrix->chroma_non_intra_quantiser_matrix[i] : default_intra_quantisation_matrix[i];
 		}
 
-		rc = v4l2_set_control(driver_data->video_fd,
+		rc = v4l2_set_control(driver_data->device.video_fd,
 				      surface_object->request_fd,
 				      V4L2_CID_STATELESS_MPEG2_QUANTISATION,
 				      &quantisation, sizeof(quantisation));
