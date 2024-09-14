@@ -105,10 +105,6 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 		}
 		break;
 
-	case VAProfileHEVCMain:
-		pixelformat = V4L2_PIX_FMT_HEVC_SLICE;
-		break;
-
 	case VAProfileVP8Version0_3:
 		pixelformat = V4L2_PIX_FMT_VP8_FRAME;
 		break;

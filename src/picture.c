@@ -32,7 +32,6 @@
 #include "surface.h"
 
 #include "h264.h"
-#include "h265.h"
 #include "mpeg2.h"
 #include "vp8.h"
 #include "vp9.h"
@@ -68,9 +67,6 @@ static VAStatus codec_store_buffer(struct request_data *driver_data,
 	case VAProfileH264StereoHigh:
 		return h264_store_buffer(driver_data, surface_object, buffer_object);
 
-	case VAProfileHEVCMain:
-		return h265_store_buffer(driver_data, surface_object, buffer_object);
-
 	case VAProfileVP8Version0_3:
 		return vp8_store_buffer(driver_data, surface_object, buffer_object);
 
@@ -101,9 +97,6 @@ static VAStatus codec_set_controls(struct request_data *driver_data,
 	case VAProfileH264MultiviewHigh:
 	case VAProfileH264StereoHigh:
 		return h264_set_controls(driver_data, context, surface_object);
-
-	case VAProfileHEVCMain:
-		return h265_set_controls(driver_data, context, surface_object);
 
 	case VAProfileVP8Version0_3:
 		return vp8_set_controls(driver_data, context, surface_object);
