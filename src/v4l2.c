@@ -166,24 +166,6 @@ bool v4l2_find_format(int video_fd, unsigned int type, unsigned int pixelformat)
 	return false;
 }
 
-int v4l2_try_format(int video_fd, unsigned int type, unsigned int width,
-		    unsigned int height, unsigned int pixelformat)
-{
-	struct v4l2_format format;
-	int rc;
-
-	v4l2_setup_format(&format, type, width, height, pixelformat);
-
-	rc = ioctl(video_fd, VIDIOC_TRY_FMT, &format);
-	if (rc < 0) {
-		request_log("Unable to try format for type %d: %s\n", type,
-			    strerror(errno));
-		return -1;
-	}
-
-	return 0;
-}
-
 int v4l2_set_format(int video_fd, unsigned int type, unsigned int pixelformat,
 		    unsigned int width, unsigned int height)
 {
