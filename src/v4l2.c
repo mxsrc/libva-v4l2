@@ -95,30 +95,6 @@ void v4l2_m2m_device_close(struct v4l2_m2m_device* dev) {
 	}
 }
 
-static bool v4l2_type_is_output(unsigned int type)
-{
-	switch (type) {
-	case V4L2_BUF_TYPE_VIDEO_OUTPUT:
-	case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
-		return true;
-
-	default:
-		return false;
-	}
-}
-
-static bool v4l2_type_is_mplane(unsigned int type)
-{
-	switch (type) {
-	case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
-	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
-		return true;
-
-	default:
-		return false;
-	}
-}
-
 static void v4l2_setup_format(struct v4l2_format *format, unsigned int type,
 			      unsigned int width, unsigned int height,
 			      unsigned int pixelformat)
@@ -128,9 +104,9 @@ static void v4l2_setup_format(struct v4l2_format *format, unsigned int type,
 	memset(format, 0, sizeof(*format));
 	format->type = type;
 
-	sizeimage = v4l2_type_is_output(type) ? SOURCE_SIZE_MAX : 0;
+	sizeimage = V4L2_TYPE_IS_OUTPUT(type) ? SOURCE_SIZE_MAX : 0;
 
-	if (v4l2_type_is_mplane(type)) {
+	if (V4L2_TYPE_IS_MULTIPLANAR(type)) {
 		format->fmt.pix_mp.width = width;
 		format->fmt.pix_mp.height = height;
 		format->fmt.pix_mp.plane_fmt[0].sizeimage = sizeimage;
@@ -203,7 +179,7 @@ int v4l2_get_format(int video_fd, unsigned int type, unsigned int *width,
 		return -1;
 	}
 
-	if (v4l2_type_is_mplane(type)) {
+	if (V4L2_TYPE_IS_MULTIPLANAR(type)) {
 		count = format.fmt.pix_mp.num_planes;
 
 		if (width != NULL)
@@ -299,7 +275,7 @@ int v4l2_query_buffer(int video_fd, unsigned int type, unsigned int index,
 	}
 
 	*buffers_count = buffer.length;
-	if (v4l2_type_is_mplane(type)) {
+	if (V4L2_TYPE_IS_MULTIPLANAR(type)) {
 		if (lengths != NULL)
 			for (i = 0; i < buffer.length; i++)
 				lengths[i] = buffer.m.planes[i].length;
@@ -357,7 +333,7 @@ int v4l2_queue_buffer(int video_fd, int request_fd, unsigned int type,
 	buffer.m.planes = planes;
 
 	for (i = 0; i < buffers_count; i++)
-		if (v4l2_type_is_mplane(type))
+		if (V4L2_TYPE_IS_MULTIPLANAR(type))
 			buffer.m.planes[i].bytesused = size;
 		else
 			buffer.bytesused = size;
