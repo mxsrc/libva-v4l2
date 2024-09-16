@@ -176,30 +176,16 @@ VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surf
 				return VA_STATUS_ERROR_ALLOCATION_FAILED;
 		}
 
-		/*
-		 * FIXME: Handle this per-pixelformat, trying to generalize it
-		 * is not a reasonable approach. The final description should be
-		 * in terms of (logical) planes.
-		 */
+		if (buffer_count == 1) {  // (logical) single plane
+			surface_object->destination_sizes[0] = destination_bytesperlines[0] * format_height;
+			surface_object->destination_offsets[0] = 0;
+			surface_object->destination_bytesperlines[0] = destination_bytesperlines[0];
+			surface_object->destination_data[0] = surface_object->destination_map[0];
 
-		if (buffer_count == 1) {
-			destination_sizes[0] = destination_bytesperlines[0] *
-					       format_height;
-
-			for (int j = 1; j < driver_data->video_format->planes_count; j++)
-				destination_sizes[j] = destination_sizes[0] / 2;
-
-			for (int j = 0; j < driver_data->video_format->planes_count; j++) {
-				surface_object->destination_offsets[j] =
-					j > 0 ? destination_sizes[j - 1] : 0;
-				surface_object->destination_data[j] =
-					((unsigned char *)surface_object->destination_map[0] +
-					 surface_object->destination_offsets[j]);
-				surface_object->destination_sizes[j] =
-					destination_sizes[j];
-				surface_object->destination_bytesperlines[j] =
-					destination_bytesperlines[0];
-			}
+			surface_object->destination_sizes[1] = surface_object->destination_sizes[0] / 2;
+			surface_object->destination_offsets[1] = surface_object->destination_sizes[0];
+			surface_object->destination_bytesperlines[1] = destination_bytesperlines[0];
+			surface_object->destination_data[1] = surface_object->destination_data[0] + surface_object->destination_offsets[1];
 		} else if (buffer_count == driver_data->video_format->planes_count) {
 			for (int j = 0; j < driver_data->video_format->planes_count; j++) {
 				surface_object->destination_offsets[j] = 0;

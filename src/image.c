@@ -77,13 +77,10 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 		size += destination_sizes[i];
 
 	/* Here we calculate the sizes assuming NV12. */
-
 	destination_sizes[0] = destination_bytesperlines[0] * format_height;
+	destination_sizes[1] = destination_sizes[0] / 2;
+	destination_bytesperlines[1] = destination_bytesperlines[0];
 
-	for (i = 1; i < destination_planes_count; i++) {
-		destination_bytesperlines[i] = destination_bytesperlines[0];
-		destination_sizes[i] = destination_sizes[0] / 2;
-	}
 
 	id = object_heap_allocate(&driver_data->image_heap);
 	image_object = IMAGE(driver_data, id);
