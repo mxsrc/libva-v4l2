@@ -223,37 +223,6 @@ int v4l2_get_format(int video_fd, unsigned int type, unsigned int *width,
 	return 0;
 }
 
-int v4l2_create_buffers(int video_fd, unsigned int type,
-			unsigned int buffers_count, unsigned int *index_base)
-{
-	struct v4l2_create_buffers buffers;
-	int rc;
-
-	memset(&buffers, 0, sizeof(buffers));
-	buffers.format.type = type;
-	buffers.memory = V4L2_MEMORY_MMAP;
-	buffers.count = buffers_count;
-
-	rc = ioctl(video_fd, VIDIOC_G_FMT, &buffers.format);
-	if (rc < 0) {
-		request_log("Unable to get format for type %d: %s\n", type,
-			    strerror(errno));
-		return -1;
-	}
-
-	rc = ioctl(video_fd, VIDIOC_CREATE_BUFS, &buffers);
-	if (rc < 0) {
-		request_log("Unable to create buffer for type %d: %s\n", type,
-			    strerror(errno));
-		return -1;
-	}
-
-	if (index_base != NULL)
-		*index_base = buffers.index;
-
-	return 0;
-}
-
 int v4l2_query_buffer(int video_fd, unsigned int type, unsigned int index,
 		      unsigned int *lengths, unsigned int *offsets,
 		      unsigned* buffers_count)
