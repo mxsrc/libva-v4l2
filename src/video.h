@@ -28,12 +28,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include <linux/videodev2.h>
+
 struct video_format {
 	char *description;
 	unsigned int v4l2_format;
 	unsigned int drm_format;
 	uint64_t drm_modifier;
-	unsigned int planes_count;
+	void (*derive_layout)(unsigned, unsigned, unsigned[VIDEO_MAX_PLANES], unsigned[VIDEO_MAX_PLANES], unsigned*);
 };
 
 const struct video_format *video_format_find(unsigned int pixelformat);

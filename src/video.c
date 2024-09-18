@@ -34,20 +34,29 @@
 #include "utils.h"
 #include "video.h"
 
+static void nv12_derive_layout(unsigned width, unsigned height, unsigned size[VIDEO_MAX_PLANES], unsigned pitch[VIDEO_MAX_PLANES], unsigned* planes_count) {
+	size[0] = width * height;
+	pitch[0] = width;
+
+	size[1] = size[0] / 2;
+	pitch[1] = width;  // Half the resolution but corresponds to two rows of pixels.
+
+	*planes_count = 2;
+}
+
 static const struct video_format formats[] = {
 	{
 		.description		= "NV12 YUV",
 		.v4l2_format		= V4L2_PIX_FMT_NV12,
 		.drm_format		= DRM_FORMAT_NV12,
 		.drm_modifier		= DRM_FORMAT_MOD_NONE,
-		.planes_count		= 2,
+		.derive_layout		= &nv12_derive_layout,
 	},
 	{
 		.description		= "NV12 YUV non contiguous",
 		.v4l2_format		= V4L2_PIX_FMT_NV12M,
 		.drm_format		= DRM_FORMAT_NV12,
 		.drm_modifier		= DRM_FORMAT_MOD_NONE,
-		.planes_count		= 2,
 	},
 };
 

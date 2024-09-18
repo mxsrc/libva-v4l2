@@ -41,11 +41,7 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 {
 	struct request_data *driver_data = context->pDriverData;
 	unsigned int destination_sizes[VIDEO_MAX_PLANES];
-	unsigned int destination_bytesperlines[VIDEO_MAX_PLANES];
-	unsigned int destination_planes_count;
-	unsigned int planes_count;
 	unsigned int format_width, format_height;
-	unsigned int size;
 	struct object_image *image_object;
 	VABufferID buffer_id;
 	VAImageID id;
@@ -56,36 +52,34 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 	if (!driver_data->video_format)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
-	/*
-	 * FIXME: This should be replaced by per-pixelformat hadling to
-	 * determine the logical plane offsets and sizes;
-	 */
+	memset(image, 0, sizeof(*image));
+	image->format = *format;
+	image->width = width;
+	image->height = height;
+
+	// Have to query the format to get the actual height, which may differ due to block alignment.
 	rc = v4l2_get_format(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
 			     &format_width, &format_height,
-			     destination_bytesperlines, destination_sizes,
-			     &planes_count);
+			     image->pitches, destination_sizes,
+			     &image->num_planes);
 	if (rc < 0)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
-	destination_planes_count = driver_data->video_format->planes_count;
-	size = 0;
+	if (driver_data->video_format->derive_layout) {
+		driver_data->video_format->derive_layout(format_width, format_height, destination_sizes, image->pitches, &image->num_planes);
+	}
 
-	/* The size returned by V4L2 covers buffers, not logical planes. */
-	for (i = 0; i < planes_count; i++)
-		size += destination_sizes[i];
-
-	/* Here we calculate the sizes assuming NV12. */
-	destination_sizes[0] = destination_bytesperlines[0] * format_height;
-	destination_sizes[1] = destination_sizes[0] / 2;
-	destination_bytesperlines[1] = destination_bytesperlines[0];
-
+	for (i = 0; i < image->num_planes; i++) {
+		image->data_size += destination_sizes[i];  // The size returned by V4L2 covers buffers, not logical planes.
+		image->offsets[i] = i > 0 ? destination_sizes[i - 1] : 0;
+	}
 
 	id = object_heap_allocate(&driver_data->image_heap);
 	image_object = IMAGE(driver_data, id);
 	if (image_object == NULL)
 		return VA_STATUS_ERROR_ALLOCATION_FAILED;
 
-	status = RequestCreateBuffer(context, 0, VAImageBufferType, size, 1,
+	status = RequestCreateBuffer(context, 0, VAImageBufferType, image->data_size, 1,
 				     NULL, &buffer_id);
 	if (status != VA_STATUS_SUCCESS) {
 		object_heap_free(&driver_data->image_heap,
@@ -93,22 +87,8 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 		return status;
 	}
 
-	memset(image, 0, sizeof(*image));
-
-	image->format = *format;
-	image->width = width;
-	image->height = height;
 	image->buf = buffer_id;
 	image->image_id = id;
-
-	image->num_planes = destination_planes_count;
-	image->data_size = size;
-
-	for (i = 0; i < image->num_planes; i++) {
-		image->pitches[i] = destination_bytesperlines[i];
-		image->offsets[i] = i > 0 ? destination_sizes[i - 1] : 0;
-	}
-
 	image_object->image = *image;
 
 	return VA_STATUS_SUCCESS;
