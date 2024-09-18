@@ -175,17 +175,14 @@ VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surf
 
 		if (buffer_count == 1) {  // (logical) single plane
 			surface_object->destination_sizes[0] = destination_bytesperlines[0] * format_height;
-			surface_object->destination_offsets[0] = 0;
 			surface_object->destination_bytesperlines[0] = destination_bytesperlines[0];
 			surface_object->destination_data[0] = surface_object->destination_map[0];
 
 			surface_object->destination_sizes[1] = surface_object->destination_sizes[0] / 2;
-			surface_object->destination_offsets[1] = surface_object->destination_sizes[0];
 			surface_object->destination_bytesperlines[1] = destination_bytesperlines[0];
-			surface_object->destination_data[1] = surface_object->destination_data[0] + surface_object->destination_offsets[1];
+			surface_object->destination_data[1] = surface_object->destination_data[0] + surface_object->destination_sizes[0];
 		} else if (buffer_count == driver_data->video_format->planes_count) {
 			for (int j = 0; j < driver_data->video_format->planes_count; j++) {
-				surface_object->destination_offsets[j] = 0;
 				surface_object->destination_data[j] =
 					surface_object->destination_map[j];
 				surface_object->destination_sizes[j] =
@@ -498,12 +495,9 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 	surface_descriptor->layers[0].num_planes = planes_count;
 
 	for (i = 0; i < planes_count; i++) {
-		surface_descriptor->layers[0].object_index[i] =
-			export_fds_count == 1 ? 0 : i;
-		surface_descriptor->layers[0].offset[i] =
-			surface_object->destination_offsets[i];
-		surface_descriptor->layers[0].pitch[i] =
-			surface_object->destination_bytesperlines[i];
+		surface_descriptor->layers[0].object_index[i] = export_fds_count == 1 ? 0 : i;
+		surface_descriptor->layers[0].offset[i] = (i > 0 ) ? (surface_descriptor->layers[0].offset[i] + surface_object->destination_sizes[i]) : 0;
+		surface_descriptor->layers[0].pitch[i] = surface_object->destination_bytesperlines[i];
 	}
 
 	status = VA_STATUS_SUCCESS;

@@ -57,8 +57,8 @@ struct object_surface {
 	unsigned int destination_map_lengths[VIDEO_MAX_PLANES];
 	unsigned int destination_map_offsets[VIDEO_MAX_PLANES];
 	void *destination_data[VIDEO_MAX_PLANES];
+
 	unsigned int destination_sizes[VIDEO_MAX_PLANES];
-	unsigned int destination_offsets[VIDEO_MAX_PLANES];
 	unsigned int destination_bytesperlines[VIDEO_MAX_PLANES];
 	unsigned int destination_planes_count;
 	unsigned int destination_buffers_count;
