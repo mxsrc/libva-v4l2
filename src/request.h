@@ -54,7 +54,7 @@ struct request_data {
 	struct object_heap image_heap;
 	struct v4l2_m2m_device device;
 
-	struct video_format *video_format;
+	const struct video_format *video_format;
 };
 
 VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context);

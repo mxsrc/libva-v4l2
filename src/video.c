@@ -28,13 +28,13 @@
 #include <string.h>
 #include <sys/ioctl.h>
 
-#include <drm_fourcc.h>
+#include <libdrm/drm_fourcc.h>
 #include <linux/videodev2.h>
 
 #include "utils.h"
 #include "video.h"
 
-static struct video_format formats[] = {
+static const struct video_format formats[] = {
 	{
 		.description		= "NV12 YUV",
 		.v4l2_format		= V4L2_PIX_FMT_NV12,
@@ -51,9 +51,9 @@ static struct video_format formats[] = {
 	},
 };
 
-static unsigned int formats_count = sizeof(formats) / sizeof(formats[0]);
+static const unsigned int formats_count = sizeof(formats) / sizeof(formats[0]);
 
-struct video_format *video_format_find(unsigned int pixelformat)
+const struct video_format *video_format_find(unsigned int pixelformat)
 {
 	unsigned int i;
 

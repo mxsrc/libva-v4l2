@@ -250,11 +250,9 @@ VAStatus RequestSyncSurface(VADriverContextP context, VASurfaceID surface_id)
 	struct request_data *driver_data = context->pDriverData;
 	struct object_surface *surface_object;
 	VAStatus status;
-	struct video_format *video_format;
 	int rc;
 
-	video_format = driver_data->video_format;
-	if (video_format == NULL) {
+	if (!driver_data->video_format) {
 		status = VA_STATUS_ERROR_OPERATION_FAILED;
 		goto error;
 	}
@@ -436,7 +434,6 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 	struct request_data *driver_data = context->pDriverData;
 	VADRMPRIMESurfaceDescriptor *surface_descriptor = descriptor;
 	struct object_surface *surface_object;
-	struct video_format *video_format;
 	int *export_fds = NULL;
 	unsigned int export_fds_count;
 	unsigned int planes_count;
@@ -445,8 +442,7 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 	VAStatus status;
 	int rc;
 
-	video_format = driver_data->video_format;
-	if (video_format == NULL)
+	if (!driver_data->video_format)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	if (mem_type != VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2)
@@ -482,7 +478,7 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 
 	for (i = 0; i < export_fds_count; i++) {
 		surface_descriptor->objects[i].drm_format_modifier =
-			video_format->drm_modifier;
+			driver_data->video_format->drm_modifier;
 		surface_descriptor->objects[i].fd = export_fds[i];
 		surface_descriptor->objects[i].size = export_fds_count == 1 ?
 						      size :
@@ -491,7 +487,7 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 
 	surface_descriptor->num_layers = 1;
 
-	surface_descriptor->layers[0].drm_format = video_format->drm_format;
+	surface_descriptor->layers[0].drm_format = driver_data->video_format->drm_format;
 	surface_descriptor->layers[0].num_planes = planes_count;
 
 	for (i = 0; i < planes_count; i++) {

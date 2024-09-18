@@ -46,7 +46,6 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 	unsigned int planes_count;
 	unsigned int format_width, format_height;
 	unsigned int size;
-	struct video_format *video_format;
 	struct object_image *image_object;
 	VABufferID buffer_id;
 	VAImageID id;
@@ -54,8 +53,7 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 	unsigned int i;
 	int rc;
 
-	video_format = driver_data->video_format;
-	if (video_format == NULL)
+	if (!driver_data->video_format)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	/*
@@ -69,7 +67,7 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 	if (rc < 0)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
-	destination_planes_count = video_format->planes_count;
+	destination_planes_count = driver_data->video_format->planes_count;
 	size = 0;
 
 	/* The size returned by V4L2 covers buffers, not logical planes. */

@@ -180,13 +180,11 @@ VAStatus RequestEndPicture(VADriverContextP context, VAContextID context_id)
 	struct object_context *context_object;
 	struct object_config *config_object;
 	struct object_surface *surface_object;
-	struct video_format *video_format;
 	int request_fd;
 	VAStatus status;
 	int rc;
 
-	video_format = driver_data->video_format;
-	if (video_format == NULL)
+	if (!driver_data->video_format)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	context_object = CONTEXT(driver_data, context_id);

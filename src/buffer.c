@@ -200,12 +200,10 @@ VAStatus RequestAcquireBufferHandle(VADriverContextP context,
 	struct request_data *driver_data = context->pDriverData;
 	struct object_buffer *buffer_object;
 	struct object_surface *surface_object;
-	struct video_format *video_format;
 	int export_fd;
 	int rc;
 
-	video_format = driver_data->video_format;
-	if (video_format == NULL)
+	if (!driver_data->video_format)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	buffer_object = BUFFER(driver_data, buffer_id);

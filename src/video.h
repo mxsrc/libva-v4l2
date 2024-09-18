@@ -36,6 +36,6 @@ struct video_format {
 	unsigned int planes_count;
 };
 
-struct video_format *video_format_find(unsigned int pixelformat);
+const struct video_format *video_format_find(unsigned int pixelformat);
 
 #endif
