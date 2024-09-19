@@ -93,9 +93,9 @@ VAStatus RequestCreateSurfaces2(VADriverContextP context, unsigned int format,
 
 		surface_object->destination_index = 0;
 
+		surface_object->destination_logical_planes_count = 0;
 		surface_object->destination_planes_count = 0;
-		surface_object->destination_buffers_count = 0;
-		memset(surface_object->destination_map, 0, sizeof(surface_object->destination_map));
+		memset(surface_object->destination_plane_data, 0, sizeof(surface_object->destination_plane_data));
 
 		memset(&surface_object->params, 0,
 		       sizeof(surface_object->params));
@@ -149,57 +149,59 @@ VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surf
 		if (surface_object == NULL)
 			return VA_STATUS_ERROR_INVALID_SURFACE;
 
-		if (surface_object->destination_map[0]) {  // Already initialized
+		if (surface_object->destination_plane_data[0]) {  // Already initialized
 			continue;
 		}
 
 		unsigned buffer_count = 0;
+		unsigned map_offsets[VIDEO_MAX_PLANES];
 		if (v4l2_query_buffer(driver_data->device.video_fd,
 				      V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
 				      i,
-				      surface_object->destination_map_lengths,
-				      surface_object->destination_map_offsets,
+				      surface_object->destination_plane_size,
+				      map_offsets,
 				      &buffer_count) < 0)
 			return VA_STATUS_ERROR_ALLOCATION_FAILED;
 
 		for (int j = 0; j < buffer_count; j++) {
-			surface_object->destination_map[j] =
+			surface_object->destination_plane_data[j] =
 				mmap(NULL,
-				     surface_object->destination_map_lengths[j],
+				     surface_object->destination_plane_size[j],
 				     PROT_READ | PROT_WRITE, MAP_SHARED,
 				     driver_data->device.video_fd,
-				     surface_object->destination_map_offsets[j]);
+				     map_offsets[j]);
 
-			if (surface_object->destination_map[j] == MAP_FAILED)
+			if (surface_object->destination_plane_data[j] == MAP_FAILED)
 				return VA_STATUS_ERROR_ALLOCATION_FAILED;
 		}
 
 		if (driver_data->video_format->derive_layout) {  // (logical) single plane
 			driver_data->video_format->derive_layout(
 					format_width, format_height,
-					surface_object->destination_sizes, surface_object->destination_bytesperlines,
-					&surface_object->destination_planes_count);
+					surface_object->destination_logical_plane_size, surface_object->destination_logical_plane_pitch,
+					&surface_object->destination_logical_planes_count);
 
-			for (int j = 0; j < surface_object->destination_planes_count; j += 1) {
-				surface_object->destination_data[j] = (j > 0) ?
-					(surface_object->destination_data[j - 1] + surface_object->destination_sizes[j - 1]) :
-					surface_object->destination_map[j];
+			for (int j = 0; j < surface_object->destination_logical_planes_count; j += 1) {
+				surface_object->destination_logical_plane_index[j] = 0;
+				surface_object->destination_logical_plane_offset[j] = (j > 0) ?
+					(surface_object->destination_logical_plane_offset[j - 1] + surface_object->destination_logical_plane_size[j - 1]) : 0;
 			}
 		} else {
-			surface_object->destination_planes_count = buffer_count;
-			for (int j = 0; j < surface_object->destination_planes_count; j += 1) {
-				surface_object->destination_data[j] =
-					surface_object->destination_map[j];
-				surface_object->destination_sizes[j] =
+			surface_object->destination_logical_planes_count = buffer_count;
+			for (int j = 0; j < surface_object->destination_logical_planes_count; j += 1) {
+				surface_object->destination_logical_plane_index[j] = j;
+				surface_object->destination_logical_plane_size[j] =
 					destination_sizes[j];
-				surface_object->destination_bytesperlines[j] =
+				surface_object->destination_logical_plane_pitch[j] =
 					destination_bytesperlines[j];
+				surface_object->destination_logical_plane_offset[j] = (j > 0) ?
+					(surface_object->destination_logical_plane_offset[j - 1] + surface_object->destination_logical_plane_size[j - 1]) : 0;
 			}
 		}
 
 		surface_object->destination_index = i;
 
-		surface_object->destination_buffers_count = buffer_count;
+		surface_object->destination_planes_count = buffer_count;
 	}
 
 	return VA_STATUS_SUCCESS;
@@ -230,11 +232,11 @@ VAStatus RequestDestroySurfaces(VADriverContextP context,
 			munmap(surface_object->source_data,
 			       surface_object->source_size);
 
-		for (j = 0; j < surface_object->destination_buffers_count; j++)
-			if (surface_object->destination_map[j] != NULL &&
-			    surface_object->destination_map_lengths[j] > 0)
-				munmap(surface_object->destination_map[j],
-				       surface_object->destination_map_lengths[j]);
+		for (j = 0; j < surface_object->destination_planes_count; j++)
+			if (surface_object->destination_plane_data[j] != NULL &&
+			    surface_object->destination_plane_size[j] > 0)
+				munmap(surface_object->destination_plane_data[j],
+				       surface_object->destination_plane_size[j]);
 
 		if (surface_object->request_fd > 0)
 			close(surface_object->request_fd);
@@ -298,7 +300,7 @@ VAStatus RequestSyncSurface(VADriverContextP context, VASurfaceID surface_id)
 
 	rc = v4l2_dequeue_buffer(driver_data->device.video_fd, -1, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
 				 surface_object->destination_index,
-				 surface_object->destination_buffers_count);
+				 surface_object->destination_planes_count);
 	if (rc < 0) {
 		status = VA_STATUS_ERROR_OPERATION_FAILED;
 		goto error;
@@ -453,7 +455,7 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 	if (surface_object == NULL)
 		return VA_STATUS_ERROR_INVALID_SURFACE;
 
-	export_fds_count = surface_object->destination_buffers_count;
+	export_fds_count = surface_object->destination_planes_count;
 	export_fds = malloc(export_fds_count * sizeof(*export_fds));
 
 	rc = v4l2_export_buffer(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
@@ -464,7 +466,7 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 		goto error;
 	}
 
-	planes_count = surface_object->destination_planes_count;
+	planes_count = surface_object->destination_logical_planes_count;
 
 	surface_descriptor->fourcc = VA_FOURCC_NV12;
 	surface_descriptor->width = surface_object->width;
@@ -475,7 +477,7 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 
 	if (export_fds_count == 1)
 		for (i = 0; i < planes_count; i++)
-			size += surface_object->destination_sizes[i];
+			size += surface_object->destination_logical_plane_size[i];
 
 	for (i = 0; i < export_fds_count; i++) {
 		surface_descriptor->objects[i].drm_format_modifier =
@@ -483,7 +485,7 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 		surface_descriptor->objects[i].fd = export_fds[i];
 		surface_descriptor->objects[i].size = export_fds_count == 1 ?
 						      size :
-						      surface_object->destination_sizes[i];
+						      surface_object->destination_logical_plane_size[i];
 	}
 
 	surface_descriptor->num_layers = 1;
@@ -493,8 +495,8 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 
 	for (i = 0; i < planes_count; i++) {
 		surface_descriptor->layers[0].object_index[i] = export_fds_count == 1 ? 0 : i;
-		surface_descriptor->layers[0].offset[i] = (i > 0 ) ? (surface_descriptor->layers[0].offset[i] + surface_object->destination_sizes[i]) : 0;
-		surface_descriptor->layers[0].pitch[i] = surface_object->destination_bytesperlines[i];
+		surface_descriptor->layers[0].offset[i] = (i > 0 ) ? (surface_descriptor->layers[0].offset[i] + surface_object->destination_logical_plane_size[i]) : 0;
+		surface_descriptor->layers[0].pitch[i] = surface_object->destination_logical_plane_pitch[i];
 	}
 
 	status = VA_STATUS_SUCCESS;

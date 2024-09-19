@@ -125,10 +125,10 @@ static VAStatus copy_surface_to_image (struct request_data *driver_data,
 	if (buffer_object == NULL)
 		return VA_STATUS_ERROR_INVALID_BUFFER;
 
-	for (i = 0; i < surface_object->destination_planes_count; i++) {
+	for (i = 0; i < surface_object->destination_logical_planes_count; i++) {
 		memcpy(buffer_object->data + image->offsets[i],
-		       surface_object->destination_data[i],
-		       surface_object->destination_sizes[i]);
+		       surface_object->destination_plane_data[surface_object->destination_logical_plane_index[i]] + surface_object->destination_logical_plane_offset[i],
+		       surface_object->destination_logical_plane_size[i]);
 	}
 
 	return VA_STATUS_SUCCESS;

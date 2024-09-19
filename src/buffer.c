@@ -217,7 +217,7 @@ VAStatus RequestAcquireBufferHandle(VADriverContextP context,
 	if (surface_object == NULL)
 		return VA_STATUS_ERROR_INVALID_BUFFER;
 
-	if (surface_object->destination_buffers_count > 1)
+	if (surface_object->destination_planes_count > 1)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	rc = v4l2_export_buffer(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,

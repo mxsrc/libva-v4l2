@@ -220,7 +220,7 @@ VAStatus RequestEndPicture(VADriverContextP context, VAContextID context_id)
 
 	rc = v4l2_queue_buffer(driver_data->device.video_fd, -1, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, NULL,
 			       surface_object->destination_index, 0,
-			       surface_object->destination_buffers_count);
+			       surface_object->destination_planes_count);
 	if (rc < 0)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 

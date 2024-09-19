@@ -53,15 +53,15 @@ struct object_surface {
 	unsigned int source_size;
 
 	unsigned int destination_index;
-	void *destination_map[VIDEO_MAX_PLANES];
-	unsigned int destination_map_lengths[VIDEO_MAX_PLANES];
-	unsigned int destination_map_offsets[VIDEO_MAX_PLANES];
-	void *destination_data[VIDEO_MAX_PLANES];
-
-	unsigned int destination_sizes[VIDEO_MAX_PLANES];
-	unsigned int destination_bytesperlines[VIDEO_MAX_PLANES];
+	void *destination_plane_data[VIDEO_MAX_PLANES];
+	unsigned int destination_plane_size[VIDEO_MAX_PLANES];
 	unsigned int destination_planes_count;
-	unsigned int destination_buffers_count;
+
+	unsigned int destination_logical_plane_index[VIDEO_MAX_PLANES];
+	unsigned int destination_logical_plane_size[VIDEO_MAX_PLANES];
+	unsigned int destination_logical_plane_pitch[VIDEO_MAX_PLANES];
+	unsigned int destination_logical_plane_offset[VIDEO_MAX_PLANES];
+	unsigned int destination_logical_planes_count;
 
 	unsigned int slices_size;
 	unsigned int slices_count;
