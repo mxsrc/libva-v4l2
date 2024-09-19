@@ -15,7 +15,7 @@
 /**
  * The structured data libVA passed doesn't contain all information we need, so we parse the headers ourselves (i.e. have gstreamer do it).
  */
-static int parse_frame_header(struct object_surface* surface, GstVp9FrameHeader* header) {
+static int parse_frame_header(const Surface& surface, GstVp9FrameHeader* header) {
 	int ret = 0;
 	GstVp9StatefulParser* parser = gst_vp9_stateful_parser_new();
 	if (!parser) {
@@ -25,13 +25,13 @@ static int parse_frame_header(struct object_surface* surface, GstVp9FrameHeader*
 
 	if (gst_vp9_stateful_parser_parse_uncompressed_frame_header(
 			parser, header,
-			surface->source_data, surface->source_size
+			surface.source_data, surface.source_size
 	) != GST_VP9_PARSER_OK) {
 		goto exit_parser_allocated;
 	}
 	if (gst_vp9_stateful_parser_parse_compressed_frame_header(
 			parser, header,
-			surface->source_data + header->frame_header_length_in_bytes, surface->source_size
+			surface.source_data + header->frame_header_length_in_bytes, surface.source_size
 	) != GST_VP9_PARSER_OK) {
 		goto exit_parser_allocated;
 	}
@@ -43,9 +43,9 @@ exit:
 }
 
 static struct v4l2_ctrl_vp9_frame va_to_v4l2_frame(RequestData *data, VADecPictureParameterBufferVP9 *picture, VASliceParameterBufferVP9 *slice, GstVp9FrameHeader* header) {
-	struct object_surface* last_ref_frame = SURFACE(data, picture->reference_frames[picture->pic_fields.bits.last_ref_frame]);
-	struct object_surface* golden_ref_frame = SURFACE(data, picture->reference_frames[picture->pic_fields.bits.golden_ref_frame]);
-	struct object_surface* alt_ref_frame = SURFACE(data, picture->reference_frames[picture->pic_fields.bits.alt_ref_frame]);
+	const auto last_ref_frame = data->surfaces.find(picture->reference_frames[picture->pic_fields.bits.last_ref_frame]);
+	const auto golden_ref_frame = data->surfaces.find(picture->reference_frames[picture->pic_fields.bits.golden_ref_frame]);
+	const auto alt_ref_frame = data->surfaces.find(picture->reference_frames[picture->pic_fields.bits.alt_ref_frame]);
 
 	struct v4l2_ctrl_vp9_frame result = {
 		.lf = {
@@ -85,9 +85,9 @@ static struct v4l2_ctrl_vp9_frame va_to_v4l2_frame(RequestData *data, VADecPictu
 		.frame_height_minus_1 = static_cast<uint16_t>(picture->frame_height - 1),
 		.render_width_minus_1 = static_cast<uint16_t>(picture->frame_width - 1),
 		.render_height_minus_1 = static_cast<uint16_t>(picture->frame_height - 1),
-		.last_frame_ts = (last_ref_frame != NULL) ? v4l2_timeval_to_ns(&last_ref_frame->timestamp) : 0,
-		.golden_frame_ts = (golden_ref_frame != NULL) ? v4l2_timeval_to_ns(&golden_ref_frame->timestamp) : 0,
-		.alt_frame_ts = (alt_ref_frame != NULL) ? v4l2_timeval_to_ns(&alt_ref_frame->timestamp) : 0,
+		.last_frame_ts = (last_ref_frame != data->surfaces.end()) ? v4l2_timeval_to_ns(&last_ref_frame->second.timestamp) : 0,
+		.golden_frame_ts = (golden_ref_frame != data->surfaces.end()) ? v4l2_timeval_to_ns(&golden_ref_frame->second.timestamp) : 0,
+		.alt_frame_ts = (alt_ref_frame != data->surfaces.end()) ? v4l2_timeval_to_ns(&alt_ref_frame->second.timestamp) : 0,
 		.ref_frame_sign_bias = static_cast<uint8_t>(
 			((picture->pic_fields.bits.last_ref_frame_sign_bias) ? V4L2_VP9_SIGN_BIAS_LAST : 0) |
 			((picture->pic_fields.bits.golden_ref_frame_sign_bias) ? V4L2_VP9_SIGN_BIAS_GOLDEN : 0) |
@@ -141,20 +141,20 @@ struct v4l2_ctrl_vp9_compressed_hdr gst_to_v4l2_compressed_header(GstVp9FrameHea
 }
 
 VAStatus vp9_store_buffer(RequestData *driver_data,
-			  struct object_surface *surface_object,
+			  Surface& surface,
 			  struct object_buffer *buffer_object) {
 	switch (buffer_object->type) {
 	case VAPictureParameterBufferType:
-		memcpy(&surface_object->params.vp9.picture,
+		memcpy(&surface.params.vp9.picture,
 		       buffer_object->data,
-		       sizeof(surface_object->params.vp9.picture));
+		       sizeof(surface.params.vp9.picture));
 		printf("\n");
 		return VA_STATUS_SUCCESS;
 
 	case VASliceParameterBufferType:
-		memcpy(&surface_object->params.vp9.slice,
+		memcpy(&surface.params.vp9.slice,
 		       buffer_object->data,
-		       sizeof(surface_object->params.vp9.slice));
+		       sizeof(surface.params.vp9.slice));
 		printf("\n");
 		return VA_STATUS_SUCCESS;
 
@@ -165,14 +165,14 @@ VAStatus vp9_store_buffer(RequestData *driver_data,
 		 * RenderPicture), we can't use a V4L2 buffer directly
 		 * and have to copy from a regular buffer.
 		 */
-		printf("%d bytes.", surface_object->source_size);
-		memcpy(surface_object->source_data +
-			       surface_object->slices_size,
+		printf("%d bytes.", surface.source_size);
+		memcpy(surface.source_data +
+			       surface.slices_size,
 		       buffer_object->data,
 		       buffer_object->size * buffer_object->count);
-		surface_object->slices_size +=
+		surface.slices_size +=
 			buffer_object->size * buffer_object->count;
-		surface_object->slices_count++;
+		surface.slices_count++;
 		printf("\n");
 		return VA_STATUS_SUCCESS;
 
@@ -185,13 +185,13 @@ VAStatus vp9_store_buffer(RequestData *driver_data,
 
 int vp9_set_controls(RequestData *data,
 		     const Context& context,
-		     struct object_surface *surface) {
+		     Surface& surface) {
 	GstVp9FrameHeader header = {};
 	if (parse_frame_header(surface, &header)) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 
-	struct v4l2_ctrl_vp9_frame frame = va_to_v4l2_frame(data, &surface->params.vp9.picture, &surface->params.vp9.slice, &header);
+	struct v4l2_ctrl_vp9_frame frame = va_to_v4l2_frame(data, &surface.params.vp9.picture, &surface.params.vp9.slice, &header);
 	struct v4l2_ctrl_vp9_compressed_hdr hdr = gst_to_v4l2_compressed_header(&header);
 
 	struct v4l2_ext_control controls[2] = { 0 };
@@ -205,7 +205,7 @@ int vp9_set_controls(RequestData *data,
 		.size = sizeof(hdr),
 		.ptr = &hdr,
 	};
-	int rc = v4l2_set_controls(data->device.video_fd, surface->request_fd, controls, 2);
+	int rc = v4l2_set_controls(data->device.video_fd, surface.request_fd, controls, 2);
 	if (rc < 0) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}

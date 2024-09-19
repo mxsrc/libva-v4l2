@@ -51,29 +51,29 @@ extern "C" {
 
 static VAStatus codec_store_buffer(RequestData *driver_data,
 				   VAProfile profile,
-				   struct object_surface *surface_object,
+				   Surface& surface,
 				   struct object_buffer *buffer_object)
 {
 	switch (profile) {
 	case VAProfileMPEG2Simple:
 	case VAProfileMPEG2Main:
-		return mpeg2_store_buffer(driver_data, surface_object, buffer_object);
+		return mpeg2_store_buffer(driver_data, surface, buffer_object);
 
 	case VAProfileH264Main:
 	case VAProfileH264High:
 	case VAProfileH264ConstrainedBaseline:
 	case VAProfileH264MultiviewHigh:
 	case VAProfileH264StereoHigh:
-		return h264_store_buffer(driver_data, surface_object, buffer_object);
+		return h264_store_buffer(driver_data, surface, buffer_object);
 
 	case VAProfileVP8Version0_3:
-		return vp8_store_buffer(driver_data, surface_object, buffer_object);
+		return vp8_store_buffer(driver_data, surface, buffer_object);
 
 	case VAProfileVP9Profile0:
 	case VAProfileVP9Profile1:
 	case VAProfileVP9Profile2:
 	case VAProfileVP9Profile3:
-		return vp9_store_buffer(driver_data, surface_object, buffer_object);
+		return vp9_store_buffer(driver_data, surface, buffer_object);
 
 	default:
 		return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
@@ -83,28 +83,28 @@ static VAStatus codec_store_buffer(RequestData *driver_data,
 static VAStatus codec_set_controls(RequestData *driver_data,
 				   Context& context,
 				   VAProfile profile,
-				   struct object_surface *surface_object)
+				   Surface& surface)
 {
 	switch (profile) {
 	case VAProfileMPEG2Simple:
 	case VAProfileMPEG2Main:
-		return mpeg2_set_controls(driver_data, context, surface_object);
+		return mpeg2_set_controls(driver_data, context, surface);
 
 	case VAProfileH264Main:
 	case VAProfileH264High:
 	case VAProfileH264ConstrainedBaseline:
 	case VAProfileH264MultiviewHigh:
 	case VAProfileH264StereoHigh:
-		return h264_set_controls(driver_data, context, surface_object);
+		return h264_set_controls(driver_data, context, surface);
 
 	case VAProfileVP8Version0_3:
-		return vp8_set_controls(driver_data, context, surface_object);
+		return vp8_set_controls(driver_data, context, surface);
 
 	case VAProfileVP9Profile0:
 	case VAProfileVP9Profile1:
 	case VAProfileVP9Profile2:
 	case VAProfileVP9Profile3:
-		return vp9_set_controls(driver_data, context, surface_object);
+		return vp9_set_controls(driver_data, context, surface);
 
 	default:
 		return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
@@ -115,21 +115,21 @@ VAStatus RequestBeginPicture(VADriverContextP va_context, VAContextID context_id
 			     VASurfaceID surface_id)
 {
 	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
-	struct object_surface *surface_object;
 
 	if (!driver_data->contexts.contains(context_id)) {
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
 	}
 	auto& context = driver_data->contexts.at(context_id);
 
-	surface_object = SURFACE(driver_data, surface_id);
-	if (surface_object == NULL)
+	if (!driver_data->surfaces.contains(surface_id)) {
 		return VA_STATUS_ERROR_INVALID_SURFACE;
+	}
+	auto& surface = driver_data->surfaces.at(surface_id);
 
-	if (surface_object->status == VASurfaceRendering)
+	if (surface.status == VASurfaceRendering)
 		RequestSyncSurface(va_context, surface_id);
 
-	surface_object->status = VASurfaceRendering;
+	surface.status = VASurfaceRendering;
 	context.render_surface_id = surface_id;
 
 	return VA_STATUS_SUCCESS;
@@ -139,7 +139,6 @@ VAStatus RequestRenderPicture(VADriverContextP va_context, VAContextID context_i
 			      VABufferID *buffers_ids, int buffers_count)
 {
 	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
-	struct object_surface *surface_object;
 	struct object_buffer *buffer_object;
 	int rc;
 	int i;
@@ -154,10 +153,10 @@ VAStatus RequestRenderPicture(VADriverContextP va_context, VAContextID context_i
 	}
 	const auto& config = driver_data->configs.at(context.config_id);
 
-	surface_object =
-		SURFACE(driver_data, context.render_surface_id);
-	if (surface_object == NULL)
+	if (!driver_data->surfaces.contains(context.render_surface_id)) {
 		return VA_STATUS_ERROR_INVALID_SURFACE;
+	}
+	auto& surface = driver_data->surfaces.at(context.render_surface_id);
 
 	for (i = 0; i < buffers_count; i++) {
 		buffer_object = BUFFER(driver_data, buffers_ids[i]);
@@ -165,7 +164,7 @@ VAStatus RequestRenderPicture(VADriverContextP va_context, VAContextID context_i
 			return VA_STATUS_ERROR_INVALID_BUFFER;
 
 		rc = codec_store_buffer(driver_data, config.profile,
-					surface_object, buffer_object);
+					surface, buffer_object);
 		if (rc != VA_STATUS_SUCCESS)
 			return rc;
 	}
@@ -176,7 +175,6 @@ VAStatus RequestRenderPicture(VADriverContextP va_context, VAContextID context_i
 VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id)
 {
 	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
-	struct object_surface *surface_object;
 	int request_fd;
 	VAStatus status;
 	int rc;
@@ -194,43 +192,43 @@ VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id)
 	}
 	const auto& config = driver_data->configs.at(context.config_id);
 
-	surface_object =
-		SURFACE(driver_data, context.render_surface_id);
-	if (surface_object == NULL)
+	if (!driver_data->surfaces.contains(context.render_surface_id)) {
 		return VA_STATUS_ERROR_INVALID_SURFACE;
+	}
+	auto& surface = driver_data->surfaces.at(context.render_surface_id);
 
-	gettimeofday(&surface_object->timestamp, NULL);
+	gettimeofday(&surface.timestamp, NULL);
 
-	request_fd = surface_object->request_fd;
+	request_fd = surface.request_fd;
 	if (driver_data->device.media_fd >= 0) {
 		if (request_fd < 0) {
 			request_fd = media_request_alloc(driver_data->device.media_fd);
 			if (request_fd < 0)
 				return VA_STATUS_ERROR_OPERATION_FAILED;
 
-			surface_object->request_fd = request_fd;
+			surface.request_fd = request_fd;
 		}
 
 		rc = codec_set_controls(driver_data, context,
-					config.profile, surface_object);
+					config.profile, surface);
 		if (rc != VA_STATUS_SUCCESS)
 			return rc;
 	}
 
 	rc = v4l2_queue_buffer(driver_data->device.video_fd, -1, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, NULL,
-			       surface_object->destination_index, 0,
-			       surface_object->destination_planes_count);
+			       surface.destination_index, 0,
+			       surface.destination_planes_count);
 	if (rc < 0)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	rc = v4l2_queue_buffer(driver_data->device.video_fd, request_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-			       &surface_object->timestamp,
-			       surface_object->source_index,
-			       surface_object->slices_size, 1);
+			       &surface.timestamp,
+			       surface.source_index,
+			       surface.slices_size, 1);
 	if (rc < 0)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
-	surface_object->slices_size = 0;
+	surface.slices_size = 0;
 
 	status = RequestSyncSurface(va_context, context.render_surface_id);
 	if (status != VA_STATUS_SUCCESS)

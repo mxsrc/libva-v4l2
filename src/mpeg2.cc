@@ -55,21 +55,21 @@ static const uint8_t default_intra_quantisation_matrix[] = {
 
 
 VAStatus mpeg2_store_buffer(RequestData *driver_data,
-				   struct object_surface *surface_object,
+				   Surface& surface,
 				   struct object_buffer *buffer_object)
 {
 	switch (buffer_object->type) {
 	case VAPictureParameterBufferType:
-		memcpy(&surface_object->params.mpeg2.picture,
+		memcpy(&surface.params.mpeg2.picture,
 		       buffer_object->data,
-		       sizeof(surface_object->params.mpeg2.picture));
+		       sizeof(surface.params.mpeg2.picture));
 		break;
 
 	case VAIQMatrixBufferType:
-		memcpy(&surface_object->params.mpeg2.iqmatrix,
+		memcpy(&surface.params.mpeg2.iqmatrix,
 		       buffer_object->data,
-		       sizeof(surface_object->params.mpeg2.iqmatrix));
-		surface_object->params.mpeg2.iqmatrix_set = true;
+		       sizeof(surface.params.mpeg2.iqmatrix));
+		surface.params.mpeg2.iqmatrix_set = true;
 		break;
 
 	case VASliceParameterBufferType:
@@ -85,13 +85,13 @@ VAStatus mpeg2_store_buffer(RequestData *driver_data,
 		 * RenderPicture), we can't use a V4L2 buffer directly
 		 * and have to copy from a regular buffer.
 		 */
-		memcpy(surface_object->source_data +
-			       surface_object->slices_size,
+		memcpy(surface.source_data +
+			       surface.slices_size,
 		       buffer_object->data,
 		       buffer_object->size * buffer_object->count);
-		surface_object->slices_size +=
+		surface.slices_size +=
 			buffer_object->size * buffer_object->count;
-		surface_object->slices_count++;
+		surface.slices_count++;
 		break;
 
 	default:
@@ -104,18 +104,16 @@ VAStatus mpeg2_store_buffer(RequestData *driver_data,
 
 int mpeg2_set_controls(RequestData *driver_data,
 		       const Context& context,
-		       struct object_surface *surface_object)
+		       Surface& surface)
 {
 	VAPictureParameterBufferMPEG2 *va_picture =
-		&surface_object->params.mpeg2.picture;
+		&surface.params.mpeg2.picture;
 	VAIQMatrixBufferMPEG2 *iqmatrix =
-		&surface_object->params.mpeg2.iqmatrix;
-	bool iqmatrix_set = surface_object->params.mpeg2.iqmatrix_set;
+		&surface.params.mpeg2.iqmatrix;
+	bool iqmatrix_set = surface.params.mpeg2.iqmatrix_set;
 	struct v4l2_ctrl_mpeg2_picture picture = { 0 };
 	struct v4l2_ctrl_mpeg2_sequence sequence = { 0 };
 	struct v4l2_ctrl_mpeg2_quantisation quantisation = { 0 };
-	struct object_surface *forward_reference_surface;
-	struct object_surface *backward_reference_surface;
 	unsigned int i;
 	int rc;
 
@@ -127,7 +125,7 @@ int mpeg2_set_controls(RequestData *driver_data,
 	sequence.chroma_format = 1; // 4:2:0
 
 	rc = v4l2_set_control(driver_data->device.video_fd,
-			      surface_object->request_fd,
+			      surface.request_fd,
 			      V4L2_CID_STATELESS_MPEG2_SEQUENCE,
 			      &sequence, sizeof(sequence));
 	if (rc < 0)
@@ -142,19 +140,11 @@ int mpeg2_set_controls(RequestData *driver_data,
 	picture.intra_dc_precision = va_picture->picture_coding_extension.bits.intra_dc_precision;
 	picture.picture_structure = va_picture->picture_coding_extension.bits.picture_structure;
 
-	backward_reference_surface =
-		SURFACE(driver_data, va_picture->backward_reference_picture);
-	if (backward_reference_surface == NULL)
-		backward_reference_surface = surface_object;
+	const auto& backward_reference_surface = driver_data->surfaces.find(va_picture->backward_reference_picture);
+	picture.backward_ref_ts = v4l2_timeval_to_ns((backward_reference_surface != driver_data->surfaces.end()) ? &backward_reference_surface->second.timestamp : &surface.timestamp);
 
-	picture.backward_ref_ts = v4l2_timeval_to_ns(&backward_reference_surface->timestamp);
-
-	forward_reference_surface =
-		SURFACE(driver_data, va_picture->forward_reference_picture);
-	if (forward_reference_surface == NULL)
-		forward_reference_surface = surface_object;
-
-	picture.forward_ref_ts = v4l2_timeval_to_ns(&forward_reference_surface->timestamp);
+	const auto& forward_reference_surface = driver_data->surfaces.find(va_picture->forward_reference_picture);
+	picture.forward_ref_ts = v4l2_timeval_to_ns((forward_reference_surface != driver_data->surfaces.end()) ? &forward_reference_surface->second.timestamp : &surface.timestamp);
 
 	picture.flags = (
 		(va_picture->picture_coding_extension.bits.top_field_first ? V4L2_MPEG2_PIC_FLAG_TOP_FIELD_FIRST : 0) |
@@ -168,7 +158,7 @@ int mpeg2_set_controls(RequestData *driver_data,
 	);
 
 	rc = v4l2_set_control(driver_data->device.video_fd,
-			      surface_object->request_fd,
+			      surface.request_fd,
 			      V4L2_CID_STATELESS_MPEG2_PICTURE,
 			      &picture, sizeof(picture));
 	if (rc < 0)
@@ -185,7 +175,7 @@ int mpeg2_set_controls(RequestData *driver_data,
 		}
 
 		rc = v4l2_set_control(driver_data->device.video_fd,
-				      surface_object->request_fd,
+				      surface.request_fd,
 				      V4L2_CID_STATELESS_MPEG2_QUANTISATION,
 				      &quantisation, sizeof(quantisation));
 		if (rc < 0)

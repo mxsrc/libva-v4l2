@@ -198,7 +198,6 @@ VAStatus RequestAcquireBufferHandle(VADriverContextP context,
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_buffer *buffer_object;
-	struct object_surface *surface_object;
 	int export_fd;
 	int rc;
 
@@ -212,15 +211,16 @@ VAStatus RequestAcquireBufferHandle(VADriverContextP context,
 	if (buffer_object->derived_surface_id == VA_INVALID_ID)
 		return VA_STATUS_ERROR_INVALID_BUFFER;
 
-	surface_object = SURFACE(driver_data, buffer_object->derived_surface_id);
-	if (surface_object == NULL)
-		return VA_STATUS_ERROR_INVALID_BUFFER;
+	if (!driver_data->surfaces.contains(buffer_object->derived_surface_id)) {
+		return VA_STATUS_ERROR_INVALID_SURFACE;
+	}
+	const auto& surface = driver_data->surfaces.at(buffer_object->derived_surface_id);
 
-	if (surface_object->destination_planes_count > 1)
+	if (surface.destination_planes_count > 1)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	rc = v4l2_export_buffer(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-				surface_object->destination_index, O_RDONLY,
+				surface.destination_index, O_RDONLY,
 				&export_fd, 1);
 	if (rc < 0)
 		return VA_STATUS_ERROR_OPERATION_FAILED;

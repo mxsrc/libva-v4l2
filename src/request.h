@@ -51,7 +51,7 @@ extern "C" {
 struct RequestData {
 	std::map<VAConfigID, Config> configs;
 	std::map<VAContextID, Context> contexts;
-	struct object_heap surface_heap;
+	std::map<VASurfaceID, Surface> surfaces;
 	struct object_heap buffer_heap;
 	struct object_heap image_heap;
 	struct v4l2_m2m_device device;

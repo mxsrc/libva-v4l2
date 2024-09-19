@@ -29,14 +29,15 @@ extern "C" {
 #include <va/va.h>
 }
 
+#include "surface.h"
+
 struct object_buffer;
 struct Context;
-struct object_surface;
 struct RequestData;
 
 VAStatus mpeg2_store_buffer(RequestData *driver_data,
-				   struct object_surface *surface_object,
+				   Surface& surface,
 				   struct object_buffer *buffer_object);
 int mpeg2_set_controls(RequestData *driver_data,
 		       const Context& context,
-		       struct object_surface *surface_object);
+		       Surface& surface);

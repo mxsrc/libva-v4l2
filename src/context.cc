@@ -51,7 +51,7 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 			      VAContextID *context_id)
 {
 	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
-	struct object_surface *surface_object;
+	decltype(driver_data->surfaces)::iterator surface;
 	unsigned int length;
 	unsigned int offset;
 	unsigned usurfaces_count;
@@ -163,8 +163,8 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 	context->second.surfaces_ids = ids;
 
 	for (int i = 0; i < surfaces_count; i++) {
-		surface_object = SURFACE(driver_data, surfaces_ids[i]);
-		if (surface_object == NULL) {
+		surface = driver_data->surfaces.find(surfaces_ids[i]);
+		if (surface == driver_data->surfaces.end()) {
 			status = VA_STATUS_ERROR_INVALID_SURFACE;
 			goto error;
 		}
@@ -183,9 +183,9 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 			goto error;
 		}
 
-		surface_object->source_index = i;
-		surface_object->source_data = source_data;
-		surface_object->source_size = length;
+		surface->second.source_index = i;
+		surface->second.source_data = source_data;
+		surface->second.source_size = length;
 	}
 
 	rc = v4l2_set_stream(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, true);

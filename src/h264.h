@@ -31,9 +31,10 @@ extern "C" {
 #include <va/va.h>
 }
 
+#include "surface.h"
+
 struct object_buffer;
 struct Context;
-struct object_surface;
 struct RequestData;
 
 #define H264_DPB_SIZE 16
@@ -52,8 +53,8 @@ struct h264_dpb {
 };
 
 VAStatus h264_store_buffer(RequestData *driver_data,
-				   struct object_surface *surface_object,
+				   Surface& surface,
 				   struct object_buffer *buffer_object);
 int h264_set_controls(RequestData *data,
 		      Context& context,
-		      struct object_surface *surface);
+		      Surface& surface);

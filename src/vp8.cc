@@ -98,9 +98,9 @@ static struct v4l2_vp8_entropy_coder_state coder_state(VABoolCoderContextVPX* bo
 
 
 static struct v4l2_ctrl_vp8_frame va_to_v4l2_frame(RequestData *data, VAPictureParameterBufferVP8 *picture, VASliceParameterBufferVP8 *slice, VAIQMatrixBufferVP8 *iqmatrix, VAProbabilityDataBufferVP8 *probabilities) {
-	struct object_surface* last_ref = SURFACE(data, picture->last_ref_frame);
-	struct object_surface* golden_ref = SURFACE(data, picture->golden_ref_frame);
-	struct object_surface* alt_ref = SURFACE(data, picture->alt_ref_frame);
+	const auto last_ref = data->surfaces.find(picture->last_ref_frame);
+	const auto golden_ref = data->surfaces.find(picture->golden_ref_frame);
+	const auto alt_ref = data->surfaces.find(picture->alt_ref_frame);
 
 	// FIXME
 	// - resolve confusion around segments
@@ -123,9 +123,9 @@ static struct v4l2_ctrl_vp8_frame va_to_v4l2_frame(RequestData *data, VAPictureP
 		.num_dct_parts = static_cast<uint8_t>(slice->num_of_partitions - 1),
 		.first_part_size = slice->slice_data_size - slice->partition_size[1],  // FIXME: Needs to be sum of all partitions
 		.first_part_header_bits = slice->macroblock_offset,
-		.last_frame_ts = last_ref ? v4l2_timeval_to_ns(&last_ref->timestamp): 0,
-		.golden_frame_ts = golden_ref ? v4l2_timeval_to_ns(&golden_ref->timestamp) : 0,
-		.alt_frame_ts = alt_ref ? v4l2_timeval_to_ns(&alt_ref->timestamp) : 0,
+		.last_frame_ts = (last_ref != data->surfaces.end()) ? v4l2_timeval_to_ns(&last_ref->second.timestamp): 0,
+		.golden_frame_ts = (golden_ref != data->surfaces.end()) ? v4l2_timeval_to_ns(&golden_ref->second.timestamp) : 0,
+		.alt_frame_ts = (alt_ref != data->surfaces.end()) ? v4l2_timeval_to_ns(&alt_ref->second.timestamp) : 0,
 		.flags = 
 			((picture->pic_fields.bits.key_frame == VP8_KEYFRAME) ? V4L2_VP8_FRAME_FLAG_KEY_FRAME : 0u) |
 			(false ? V4L2_VP8_FRAME_FLAG_EXPERIMENTAL : 0u) |
@@ -174,7 +174,7 @@ static size_t prefix_data(uint8_t* data, const VAPictureParameterBufferVP8* pict
 
 
 VAStatus vp8_store_buffer(RequestData *driver_data,
-			  struct object_surface *surface_object,
+			  Surface& surface,
 			  struct object_buffer *buffer_object)
 {
 	switch (buffer_object->type) {
@@ -185,43 +185,43 @@ VAStatus vp8_store_buffer(RequestData *driver_data,
 		 * RenderPicture), we can't use a V4L2 buffer directly
 		 * and have to copy from a regular buffer.
 		 */
-		surface_object->slices_size += prefix_data(
-			surface_object->source_data + surface_object->slices_size,
-			&surface_object->params.vp8.picture,
-			&surface_object->params.vp8.slice
+		surface.slices_size += prefix_data(
+			surface.source_data + surface.slices_size,
+			&surface.params.vp8.picture,
+			&surface.params.vp8.slice
 		);
 
-		memcpy(surface_object->source_data +
-			       surface_object->slices_size,
+		memcpy(surface.source_data +
+			       surface.slices_size,
 		       buffer_object->data,
 		       buffer_object->size * buffer_object->count);
-		surface_object->slices_size +=
+		surface.slices_size +=
 			buffer_object->size * buffer_object->count;
-		surface_object->slices_count++;
+		surface.slices_count++;
 		break;
 
 	case VAPictureParameterBufferType:
-		memcpy(&surface_object->params.vp8.picture,
+		memcpy(&surface.params.vp8.picture,
 		       buffer_object->data,
-		       sizeof(surface_object->params.vp8.picture));
+		       sizeof(surface.params.vp8.picture));
 		break;
 
 	case VASliceParameterBufferType:
-		memcpy(&surface_object->params.vp8.slice,
+		memcpy(&surface.params.vp8.slice,
 		       buffer_object->data,
-		       sizeof(surface_object->params.vp8.slice));
+		       sizeof(surface.params.vp8.slice));
 		break;
 
 	case VAIQMatrixBufferType:
-		memcpy(&surface_object->params.vp8.iqmatrix,
+		memcpy(&surface.params.vp8.iqmatrix,
 		       buffer_object->data,
-		       sizeof(surface_object->params.vp8.iqmatrix));
+		       sizeof(surface.params.vp8.iqmatrix));
 		break;
 
 	case VAProbabilityBufferType:
-		memcpy(&surface_object->params.vp8.probabilities,
+		memcpy(&surface.params.vp8.probabilities,
 		       buffer_object->data,
-		       sizeof(surface_object->params.vp8.probabilities));
+		       sizeof(surface.params.vp8.probabilities));
 		break;
 
 	default:
@@ -231,17 +231,17 @@ VAStatus vp8_store_buffer(RequestData *driver_data,
 	return VA_STATUS_SUCCESS;
 }
 
-int vp8_set_controls(RequestData *data, const Context& context, struct object_surface *surface) {
+int vp8_set_controls(RequestData *data, const Context& context, Surface& surface) {
 	struct v4l2_ctrl_vp8_frame frame = va_to_v4l2_frame(
 		data,
-		&surface->params.vp8.picture,
-		&surface->params.vp8.slice,
-		&surface->params.vp8.iqmatrix,
-		&surface->params.vp8.probabilities
+		&surface.params.vp8.picture,
+		&surface.params.vp8.slice,
+		&surface.params.vp8.iqmatrix,
+		&surface.params.vp8.probabilities
 	);
 
 	int rc = v4l2_set_control(data->device.video_fd,
-			      surface->request_fd,
+			      surface.request_fd,
 			      V4L2_CID_STATELESS_VP8_FRAME,
 			      &frame, sizeof(frame));
 	if (rc < 0)

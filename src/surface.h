@@ -32,20 +32,10 @@ extern "C" {
 #include <va/va_backend.h>
 }
 
-#include "object_heap.h"
-
-#define SURFACE(data, id)                                                      \
-	((struct object_surface *)object_heap_lookup(&(data)->surface_heap, id))
-#define SURFACE_ID_OFFSET		0x04000000
-
-#define SURFACE_ID_INVALID -1
-
-struct object_surface {
-	struct object_base base;
-
+struct Surface {
 	VASurfaceStatus status;
-	int width;
-	int height;
+	unsigned width;
+	unsigned height;
 
 	unsigned int source_index;
 	uint8_t* source_data;
