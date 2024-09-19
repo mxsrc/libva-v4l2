@@ -26,9 +26,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#include <linux/videodev2.h>
+#include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
+
+#include <linux/videodev2.h>
 
 #include "utils.h"
 #include "v4l2.h"
@@ -94,6 +96,9 @@ int v4l2_m2m_device_open(struct v4l2_m2m_device* dev, const char* video_path, co
 		goto error;
 	}
 
+	dev->capture_buffer_count = 0;
+	dev->output_buffer_count = 0;
+
 	return 0;
 
 error:
@@ -127,6 +132,23 @@ int v4l2_m2m_device_set_format(struct v4l2_m2m_device* dev, enum v4l2_buf_type t
 	if (ioctl(dev->video_fd, VIDIOC_S_FMT, format) < 0) {
 		return -1;  // TODO: leaves format in an invalid state.
 	}
+
+	return 0;
+}
+
+int v4l2_m2m_device_request_buffers(struct v4l2_m2m_device* dev, enum v4l2_buf_type type, unsigned* buffers_count) {
+	struct v4l2_requestbuffers buffers = {
+		.type = type,
+		.memory = V4L2_MEMORY_MMAP,
+		.count = *buffers_count,
+	};
+
+	if (ioctl(dev->video_fd, VIDIOC_REQBUFS, &buffers) < 0) {
+		request_log("Unable to request buffers: %s\n", strerror(errno));
+		return -1;
+	}
+
+	*buffers_count = buffers.count;  // Actual amount may differ
 
 	return 0;
 }
@@ -191,26 +213,6 @@ int v4l2_query_buffer(int video_fd, unsigned int type, unsigned int index,
 
 		if (offsets != NULL)
 			offsets[0] = buffer.m.offset;
-	}
-
-	return 0;
-}
-
-int v4l2_request_buffers(int video_fd, unsigned int type,
-			 unsigned int buffers_count)
-{
-	struct v4l2_requestbuffers buffers;
-	int rc;
-
-	memset(&buffers, 0, sizeof(buffers));
-	buffers.type = type;
-	buffers.memory = V4L2_MEMORY_MMAP;
-	buffers.count = buffers_count;
-
-	rc = ioctl(video_fd, VIDIOC_REQBUFS, &buffers);
-	if (rc < 0) {
-		request_log("Unable to request buffers: %s\n", strerror(errno));
-		return -1;
 	}
 
 	return 0;

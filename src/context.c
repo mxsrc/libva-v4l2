@@ -137,7 +137,8 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 		return result;
 	}
 
-	rc = v4l2_request_buffers(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surfaces_count);
+	unsigned usurfaces_count = surfaces_count;
+	rc = v4l2_m2m_device_request_buffers(&driver_data->device, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, &usurfaces_count);
 	if (rc < 0) {
 		status = VA_STATUS_ERROR_ALLOCATION_FAILED;
 		goto error;

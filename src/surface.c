@@ -111,7 +111,7 @@ VAStatus RequestCreateSurfaces2(VADriverContextP context, unsigned int format,
 }
 
 VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surfaces_ids,
-				unsigned int surfaces_count) {
+				unsigned surfaces_count) {
 	struct request_data *driver_data = context->pDriverData;
 	struct object_surface *surface_object;
 
@@ -131,9 +131,9 @@ VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surf
 
 	struct v4l2_pix_format_mplane* driver_format = &driver_data->device.capture_format.fmt.pix_mp;
 
-	if (v4l2_request_buffers(driver_data->device.video_fd,
+	if (v4l2_m2m_device_request_buffers(&driver_data->device,
 				V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-				surfaces_count) < 0)
+				&surfaces_count) < 0)
 		return VA_STATUS_ERROR_ALLOCATION_FAILED;
 
 	for (int i = 0; i < surfaces_count; i++) {
