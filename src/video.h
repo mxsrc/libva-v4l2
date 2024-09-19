@@ -22,16 +22,15 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef _VIDEO_H_
-#define _VIDEO_H_
+#pragma once
 
-#include <stdbool.h>
+extern "C" {
 #include <stdint.h>
-
 #include <linux/videodev2.h>
+}
 
 struct video_format {
-	char *description;
+	const char *description;
 	unsigned int v4l2_format;
 	unsigned int drm_format;
 	uint64_t drm_modifier;
@@ -39,5 +38,3 @@ struct video_format {
 };
 
 const struct video_format *video_format_find(unsigned int pixelformat);
-
-#endif

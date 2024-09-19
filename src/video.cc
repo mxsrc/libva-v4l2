@@ -22,17 +22,17 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <errno.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
+#include "video.h"
+
+#include <cstdlib>
+#include <cstring>
+
+extern "C" {
+#include <linux/videodev2.h>
 #include <sys/ioctl.h>
 
 #include <libdrm/drm_fourcc.h>
-#include <linux/videodev2.h>
-
-#include "utils.h"
-#include "video.h"
+}
 
 static void nv12_derive_layout(unsigned width, unsigned height, unsigned size[VIDEO_MAX_PLANES], unsigned pitch[VIDEO_MAX_PLANES], unsigned* planes_count) {
 	size[0] = width * height;

@@ -22,12 +22,9 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef _MEDIA_H_
-#define _MEDIA_H_
+#pragma once
 
 int media_request_alloc(int media_fd);
 int media_request_reinit(int request_fd);
 int media_request_queue(int request_fd);
 int media_request_wait_completion(int request_fd);
-
-#endif

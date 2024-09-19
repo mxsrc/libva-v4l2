@@ -23,10 +23,11 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef _SUBPICTURE_H_
-#define _SUBPICTURE_H_
+#pragma once
 
+extern "C" {
 #include <va/va_backend.h>
+}
 
 VAStatus RequestCreateSubpicture(VADriverContextP context, VAImageID image_id,
 				 VASubpictureID *subpicture_id);
@@ -65,5 +66,3 @@ VAStatus RequestDeassociateSubpicture(VADriverContextP context,
 				      VASubpictureID subpicture_id,
 				      VASurfaceID *surfaces_ids,
 				      int surfaces_count);
-
-#endif

@@ -25,25 +25,26 @@
  */
 
 #include "config.h"
-#include "request.h"
 
-#include <assert.h>
-#include <string.h>
+#include <cassert>
+#include <cstring>
 
+extern "C" {
+#include <linux/videodev2.h>
 #include <sys/ioctl.h>
 
-#include <linux/videodev2.h>
-
-#include "utils.h"
-#include "v4l2.h"
 #include <va/va.h>
+}
+
+#include "request.h"
+#include "v4l2.h"
 
 VAStatus RequestCreateConfig(VADriverContextP context, VAProfile profile,
 			     VAEntrypoint entrypoint,
 			     VAConfigAttrib *attributes, int attributes_count,
 			     VAConfigID *config_id)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_config *config_object;
 	VAConfigID id;
 	int i, index;
@@ -98,7 +99,7 @@ VAStatus RequestCreateConfig(VADriverContextP context, VAProfile profile,
 
 VAStatus RequestDestroyConfig(VADriverContextP context, VAConfigID config_id)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_config *config_object;
 
 	config_object = CONFIG(driver_data, config_id);
@@ -114,7 +115,7 @@ VAStatus RequestDestroyConfig(VADriverContextP context, VAConfigID config_id)
 VAStatus RequestQueryConfigProfiles(VADriverContextP context,
 				    VAProfile *profiles, int *profiles_count)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	unsigned int index = 0;
 	bool found;
 
@@ -193,7 +194,7 @@ VAStatus RequestQueryConfigAttributes(VADriverContextP context,
 				      VAConfigAttrib *attributes,
 				      int *attributes_count)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_config *config_object;
 	int i;
 
@@ -223,9 +224,7 @@ VAStatus RequestGetConfigAttributes(VADriverContextP context, VAProfile profile,
 				    VAConfigAttrib *attributes,
 				    int attributes_count)
 {
-	unsigned int i;
-
-	for (i = 0; i < attributes_count; i++) {
+	for (int i = 0; i < attributes_count; i++) {
 		switch (attributes[i].type) {
 		case VAConfigAttribRTFormat:
 			attributes[i].value = VA_RT_FORMAT_YUV420;

@@ -25,22 +25,24 @@
  */
 
 #include "image.h"
+
+#include <cassert>
+#include <cstring>
+
+extern "C" {
+#include <linux/videodev2.h>
+}
+
 #include "buffer.h"
 #include "request.h"
 #include "surface.h"
-#include "video.h"
-
-#include <assert.h>
-#include <linux/videodev2.h>
-#include <string.h>
-
-#include "utils.h"
 #include "v4l2.h"
+#include "video.h"
 
 VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 			    int width, int height, VAImage *image)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	unsigned int destination_sizes[VIDEO_MAX_PLANES];
 	struct object_image *image_object;
 	VABufferID buffer_id;
@@ -63,7 +65,7 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 				destination_sizes, image->pitches, &image->num_planes);
 	} else {
 		image->num_planes = driver_format->num_planes;
-		for (int i = 0; i < image->num_planes; i += 1) {
+		for (unsigned i = 0; i < image->num_planes; i += 1) {
 			destination_sizes[i] = driver_format->plane_fmt[i].sizeimage;
 			image->pitches[i] = driver_format->plane_fmt[i].bytesperline;
 		}
@@ -96,7 +98,7 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 
 VAStatus RequestDestroyImage(VADriverContextP context, VAImageID image_id)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_image *image_object;
 	VAStatus status;
 
@@ -114,7 +116,7 @@ VAStatus RequestDestroyImage(VADriverContextP context, VAImageID image_id)
 	return VA_STATUS_SUCCESS;
 }
 
-static VAStatus copy_surface_to_image (struct request_data *driver_data,
+static VAStatus copy_surface_to_image (RequestData *driver_data,
 				       struct object_surface *surface_object,
 				       VAImage *image)
 {
@@ -137,7 +139,7 @@ static VAStatus copy_surface_to_image (struct request_data *driver_data,
 VAStatus RequestDeriveImage(VADriverContextP context, VASurfaceID surface_id,
 			    VAImage *image)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_surface *surface_object;
 	struct object_buffer *buffer_object;
 	VAImageFormat format;
@@ -191,7 +193,7 @@ VAStatus RequestGetImage(VADriverContextP context, VASurfaceID surface_id,
 			 int x, int y, unsigned int width, unsigned int height,
 			 VAImageID image_id)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_surface *surface_object;
 	struct object_image *image_object;
 	VAImage *image;

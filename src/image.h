@@ -24,10 +24,11 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef _IMAGE_H_
-#define _IMAGE_H_
+#pragma once
 
+extern "C" {
 #include <va/va_backend.h>
+}
 
 #include "object_heap.h"
 
@@ -57,5 +58,3 @@ VAStatus RequestPutImage(VADriverContextP context, VASurfaceID surface_id,
 			 unsigned int src_width, unsigned int src_height,
 			 int dst_x, int dst_y, unsigned int dst_width,
 			 unsigned int dst_height);
-
-#endif

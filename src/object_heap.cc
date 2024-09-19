@@ -22,14 +22,15 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <stdlib.h>
-
 #include "object_heap.h"
+
+#include <cstdlib>
+#include <cstdint>
 
 static int object_heap_expand(struct object_heap *heap)
 {
 	struct object_base *object;
-	void *new_heap_index;
+	uint8_t *new_heap_index;
 	int new_heap_size = heap->heap_size + heap->heap_increment;
 	int bucket_index = new_heap_size / heap->heap_increment - 1;
 	int next_free;
@@ -37,10 +38,8 @@ static int object_heap_expand(struct object_heap *heap)
 
 	if (bucket_index >= heap->num_buckets) {
 		int new_num_buckets = heap->num_buckets + 8;
-		void **new_bucket;
-
-		new_bucket = realloc(heap->bucket,
-				     new_num_buckets * sizeof(void *));
+		uint8_t **new_bucket = static_cast<uint8_t**>(realloc(heap->bucket,
+				     new_num_buckets * sizeof(void *)));
 		if (new_bucket == NULL)
 			return -1;
 
@@ -48,7 +47,7 @@ static int object_heap_expand(struct object_heap *heap)
 		heap->bucket = new_bucket;
 	}
 
-	new_heap_index = malloc(heap->heap_increment * heap->object_size);
+	new_heap_index = static_cast<uint8_t*>(malloc(heap->heap_increment * heap->object_size));
 	if (new_heap_index == NULL)
 		return -1;
 

@@ -22,11 +22,11 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef _V4L2_H_
-#define _V4L2_H_
+#pragma once
 
+extern "C" {
 #include <linux/videodev2.h>
-#include <stdbool.h>
+}
 
 #define SOURCE_SIZE_MAX						(1024 * 1024)
 
@@ -45,22 +45,20 @@ int v4l2_m2m_device_set_format(struct v4l2_m2m_device* dev, enum v4l2_buf_type t
 		    unsigned int width, unsigned int height);
 int v4l2_m2m_device_request_buffers(struct v4l2_m2m_device* dev, enum v4l2_buf_type type, unsigned* buffers_count);
 
-bool v4l2_find_format(int video_fd, unsigned int type,
+bool v4l2_find_format(int video_fd, enum v4l2_buf_type type,
 		      unsigned int pixelformat);
-int v4l2_query_buffer(int video_fd, unsigned int type, unsigned int index,
+int v4l2_query_buffer(int video_fd, enum v4l2_buf_type type, unsigned int index,
 		      unsigned int *lengths, unsigned int *offsets,
 		      unsigned* buffer_count);
-int v4l2_queue_buffer(int video_fd, int request_fd, unsigned int type,
+int v4l2_queue_buffer(int video_fd, int request_fd, enum v4l2_buf_type type,
 		      struct timeval *timestamp, unsigned int index,
 		      unsigned int size, unsigned int buffers_count);
-int v4l2_dequeue_buffer(int video_fd, int request_fd, unsigned int type,
+int v4l2_dequeue_buffer(int video_fd, int request_fd, enum v4l2_buf_type type,
 			unsigned int index, unsigned int buffers_count);
-int v4l2_export_buffer(int video_fd, unsigned int type, unsigned int index,
+int v4l2_export_buffer(int video_fd, enum v4l2_buf_type type, unsigned int index,
 		       unsigned int flags, int *export_fds,
 		       unsigned int export_fds_count);
 int v4l2_set_control(int video_fd, int request_fd, unsigned int id, void *data,
 		     unsigned int size);
 int v4l2_set_controls(int video_fd, int request_fd, struct v4l2_ext_control*,  unsigned int count);
-int v4l2_set_stream(int video_fd, unsigned int type, bool enable);
-
-#endif
+int v4l2_set_stream(int video_fd, enum v4l2_buf_type type, bool enable);

@@ -24,26 +24,27 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "request.h"
 #include "surface.h"
 
-#include <assert.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
 
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
+
+extern "C" {
+#include <fcntl.h>
+#include <linux/videodev2.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <unistd.h>
 
+#include <libdrm/drm_fourcc.h>
 #include <va/va.h>
 #include <va/va_drmcommon.h>
-#include <drm_fourcc.h>
-#include <linux/videodev2.h>
+}
 
 #include "media.h"
-#include "utils.h"
+#include "request.h"
 #include "v4l2.h"
 #include "video.h"
 
@@ -57,7 +58,7 @@ VAStatus RequestCreateSurfaces2(VADriverContextP context, unsigned int format,
 	// TODO inspect attributes
 	// TODO ensure dimensions match previous surfaces
 
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_surface *surface_object;
 
 	if (format != VA_RT_FORMAT_YUV420)
@@ -77,7 +78,7 @@ VAStatus RequestCreateSurfaces2(VADriverContextP context, unsigned int format,
 		}
         }
 
-	for (int i = 0; i < surfaces_count; i++) {
+	for (unsigned i = 0; i < surfaces_count; i++) {
 		int id = object_heap_allocate(&driver_data->surface_heap);
 		surface_object = SURFACE(driver_data, id);
 		if (surface_object == NULL)
@@ -112,7 +113,7 @@ VAStatus RequestCreateSurfaces2(VADriverContextP context, unsigned int format,
 
 VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surfaces_ids,
 				unsigned surfaces_count) {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_surface *surface_object;
 
 	if (surfaces_count < 1) {
@@ -136,7 +137,7 @@ VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surf
 				&surfaces_count) < 0)
 		return VA_STATUS_ERROR_ALLOCATION_FAILED;
 
-	for (int i = 0; i < surfaces_count; i++) {
+	for (unsigned i = 0; i < surfaces_count; i++) {
 		surface_object = SURFACE(driver_data, surfaces_ids[i]);
 		if (surface_object == NULL)
 			return VA_STATUS_ERROR_INVALID_SURFACE;
@@ -156,11 +157,11 @@ VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surf
 
 		for (int j = 0; j < driver_format->num_planes; j++) {
 			surface_object->destination_plane_data[j] =
-				mmap(NULL,
+				static_cast<uint8_t*>(mmap(NULL,
 				     surface_object->destination_plane_size[j],
 				     PROT_READ | PROT_WRITE, MAP_SHARED,
 				     driver_data->device.video_fd,
-				     map_offsets[j]);
+				     map_offsets[j]));
 
 			if (surface_object->destination_plane_data[j] == MAP_FAILED)
 				return VA_STATUS_ERROR_ALLOCATION_FAILED;
@@ -172,14 +173,14 @@ VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surf
 					surface_object->destination_logical_plane_size, surface_object->destination_logical_plane_pitch,
 					&surface_object->destination_logical_planes_count);
 
-			for (int j = 0; j < surface_object->destination_logical_planes_count; j += 1) {
+			for (unsigned j = 0; j < surface_object->destination_logical_planes_count; j += 1) {
 				surface_object->destination_logical_plane_index[j] = 0;
 				surface_object->destination_logical_plane_offset[j] = (j > 0) ?
 					(surface_object->destination_logical_plane_offset[j - 1] + surface_object->destination_logical_plane_size[j - 1]) : 0;
 			}
 		} else {
 			surface_object->destination_logical_planes_count = driver_format->num_planes;
-			for (int j = 0; j < surface_object->destination_logical_planes_count; j += 1) {
+			for (unsigned j = 0; j < surface_object->destination_logical_planes_count; j += 1) {
 				surface_object->destination_logical_plane_index[j] = j;
 				surface_object->destination_logical_plane_size[j] = driver_format->plane_fmt[j].sizeimage;
 				surface_object->destination_logical_plane_pitch[j] = driver_format->plane_fmt[j].bytesperline;
@@ -206,11 +207,11 @@ VAStatus RequestCreateSurfaces(VADriverContextP context, int width, int height,
 VAStatus RequestDestroySurfaces(VADriverContextP context,
 				VASurfaceID *surfaces_ids, int surfaces_count)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_surface *surface_object;
-	unsigned int i, j;
+	unsigned int j;
 
-	for (i = 0; i < surfaces_count; i++) {
+	for (int i = 0; i < surfaces_count; i++) {
 		surface_object = SURFACE(driver_data, surfaces_ids[i]);
 		if (surface_object == NULL)
 			return VA_STATUS_ERROR_INVALID_SURFACE;
@@ -238,7 +239,7 @@ VAStatus RequestDestroySurfaces(VADriverContextP context,
 
 VAStatus RequestSyncSurface(VADriverContextP context, VASurfaceID surface_id)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_surface *surface_object;
 	VAStatus status;
 	int rc;
@@ -320,7 +321,7 @@ VAStatus RequestQuerySurfaceAttributes(VADriverContextP context,
 	int memory_types;
 	unsigned int i = 0;
 
-	attributes_list = malloc(attributes_list_size);
+	attributes_list = static_cast<VASurfaceAttrib*>(malloc(attributes_list_size));
 	memset(attributes_list, 0, attributes_list_size);
 
 	attributes_list[i].type = VASurfaceAttribPixelFormat;
@@ -379,7 +380,7 @@ VAStatus RequestQuerySurfaceStatus(VADriverContextP context,
 				   VASurfaceID surface_id,
 				   VASurfaceStatus *status)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_surface *surface_object;
 
 	surface_object = SURFACE(driver_data, surface_id);
@@ -422,8 +423,8 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 				    VASurfaceID surface_id, uint32_t mem_type,
 				    uint32_t flags, void *descriptor)
 {
-	struct request_data *driver_data = context->pDriverData;
-	VADRMPRIMESurfaceDescriptor *surface_descriptor = descriptor;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
+	auto surface_descriptor = static_cast<VADRMPRIMESurfaceDescriptor*>(descriptor);
 	struct object_surface *surface_object;
 	int *export_fds = NULL;
 	unsigned int export_fds_count;
@@ -444,7 +445,7 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 		return VA_STATUS_ERROR_INVALID_SURFACE;
 
 	export_fds_count = surface_object->destination_planes_count;
-	export_fds = malloc(export_fds_count * sizeof(*export_fds));
+	export_fds = static_cast<int*>(malloc(export_fds_count * sizeof(*export_fds)));
 
 	rc = v4l2_export_buffer(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
 				surface_object->destination_index, O_RDONLY,

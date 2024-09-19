@@ -22,15 +22,18 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
+#include "media.h"
+
+#include <cerrno>
+#include <cstdlib>
+#include <cstring>
+
+extern "C" {
+#include <linux/media.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
+}
 
-#include <linux/media.h>
-
-#include "media.h"
 #include "utils.h"
 
 int media_request_alloc(int media_fd)

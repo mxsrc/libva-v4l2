@@ -25,24 +25,23 @@
  */
 
 #include "buffer.h"
-#include "context.h"
-#include "request.h"
-#include "surface.h"
-#include "video.h"
 
-#include <unistd.h>
+#include <cstdlib>
+#include <cstring>
+
+extern "C" {
 #include <fcntl.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-
-#include <va/va.h>
-#include <va/va_drmcommon.h>
+#include <unistd.h>
 #include <linux/videodev2.h>
 
-#include "utils.h"
+#include <va/va_drmcommon.h>
+#include <va/va.h>
+}
+
+#include "request.h"
+#include "surface.h"
 #include "v4l2.h"
 
 VAStatus RequestCreateBuffer(VADriverContextP context, VAContextID context_id,
@@ -50,9 +49,9 @@ VAStatus RequestCreateBuffer(VADriverContextP context, VAContextID context_id,
 			     unsigned int count, void *data,
 			     VABufferID *buffer_id)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_buffer *buffer_object = NULL;
-	void *buffer_data;
+	uint8_t* buffer_data;
 	VAStatus status;
 	VABufferID id;
 
@@ -77,7 +76,7 @@ VAStatus RequestCreateBuffer(VADriverContextP context, VAContextID context_id,
 		goto error;
 	}
 
-	buffer_data = malloc(size * count);
+	buffer_data = static_cast<uint8_t*>(malloc(size * count));
 	if (buffer_data == NULL) {
 		status = VA_STATUS_ERROR_ALLOCATION_FAILED;
 		goto error;
@@ -111,7 +110,7 @@ complete:
 
 VAStatus RequestDestroyBuffer(VADriverContextP context, VABufferID buffer_id)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_buffer *buffer_object;
 
 	buffer_object = BUFFER(driver_data, buffer_id);
@@ -130,7 +129,7 @@ VAStatus RequestDestroyBuffer(VADriverContextP context, VABufferID buffer_id)
 VAStatus RequestMapBuffer(VADriverContextP context, VABufferID buffer_id,
 			  void **data_map)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_buffer *buffer_object;
 
 	buffer_object = BUFFER(driver_data, buffer_id);
@@ -145,7 +144,7 @@ VAStatus RequestMapBuffer(VADriverContextP context, VABufferID buffer_id,
 
 VAStatus RequestUnmapBuffer(VADriverContextP context, VABufferID buffer_id)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_buffer *buffer_object;
 
 	buffer_object = BUFFER(driver_data, buffer_id);
@@ -160,7 +159,7 @@ VAStatus RequestUnmapBuffer(VADriverContextP context, VABufferID buffer_id)
 VAStatus RequestBufferSetNumElements(VADriverContextP context,
 				     VABufferID buffer_id, unsigned int count)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_buffer *buffer_object;
 
 	buffer_object = BUFFER(driver_data, buffer_id);
@@ -179,7 +178,7 @@ VAStatus RequestBufferInfo(VADriverContextP context, VABufferID buffer_id,
 			   VABufferType *type, unsigned int *size,
 			   unsigned int *count)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_buffer *buffer_object;
 
 	buffer_object = BUFFER(driver_data, buffer_id);
@@ -197,7 +196,7 @@ VAStatus RequestAcquireBufferHandle(VADriverContextP context,
 				    VABufferID buffer_id,
 				    VABufferInfo *buffer_info)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_buffer *buffer_object;
 	struct object_surface *surface_object;
 	int export_fd;
@@ -238,7 +237,7 @@ VAStatus RequestAcquireBufferHandle(VADriverContextP context,
 VAStatus RequestReleaseBufferHandle(VADriverContextP context,
 	VABufferID buffer_id)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_buffer *buffer_object;
 	int export_fd;
 

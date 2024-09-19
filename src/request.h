@@ -24,18 +24,18 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef _V4L2_REQUEST_H_
-#define _V4L2_REQUEST_H_
+#pragma once
 
-#include <stdbool.h>
+extern "C" {
+#include <linux/videodev2.h>
+
+#include <va/va.h>
+}
 
 #include "context.h"
 #include "object_heap.h"
-#include "video.h"
 #include "v4l2.h"
-#include <va/va.h>
-
-#include <linux/videodev2.h>
+#include "video.h"
 
 #define V4L2_REQUEST_STR_VENDOR			"v4l2-request"
 
@@ -46,7 +46,7 @@
 #define V4L2_REQUEST_MAX_SUBPIC_FORMATS		4
 #define V4L2_REQUEST_MAX_DISPLAY_ATTRIBUTES	4
 
-struct request_data {
+struct RequestData {
 	struct object_heap config_heap;
 	struct object_heap context_heap;
 	struct object_heap surface_heap;
@@ -57,7 +57,5 @@ struct request_data {
 	const struct video_format *video_format;
 };
 
-VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context);
+extern "C" VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context);
 VAStatus RequestTerminate(VADriverContextP context);
-
-#endif

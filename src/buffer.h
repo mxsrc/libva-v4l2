@@ -24,10 +24,11 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef _BUFFER_H_
-#define _BUFFER_H_
+#pragma once
 
+extern "C" {
 #include <va/va_backend.h>
+}
 
 #include "object_heap.h"
 #include "request.h"
@@ -43,7 +44,7 @@ struct object_buffer {
 	unsigned int initial_count;
 	unsigned int count;
 
-	void *data;
+	uint8_t* data;
 	unsigned int size;
 
 	VASurfaceID derived_surface_id;
@@ -68,5 +69,3 @@ VAStatus RequestAcquireBufferHandle(VADriverContextP context,
 				    VABufferInfo *buffer_info);
 VAStatus RequestReleaseBufferHandle(VADriverContextP context,
 	VABufferID buffer_id);
-
-#endif

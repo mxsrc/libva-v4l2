@@ -25,32 +25,30 @@
  */
 
 #include "picture.h"
+
+#include <cassert>
+#include <cstring>
+
+extern "C" {
+#include <linux/videodev2.h>
+#include <sys/ioctl.h>
+
+#include <va/va.h>
+}
+
 #include "buffer.h"
 #include "config.h"
 #include "context.h"
+#include "h264.h"
+#include "media.h"
+#include "mpeg2.h"
 #include "request.h"
 #include "surface.h"
-
-#include "h264.h"
-#include "mpeg2.h"
+#include "v4l2.h"
 #include "vp8.h"
 #include "vp9.h"
 
-#include <assert.h>
-#include <string.h>
-
-#include <errno.h>
-
-#include <sys/ioctl.h>
-
-#include <linux/videodev2.h>
-#include <va/va.h>
-
-#include "media.h"
-#include "utils.h"
-#include "v4l2.h"
-
-static VAStatus codec_store_buffer(struct request_data *driver_data,
+static VAStatus codec_store_buffer(RequestData *driver_data,
 				   VAProfile profile,
 				   struct object_surface *surface_object,
 				   struct object_buffer *buffer_object)
@@ -81,7 +79,7 @@ static VAStatus codec_store_buffer(struct request_data *driver_data,
 	}
 }
 
-static VAStatus codec_set_controls(struct request_data *driver_data,
+static VAStatus codec_set_controls(RequestData *driver_data,
 				   struct object_context *context,
 				   VAProfile profile,
 				   struct object_surface *surface_object)
@@ -115,7 +113,7 @@ static VAStatus codec_set_controls(struct request_data *driver_data,
 VAStatus RequestBeginPicture(VADriverContextP context, VAContextID context_id,
 			     VASurfaceID surface_id)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_context *context_object;
 	struct object_surface *surface_object;
 
@@ -139,7 +137,7 @@ VAStatus RequestBeginPicture(VADriverContextP context, VAContextID context_id,
 VAStatus RequestRenderPicture(VADriverContextP context, VAContextID context_id,
 			      VABufferID *buffers_ids, int buffers_count)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_context *context_object;
 	struct object_config *config_object;
 	struct object_surface *surface_object;
@@ -176,7 +174,7 @@ VAStatus RequestRenderPicture(VADriverContextP context, VAContextID context_id,
 
 VAStatus RequestEndPicture(VADriverContextP context, VAContextID context_id)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_context *context_object;
 	struct object_config *config_object;
 	struct object_surface *surface_object;

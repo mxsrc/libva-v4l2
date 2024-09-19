@@ -25,42 +25,44 @@
  */
 
 #include "context.h"
-#include "config.h"
-#include "request.h"
-#include "surface.h"
 
-#include <stdlib.h>
-#include <string.h>
+#include <cassert>
+#include <cerrno>
+#include <cstdlib>
+#include <cstring>
 
-#include <assert.h>
-#include <errno.h>
-
+extern "C" {
+#include <linux/videodev2.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
-#include <linux/videodev2.h>
+#include <va/va.h>
+}
 
+#include "config.h"
+#include "request.h"
+#include "surface.h"
 #include "utils.h"
 #include "v4l2.h"
-#include <va/va.h>
 
 VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 			      int picture_width, int picture_height, int flags,
 			      VASurfaceID *surfaces_ids, int surfaces_count,
 			      VAContextID *context_id)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_config *config_object;
 	struct object_surface *surface_object;
 	struct object_context *context_object = NULL;
 	unsigned int length;
 	unsigned int offset;
-	void *source_data = MAP_FAILED;
+	unsigned usurfaces_count;
+	unsigned buffer_count = 0;
+	uint8_t *source_data = static_cast<uint8_t*>(MAP_FAILED);
 	VASurfaceID *ids = NULL;
 	VAContextID id;
 	VAStatus status;
 	unsigned int pixelformat;
-	unsigned int i;
 	int rc;
 
 	if (!driver_data->video_format)
@@ -132,12 +134,12 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 	}
 
 	// Now that the output format is set, we can set the capture format and allocate the surfaces.
-	VAStatus result = RequestCreateSurfacesReally(context, surfaces_ids, surfaces_count);
-	if (result != VA_STATUS_SUCCESS) {
-		return result;
+	status = RequestCreateSurfacesReally(context, surfaces_ids, surfaces_count);
+	if (status != VA_STATUS_SUCCESS) {
+		goto error;
 	}
 
-	unsigned usurfaces_count = surfaces_count;
+	usurfaces_count = surfaces_count;
 	rc = v4l2_m2m_device_request_buffers(&driver_data->device, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, &usurfaces_count);
 	if (rc < 0) {
 		status = VA_STATUS_ERROR_ALLOCATION_FAILED;
@@ -149,7 +151,7 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 	 * we don't have any indication wrt its life time. Let's make sure
 	 * its life span is under our control.
 	 */
-	ids = malloc(surfaces_count * sizeof(VASurfaceID));
+	ids = static_cast<VASurfaceID*>(malloc(surfaces_count * sizeof(VASurfaceID)));
 	if (ids == NULL) {
 		status = VA_STATUS_ERROR_ALLOCATION_FAILED;
 		goto error;
@@ -157,14 +159,13 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 
 	memcpy(ids, surfaces_ids, surfaces_count * sizeof(VASurfaceID));
 
-	for (i = 0; i < surfaces_count; i++) {
+	for (int i = 0; i < surfaces_count; i++) {
 		surface_object = SURFACE(driver_data, surfaces_ids[i]);
 		if (surface_object == NULL) {
 			status = VA_STATUS_ERROR_INVALID_SURFACE;
 			goto error;
 		}
 
-		unsigned buffer_count = 0;
 		rc = v4l2_query_buffer(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
 				       i, &length, &offset, &buffer_count);
 		if (rc < 0) {
@@ -172,8 +173,8 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 			goto error;
 		}
 
-		source_data = mmap(NULL, length, PROT_READ | PROT_WRITE,
-				   MAP_SHARED, driver_data->device.video_fd, offset);
+		source_data = static_cast<uint8_t*>(mmap(NULL, length, PROT_READ | PROT_WRITE,
+				   MAP_SHARED, driver_data->device.video_fd, offset));
 		if (source_data == MAP_FAILED) {
 			status = VA_STATUS_ERROR_ALLOCATION_FAILED;
 			goto error;
@@ -226,7 +227,7 @@ complete:
 
 VAStatus RequestDestroyContext(VADriverContextP context, VAContextID context_id)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_context *context_object;
 	int rc;
 

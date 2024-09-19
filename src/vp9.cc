@@ -1,8 +1,8 @@
 #include "vp9.h"
 
-#include <assert.h>
-#include <string.h>
-#include <stdio.h>
+#include <cassert>
+#include <cstdio>
+#include <cstring>
 
 #include <gst/codecparsers/gstvp9parser.h>
 #include <gst/codecs/gstvp9statefulparser.h>
@@ -42,7 +42,7 @@ exit:
 	return ret;
 }
 
-static struct v4l2_ctrl_vp9_frame va_to_v4l2_frame(struct request_data *data, VADecPictureParameterBufferVP9 *picture, VASliceParameterBufferVP9 *slice, GstVp9FrameHeader* header) {
+static struct v4l2_ctrl_vp9_frame va_to_v4l2_frame(RequestData *data, VADecPictureParameterBufferVP9 *picture, VASliceParameterBufferVP9 *slice, GstVp9FrameHeader* header) {
 	struct object_surface* last_ref_frame = SURFACE(data, picture->reference_frames[picture->pic_fields.bits.last_ref_frame]);
 	struct object_surface* golden_ref_frame = SURFACE(data, picture->reference_frames[picture->pic_fields.bits.golden_ref_frame]);
 	struct object_surface* alt_ref_frame = SURFACE(data, picture->reference_frames[picture->pic_fields.bits.alt_ref_frame]);
@@ -53,9 +53,9 @@ static struct v4l2_ctrl_vp9_frame va_to_v4l2_frame(struct request_data *data, VA
 			//.mode_deltas = {10, 0},
 			.level = picture->filter_level,
 			.sharpness = picture->sharpness_level,
-			.flags = 
+			.flags = static_cast<uint8_t>(
 				((header->loop_filter_params.loop_filter_delta_enabled) ? V4L2_VP9_LOOP_FILTER_FLAG_DELTA_ENABLED : 0) | 
-				((header->loop_filter_params.loop_filter_delta_update) ? V4L2_VP9_LOOP_FILTER_FLAG_DELTA_UPDATE : 0),
+				((header->loop_filter_params.loop_filter_delta_update) ? V4L2_VP9_LOOP_FILTER_FLAG_DELTA_UPDATE : 0)),
 		},
 		.quant = {
 			.base_q_idx = header->quantization_params.base_q_idx,
@@ -64,41 +64,41 @@ static struct v4l2_ctrl_vp9_frame va_to_v4l2_frame(struct request_data *data, VA
 			.delta_q_uv_ac = header->quantization_params.delta_q_uv_ac,
 		},
 		.seg = {
-			.flags =  // UPDATE_DATA, ABS_OR_DELTA_UPDATE?
+			.flags = static_cast<uint8_t>( // UPDATE_DATA, ABS_OR_DELTA_UPDATE?
 				((picture->pic_fields.bits.segmentation_enabled) ? V4L2_VP9_SEGMENTATION_FLAG_ENABLED : 0) | 
 				((picture->pic_fields.bits.segmentation_update_map) ? V4L2_VP9_SEGMENTATION_FLAG_UPDATE_MAP : 0) | 
-				((picture->pic_fields.bits.segmentation_temporal_update) ? V4L2_VP9_SEGMENTATION_FLAG_TEMPORAL_UPDATE : 0),
+				((picture->pic_fields.bits.segmentation_temporal_update) ? V4L2_VP9_SEGMENTATION_FLAG_TEMPORAL_UPDATE : 0)),
 		},
 		.flags =  // COLOR_RANGE_FULL_SWING?
-			((picture->pic_fields.bits.frame_type == 0) ? V4L2_VP9_FRAME_FLAG_KEY_FRAME : 0) | 
-			((picture->pic_fields.bits.show_frame) ? V4L2_VP9_FRAME_FLAG_SHOW_FRAME : 0) | 
-			((picture->pic_fields.bits.error_resilient_mode) ? V4L2_VP9_FRAME_FLAG_ERROR_RESILIENT : 0) | 
-			((picture->pic_fields.bits.intra_only) ? V4L2_VP9_FRAME_FLAG_INTRA_ONLY : 0) | 
-			((picture->pic_fields.bits.allow_high_precision_mv) ? V4L2_VP9_FRAME_FLAG_ALLOW_HIGH_PREC_MV : 0) | 
-			((picture->pic_fields.bits.refresh_frame_context) ? V4L2_VP9_FRAME_FLAG_REFRESH_FRAME_CTX : 0) | 
-			((picture->pic_fields.bits.frame_parallel_decoding_mode) ? V4L2_VP9_FRAME_FLAG_PARALLEL_DEC_MODE : 0) | 
-			((picture->pic_fields.bits.subsampling_x) ? V4L2_VP9_FRAME_FLAG_X_SUBSAMPLING : 0) | 
-			((picture->pic_fields.bits.subsampling_y) ? V4L2_VP9_FRAME_FLAG_Y_SUBSAMPLING : 0),
+			((picture->pic_fields.bits.frame_type == 0) ? V4L2_VP9_FRAME_FLAG_KEY_FRAME : 0u) | 
+			((picture->pic_fields.bits.show_frame) ? V4L2_VP9_FRAME_FLAG_SHOW_FRAME : 0u) | 
+			((picture->pic_fields.bits.error_resilient_mode) ? V4L2_VP9_FRAME_FLAG_ERROR_RESILIENT : 0u) | 
+			((picture->pic_fields.bits.intra_only) ? V4L2_VP9_FRAME_FLAG_INTRA_ONLY : 0u) | 
+			((picture->pic_fields.bits.allow_high_precision_mv) ? V4L2_VP9_FRAME_FLAG_ALLOW_HIGH_PREC_MV : 0u) | 
+			((picture->pic_fields.bits.refresh_frame_context) ? V4L2_VP9_FRAME_FLAG_REFRESH_FRAME_CTX : 0u) | 
+			((picture->pic_fields.bits.frame_parallel_decoding_mode) ? V4L2_VP9_FRAME_FLAG_PARALLEL_DEC_MODE : 0u) | 
+			((picture->pic_fields.bits.subsampling_x) ? V4L2_VP9_FRAME_FLAG_X_SUBSAMPLING : 0u) | 
+			((picture->pic_fields.bits.subsampling_y) ? V4L2_VP9_FRAME_FLAG_Y_SUBSAMPLING : 0u),
 		.compressed_header_size = picture->first_partition_size,
 		.uncompressed_header_size = picture->frame_header_length_in_bytes,
-		.frame_width_minus_1 = picture->frame_width - 1,
-		.frame_height_minus_1 = picture->frame_height - 1,
-		.render_width_minus_1 = picture->frame_width - 1,
-		.render_height_minus_1 = picture->frame_height - 1,
+		.frame_width_minus_1 = static_cast<uint16_t>(picture->frame_width - 1),
+		.frame_height_minus_1 = static_cast<uint16_t>(picture->frame_height - 1),
+		.render_width_minus_1 = static_cast<uint16_t>(picture->frame_width - 1),
+		.render_height_minus_1 = static_cast<uint16_t>(picture->frame_height - 1),
 		.last_frame_ts = (last_ref_frame != NULL) ? v4l2_timeval_to_ns(&last_ref_frame->timestamp) : 0,
 		.golden_frame_ts = (golden_ref_frame != NULL) ? v4l2_timeval_to_ns(&golden_ref_frame->timestamp) : 0,
 		.alt_frame_ts = (alt_ref_frame != NULL) ? v4l2_timeval_to_ns(&alt_ref_frame->timestamp) : 0,
-		.ref_frame_sign_bias =
+		.ref_frame_sign_bias = static_cast<uint8_t>(
 			((picture->pic_fields.bits.last_ref_frame_sign_bias) ? V4L2_VP9_SIGN_BIAS_LAST : 0) |
 			((picture->pic_fields.bits.golden_ref_frame_sign_bias) ? V4L2_VP9_SIGN_BIAS_GOLDEN : 0) |
-			((picture->pic_fields.bits.alt_ref_frame_sign_bias) ? V4L2_VP9_SIGN_BIAS_ALT : 0),
-		.reset_frame_context = (picture->pic_fields.bits.reset_frame_context > 0) ? picture->pic_fields.bits.reset_frame_context - 1 : 0,  // V4L2 codes the value differently
-		.reset_frame_context = picture->pic_fields.bits.frame_context_idx,
+			((picture->pic_fields.bits.alt_ref_frame_sign_bias) ? V4L2_VP9_SIGN_BIAS_ALT : 0)),
+		.reset_frame_context = static_cast<uint8_t>((picture->pic_fields.bits.reset_frame_context > 0) ? picture->pic_fields.bits.reset_frame_context - 1 : 0),  // V4L2 codes the value differently
+		//FIXME.reset_frame_context = picture->pic_fields.bits.frame_context_idx,
 		.profile = picture->profile,
 		.bit_depth = picture->bit_depth,
 		.interpolation_filter = header->interpolation_filter,
-		.tile_rows_log2 = picture->log2_tile_rows,
 		.tile_cols_log2 = picture->log2_tile_columns,
+		.tile_rows_log2 = picture->log2_tile_rows,
 	};
 
 	memcpy(result.lf.ref_deltas, header->loop_filter_params.loop_filter_ref_deltas, GST_VP9_MAX_REF_LF_DELTAS);
@@ -140,7 +140,7 @@ struct v4l2_ctrl_vp9_compressed_hdr gst_to_v4l2_compressed_header(GstVp9FrameHea
 	return result;
 }
 
-VAStatus vp9_store_buffer(struct request_data *driver_data,
+VAStatus vp9_store_buffer(RequestData *driver_data,
 			  struct object_surface *surface_object,
 			  struct object_buffer *buffer_object) {
 	switch (buffer_object->type) {
@@ -183,7 +183,7 @@ VAStatus vp9_store_buffer(struct request_data *driver_data,
 	}
 }
 
-int vp9_set_controls(struct request_data *data,
+int vp9_set_controls(RequestData *data,
 		     struct object_context *context,
 		     struct object_surface *surface) {
 	GstVp9FrameHeader header = {};
@@ -197,13 +197,13 @@ int vp9_set_controls(struct request_data *data,
 	struct v4l2_ext_control controls[2] = { 0 };
 	controls[0] = (struct v4l2_ext_control){
 		.id = V4L2_CID_STATELESS_VP9_FRAME,
-		.ptr = &frame,
 		.size = sizeof(frame),
+		.ptr = &frame,
 	};
 	controls[1] = (struct v4l2_ext_control){
 		.id = V4L2_CID_STATELESS_VP9_COMPRESSED_HDR,
-		.ptr = &hdr,
 		.size = sizeof(hdr),
+		.ptr = &hdr,
 	};
 	int rc = v4l2_set_controls(data->device.video_fd, surface->request_fd, controls, 2);
 	if (rc < 0) {

@@ -22,18 +22,21 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
+#include "v4l2.h"
+
+#include <cerrno>
+#include <cstdlib>
+#include <cstring>
+
+extern "C" {
+#include <fcntl.h>
+#include <linux/videodev2.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#include <fcntl.h>
 #include <unistd.h>
-
-#include <linux/videodev2.h>
+}
 
 #include "utils.h"
-#include "v4l2.h"
 
 static int query_capabilities(int video_fd, unsigned int *capabilities)
 {
@@ -138,9 +141,9 @@ int v4l2_m2m_device_set_format(struct v4l2_m2m_device* dev, enum v4l2_buf_type t
 
 int v4l2_m2m_device_request_buffers(struct v4l2_m2m_device* dev, enum v4l2_buf_type type, unsigned* buffers_count) {
 	struct v4l2_requestbuffers buffers = {
+		.count = *buffers_count,
 		.type = type,
 		.memory = V4L2_MEMORY_MMAP,
-		.count = *buffers_count,
 	};
 
 	if (ioctl(dev->video_fd, VIDIOC_REQBUFS, &buffers) < 0) {
@@ -153,7 +156,7 @@ int v4l2_m2m_device_request_buffers(struct v4l2_m2m_device* dev, enum v4l2_buf_t
 	return 0;
 }
 
-bool v4l2_find_format(int video_fd, unsigned int type, unsigned int pixelformat)
+bool v4l2_find_format(int video_fd, enum v4l2_buf_type type, unsigned int pixelformat)
 {
 	struct v4l2_fmtdesc fmtdesc;
 	int rc;
@@ -176,16 +179,16 @@ bool v4l2_find_format(int video_fd, unsigned int type, unsigned int pixelformat)
 	return false;
 }
 
-int v4l2_query_buffer(int video_fd, unsigned int type, unsigned int index,
+int v4l2_query_buffer(int video_fd, enum v4l2_buf_type type, unsigned int index,
 		      unsigned int *lengths, unsigned int *offsets,
 		      unsigned* buffers_count)
 {
-	struct v4l2_plane planes[VIDEO_MAX_PLANES] = {0};
+	struct v4l2_plane planes[VIDEO_MAX_PLANES] = {};
 	struct v4l2_buffer buffer = {
-		.type = type,
 		.index = index,
+		.type = type,
+		.m = { .planes = planes },
 		.length = VIDEO_MAX_PLANES,
-		.m.planes = planes,
 	};
 	unsigned int i;
 	int rc;
@@ -218,7 +221,7 @@ int v4l2_query_buffer(int video_fd, unsigned int type, unsigned int index,
 	return 0;
 }
 
-int v4l2_queue_buffer(int video_fd, int request_fd, unsigned int type,
+int v4l2_queue_buffer(int video_fd, int request_fd, enum v4l2_buf_type type,
 		      struct timeval *timestamp, unsigned int index,
 		      unsigned int size, unsigned int buffers_count)
 {
@@ -259,7 +262,7 @@ int v4l2_queue_buffer(int video_fd, int request_fd, unsigned int type,
 	return 0;
 }
 
-int v4l2_dequeue_buffer(int video_fd, int request_fd, unsigned int type,
+int v4l2_dequeue_buffer(int video_fd, int request_fd, enum v4l2_buf_type type,
 			unsigned int index, unsigned int buffers_count)
 {
 	struct v4l2_plane planes[buffers_count];
@@ -293,7 +296,7 @@ int v4l2_dequeue_buffer(int video_fd, int request_fd, unsigned int type,
 	return 0;
 }
 
-int v4l2_export_buffer(int video_fd, unsigned int type, unsigned int index,
+int v4l2_export_buffer(int video_fd, enum v4l2_buf_type type, unsigned int index,
 		       unsigned int flags, int *export_fds,
 		       unsigned int export_fds_count)
 {
@@ -375,7 +378,7 @@ int v4l2_set_controls(int video_fd, int request_fd, struct v4l2_ext_control* con
 	return 0;
 }
 
-int v4l2_set_stream(int video_fd, unsigned int type, bool enable)
+int v4l2_set_stream(int video_fd, enum v4l2_buf_type type, bool enable)
 {
 	enum v4l2_buf_type buf_type = type;
 	int rc;

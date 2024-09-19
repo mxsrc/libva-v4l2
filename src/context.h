@@ -24,13 +24,14 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef _CONTEXT_H_
-#define _CONTEXT_H_
+#pragma once
 
+extern "C" {
 #include <va/va_backend.h>
+}
 
-#include "object_heap.h"
 #include "h264.h"
+#include "object_heap.h"
 
 #define CONTEXT(data, id)                                                      \
 	((struct object_context *)object_heap_lookup(&(data)->context_heap, id))
@@ -61,5 +62,3 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 			      VAContextID *context_id);
 VAStatus RequestDestroyContext(VADriverContextP context,
 			       VAContextID context_id);
-
-#endif

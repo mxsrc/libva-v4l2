@@ -22,10 +22,13 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef OBJECT_HEAP_H
-#define OBJECT_HEAP_H
+#pragma once
 
+#include <cstdint>
+
+extern "C" {
 #include <pthread.h>
+}
 
 /*
  * Values
@@ -53,7 +56,7 @@ struct object_heap {
 	int next_free;
 	int heap_size;
 	int heap_increment;
-	void **bucket;
+	uint8_t **bucket;
 	int num_buckets;
 };
 
@@ -68,5 +71,3 @@ struct object_base *object_heap_first(struct object_heap *heap, int *iterator);
 struct object_base *object_heap_next(struct object_heap *heap, int *iterator);
 void object_heap_free(struct object_heap *heap, struct object_base *object);
 void object_heap_destroy(struct object_heap *heap);
-
-#endif

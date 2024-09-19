@@ -24,10 +24,11 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef _PICTURE_H_
-#define _PICTURE_H_
+#pragma once
 
+extern "C" {
 #include <va/va_backend.h>
+}
 
 #include "object_heap.h"
 
@@ -36,5 +37,3 @@ VAStatus RequestBeginPicture(VADriverContextP context, VAContextID context_id,
 VAStatus RequestRenderPicture(VADriverContextP context, VAContextID context_id,
 			      VABufferID *buffers, int buffers_count);
 VAStatus RequestEndPicture(VADriverContextP context, VAContextID context_id);
-
-#endif

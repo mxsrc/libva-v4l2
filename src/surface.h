@@ -24,14 +24,13 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef _SURFACE_H_
-#define _SURFACE_H_
+#pragma once
 
-#include <stdbool.h>
-
+extern "C" {
 #include <linux/videodev2.h>
 
 #include <va/va_backend.h>
+}
 
 #include "object_heap.h"
 
@@ -49,11 +48,11 @@ struct object_surface {
 	int height;
 
 	unsigned int source_index;
-	void *source_data;
+	uint8_t* source_data;
 	unsigned int source_size;
 
 	unsigned int destination_index;
-	void *destination_plane_data[VIDEO_MAX_PLANES];
+	uint8_t* destination_plane_data[VIDEO_MAX_PLANES];
 	unsigned int destination_plane_size[VIDEO_MAX_PLANES];
 	unsigned int destination_planes_count;
 
@@ -133,5 +132,3 @@ VAStatus RequestUnlockSurface(VADriverContextP context, VASurfaceID surface_id);
 VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 				    VASurfaceID surface_id, uint32_t mem_type,
 				    uint32_t flags, void *descriptor);
-
-#endif

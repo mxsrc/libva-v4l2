@@ -25,19 +25,19 @@
 
 #include "mpeg2.h"
 
+#include <cassert>
+#include <cstring>
+
+extern "C" {
+#include <linux/videodev2.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+}
+
 #include "buffer.h"
 #include "context.h"
 #include "request.h"
 #include "surface.h"
-
-#include <assert.h>
-#include <string.h>
-
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-
-#include <linux/videodev2.h>
-
 #include "v4l2.h"
 
 
@@ -54,7 +54,7 @@ static const uint8_t default_intra_quantisation_matrix[] = {
 };
 
 
-VAStatus mpeg2_store_buffer(struct request_data *driver_data,
+VAStatus mpeg2_store_buffer(RequestData *driver_data,
 				   struct object_surface *surface_object,
 				   struct object_buffer *buffer_object)
 {
@@ -102,7 +102,7 @@ VAStatus mpeg2_store_buffer(struct request_data *driver_data,
 }
 
 
-int mpeg2_set_controls(struct request_data *driver_data,
+int mpeg2_set_controls(RequestData *driver_data,
 		       struct object_context *context_object,
 		       struct object_surface *surface_object)
 {

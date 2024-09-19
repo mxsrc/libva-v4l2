@@ -25,17 +25,16 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef _H264_H_
-#define _H264_H_
+#pragma once
 
-#include <stdbool.h>
-
+extern "C" {
 #include <va/va.h>
+}
 
 struct object_buffer;
 struct object_context;
 struct object_surface;
-struct request_data;
+struct RequestData;
 
 #define H264_DPB_SIZE 16
 
@@ -52,11 +51,9 @@ struct h264_dpb {
 	unsigned int age;
 };
 
-VAStatus h264_store_buffer(struct request_data *driver_data,
+VAStatus h264_store_buffer(RequestData *driver_data,
 				   struct object_surface *surface_object,
 				   struct object_buffer *buffer_object);
-int h264_set_controls(struct request_data *data,
+int h264_set_controls(RequestData *data,
 		      struct object_context *context,
 		      struct object_surface *surface);
-
-#endif

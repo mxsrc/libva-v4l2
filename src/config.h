@@ -24,10 +24,11 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef _CONFIG_H_
-#define _CONFIG_H_
+#pragma once
 
+extern "C" {
 #include <va/va_backend.h>
+}
 
 #include "object_heap.h"
 #include "request.h"
@@ -74,5 +75,3 @@ VAStatus RequestGetDisplayAttributes(VADriverContextP context,
 VAStatus RequestSetDisplayAttributes(VADriverContextP context,
 				     VADisplayAttribute *attributes,
 				     int attributes_count);
-
-#endif

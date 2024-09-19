@@ -23,21 +23,20 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef _MPEG2_H_
-#define _MPEG2_H_
+#pragma once
 
+extern "C" {
 #include <va/va.h>
+}
 
 struct object_buffer;
 struct object_context;
 struct object_surface;
-struct request_data;
+struct RequestData;
 
-VAStatus mpeg2_store_buffer(struct request_data *driver_data,
+VAStatus mpeg2_store_buffer(RequestData *driver_data,
 				   struct object_surface *surface_object,
 				   struct object_buffer *buffer_object);
-int mpeg2_set_controls(struct request_data *driver_data,
+int mpeg2_set_controls(RequestData *driver_data,
 		       struct object_context *context,
 		       struct object_surface *surface_object);
-
-#endif

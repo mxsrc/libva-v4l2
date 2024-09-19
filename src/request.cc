@@ -25,40 +25,39 @@
  */
 
 #include "buffer.h"
+
+#include <cassert>
+#include <cstdarg>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
+extern "C" {
+#include <fcntl.h>
+#include <linux/videodev2.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
+#include <va/va.h>
+#include <va/va_backend.h>
+}
+
 #include "config.h"
 #include "context.h"
 #include "image.h"
 #include "picture.h"
+#include "request.h"
 #include "subpicture.h"
 #include "surface.h"
-
-#include <va/va.h>
-#include <va/va_backend.h>
-
-#include "request.h"
-#include "utils.h"
 #include "v4l2.h"
-
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-#include <fcntl.h>
-#include <stdarg.h>
-#include <string.h>
-#include <unistd.h>
-
-#include <sys/ioctl.h>
-
-#include <linux/videodev2.h>
 
 /* Set default visibility for the init function only. */
 VAStatus __attribute__((visibility("default")))
 VA_DRIVER_INIT_FUNC(VADriverContextP context);
 
-VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
+extern "C" VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 {
-	struct request_data *driver_data;
+	RequestData *driver_data;
 	struct VADriverVTable *vtable = context->vtable;
 
 	context->version_major = VA_MAJOR_VERSION;
@@ -121,7 +120,7 @@ VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 	vtable->vaLockSurface = RequestLockSurface;
 	vtable->vaUnlockSurface = RequestUnlockSurface;
 
-	driver_data = malloc(sizeof(*driver_data));
+	driver_data = static_cast<RequestData*>(malloc(sizeof(*driver_data)));
 	memset(driver_data, 0, sizeof(*driver_data));
 
 	context->pDriverData = driver_data;
@@ -137,11 +136,11 @@ VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 	object_heap_init(&driver_data->image_heap, sizeof(struct object_image),
 			 IMAGE_ID_OFFSET);
 
-	char* video_path = getenv("LIBVA_V4L2_REQUEST_VIDEO_PATH");
+	const char* video_path = getenv("LIBVA_V4L2_REQUEST_VIDEO_PATH");
 	if (!video_path) {
 		video_path = "/dev/video0";
 	}
-	char* media_path = getenv("LIBVA_V4L2_REQUEST_MEDIA_PATH");
+	const char* media_path = getenv("LIBVA_V4L2_REQUEST_MEDIA_PATH");
 
 	if (v4l2_m2m_device_open(&driver_data->device, video_path, media_path) < 0) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
@@ -152,7 +151,7 @@ VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 
 VAStatus RequestTerminate(VADriverContextP context)
 {
-	struct request_data *driver_data = context->pDriverData;
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_buffer *buffer_object;
 	struct object_image *image_object;
 	struct object_surface *surface_object;
@@ -218,8 +217,8 @@ VAStatus RequestTerminate(VADriverContextP context)
 
 	object_heap_destroy(&driver_data->config_heap);
 
-	free(context->pDriverData);
-	context->pDriverData = NULL;
+	delete driver_data;
+	context->pDriverData = nullptr;
 
 	return VA_STATUS_SUCCESS;
 }

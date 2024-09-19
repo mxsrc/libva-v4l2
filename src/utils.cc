@@ -23,12 +23,13 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "utils.h"
+
+#include <cstdarg>
+#include <cstdio>
+#include <cstdlib>
 
 #include "request.h"
-#include "utils.h"
 
 void request_log(const char *format, ...)
 {

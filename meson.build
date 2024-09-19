@@ -20,11 +20,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-project('libva-v4l2-request', 'c',
+project('libva-v4l2-request', 'cpp',
 	version: '1.0.0',
 	meson_version: '>= 0.56.0')
 
-cc = meson.get_compiler('c')
+cc = meson.get_compiler('cpp')
 
 if not (cc.get_define('LINUX_VERSION_MAJOR', prefix: '#include <linux/version.h>').to_int() >= 6)
 	error('Require at least Linux 6.0')

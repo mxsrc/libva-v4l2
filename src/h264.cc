@@ -27,20 +27,22 @@
 
 #include "h264.h"
 
-#include <assert.h>
-#include <limits.h>
-#include <string.h>
+#include <cassert>
+#include <climits>
+#include <cstring>
+#include <ctime>
 
+extern "C" {
+#include <linux/videodev2.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
-#include <time.h>
-#include <linux/videodev2.h>
 #include <va/va.h>
+}
 
+#include "buffer.h"
 #include "config.h"
 #include "request.h"
-#include "buffer.h"
 #include "surface.h"
 #include "v4l2.h"
 
@@ -228,7 +230,7 @@ static void dpb_update(struct object_context *context,
 	}
 }
 
-static void h264_fill_dpb(struct request_data *data,
+static void h264_fill_dpb(RequestData *data,
 			  struct object_context *context,
 			  struct v4l2_ctrl_h264_decode_params *decode)
 {
@@ -263,7 +265,7 @@ static void h264_fill_dpb(struct request_data *data,
 	}
 }
 
-static void h264_va_picture_to_v4l2(struct request_data *driver_data,
+static void h264_va_picture_to_v4l2(RequestData *driver_data,
 				    struct object_context *context,
 				    struct object_surface *surface,
 				    VAPictureParameterBufferH264 *VAPicture,
@@ -336,7 +338,7 @@ static void h264_va_picture_to_v4l2(struct request_data *driver_data,
 		sps->flags |= V4L2_H264_SPS_FLAG_DELTA_PIC_ORDER_ALWAYS_ZERO;
 }
 
-static void h264_va_matrix_to_v4l2(struct request_data *driver_data,
+static void h264_va_matrix_to_v4l2(RequestData *driver_data,
 				   struct object_context *context,
 				   VAIQMatrixBufferH264 *VAMatrix,
 				   struct v4l2_ctrl_h264_scaling_matrix *v4l2_matrix)
@@ -377,7 +379,7 @@ static void h264_copy_pred_table(struct v4l2_h264_weight_factors *factors,
 	}
 }
 
-static void h264_va_slice_to_v4l2(struct request_data *driver_data,
+static void h264_va_slice_to_v4l2(RequestData *driver_data,
 				  struct object_context *context,
 				  VASliceParameterBufferH264 *VASlice,
 				  VAPictureParameterBufferH264 *VAPicture,
@@ -395,12 +397,10 @@ static void h264_va_slice_to_v4l2(struct request_data *driver_data,
 
 	if (((VASlice->slice_type % 5) == H264_SLICE_P) ||
 	    ((VASlice->slice_type % 5) == H264_SLICE_B)) {
-		unsigned int i;
-
 		slice->num_ref_idx_l0_active_minus1 =
 			VASlice->num_ref_idx_l0_active_minus1;
 
-		for (i = 0; i < VASlice->num_ref_idx_l0_active_minus1 + 1; i++) {
+		for (int i = 0; i < VASlice->num_ref_idx_l0_active_minus1 + 1; i++) {
 			VAPictureH264 *pic = &VASlice->RefPicList0[i];
 			struct h264_dpb_entry *entry;
 			struct v4l2_h264_reference ref;
@@ -414,12 +414,10 @@ static void h264_va_slice_to_v4l2(struct request_data *driver_data,
 	}
 
 	if ((VASlice->slice_type % 5) == H264_SLICE_B) {
-		unsigned int i;
-
 		slice->num_ref_idx_l1_active_minus1 =
 			VASlice->num_ref_idx_l1_active_minus1;
 
-		for (i = 0; i < VASlice->num_ref_idx_l1_active_minus1 + 1; i++) {
+		for (int i = 0; i < VASlice->num_ref_idx_l1_active_minus1 + 1; i++) {
 			VAPictureH264 *pic = &VASlice->RefPicList1[i];
 			struct h264_dpb_entry *entry;
 			struct v4l2_h264_reference ref;
@@ -465,7 +463,7 @@ static void h264_va_slice_to_predicted_weights(
 }
 
 
-VAStatus h264_store_buffer(struct request_data *driver_data,
+VAStatus h264_store_buffer(RequestData *driver_data,
 				   struct object_surface *surface_object,
 				   struct object_buffer *buffer_object)
 {
@@ -516,7 +514,7 @@ VAStatus h264_store_buffer(struct request_data *driver_data,
 }
 
 
-int h264_set_controls(struct request_data *driver_data,
+int h264_set_controls(RequestData *driver_data,
 		      struct object_context *context,
 		      struct object_surface *surface)
 {
@@ -568,33 +566,33 @@ int h264_set_controls(struct request_data *driver_data,
 
 		controls[i++] = (struct v4l2_ext_control){
 			.id = V4L2_CID_STATELESS_H264_PRED_WEIGHTS,
-			.ptr = &weights,
 			.size = sizeof(weights),
+			.ptr = &weights,
 		};
 	}
 
 	controls[i++] = (struct v4l2_ext_control) {
 		.id = V4L2_CID_STATELESS_H264_DECODE_PARAMS,
-		.ptr = &decode,
 		.size = sizeof(decode),
+		.ptr = &decode,
 	};
 
 	controls[i++] = (struct v4l2_ext_control){
 		.id = V4L2_CID_STATELESS_H264_PPS,
-		.ptr = &pps,
 		.size = sizeof(pps),
+		.ptr = &pps,
 	};
 
 	controls[i++] = (struct v4l2_ext_control){
 		.id = V4L2_CID_STATELESS_H264_SPS,
-		.ptr = &sps,
 		.size = sizeof(sps),
+		.ptr = &sps,
 	};
 
 	controls[i++] = (struct v4l2_ext_control){
 		.id = V4L2_CID_STATELESS_H264_SCALING_MATRIX,
-		.ptr = &matrix,
 		.size = sizeof(matrix),
+		.ptr = &matrix,
 	};
 
 	rc = v4l2_set_controls(driver_data->device.video_fd, surface->request_fd, controls, i);

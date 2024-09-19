@@ -23,7 +23,6 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "request.h"
 #include "subpicture.h"
 
 VAStatus RequestCreateSubpicture(VADriverContextP context, VAImageID image_id,
