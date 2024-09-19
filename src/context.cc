@@ -45,21 +45,19 @@ extern "C" {
 #include "utils.h"
 #include "v4l2.h"
 
-VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
+VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 			      int picture_width, int picture_height, int flags,
 			      VASurfaceID *surfaces_ids, int surfaces_count,
 			      VAContextID *context_id)
 {
-	auto driver_data = static_cast<RequestData*>(context->pDriverData);
+	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
 	struct object_surface *surface_object;
-	struct object_context *context_object = NULL;
 	unsigned int length;
 	unsigned int offset;
 	unsigned usurfaces_count;
 	unsigned buffer_count = 0;
 	uint8_t *source_data = static_cast<uint8_t*>(MAP_FAILED);
 	VASurfaceID *ids = NULL;
-	VAContextID id;
 	VAStatus status;
 	unsigned int pixelformat;
 	int rc;
@@ -72,13 +70,19 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 	}
 	const auto& config = driver_data->configs.at(config_id);
 
-	id = object_heap_allocate(&driver_data->context_heap);
-	context_object = CONTEXT(driver_data, id);
-	if (context_object == NULL) {
-		status = VA_STATUS_ERROR_ALLOCATION_FAILED;
-		goto error;
+	*context_id = smallest_free_key(driver_data->contexts);
+	auto [context, inserted] = driver_data->contexts.emplace(std::make_pair(*context_id, Context{
+		.config_id = config_id,
+		.render_surface_id = VA_INVALID_ID,
+		.surfaces_count = surfaces_count,
+		.picture_width = picture_width,
+		.picture_height = picture_height,
+		.flags = flags,
+	}));
+	if (!inserted) {
+		return VA_STATUS_ERROR_ALLOCATION_FAILED;
 	}
-	memset(&context_object->codec_state, 0, sizeof(context_object->codec_state));
+
 
 	switch (config.profile) {
 	case VAProfileMPEG2Simple:
@@ -132,7 +136,7 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 	}
 
 	// Now that the output format is set, we can set the capture format and allocate the surfaces.
-	status = RequestCreateSurfacesReally(context, surfaces_ids, surfaces_count);
+	status = RequestCreateSurfacesReally(va_context, surfaces_ids, surfaces_count);
 	if (status != VA_STATUS_SUCCESS) {
 		goto error;
 	}
@@ -156,6 +160,7 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 	}
 
 	memcpy(ids, surfaces_ids, surfaces_count * sizeof(VASurfaceID));
+	context->second.surfaces_ids = ids;
 
 	for (int i = 0; i < surfaces_count; i++) {
 		surface_object = SURFACE(driver_data, surfaces_ids[i]);
@@ -195,16 +200,6 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 		goto error;
 	}
 
-	context_object->config_id = config_id;
-	context_object->render_surface_id = VA_INVALID_ID;
-	context_object->surfaces_ids = ids;
-	context_object->surfaces_count = surfaces_count;
-	context_object->picture_width = picture_width;
-	context_object->picture_height = picture_height;
-	context_object->flags = flags;
-
-	*context_id = id;
-
 	status = VA_STATUS_SUCCESS;
 	goto complete;
 
@@ -215,26 +210,27 @@ error:
 	if (ids != NULL)
 		free(ids);
 
-	if (context_object != NULL)
-		object_heap_free(&driver_data->context_heap,
-				 (struct object_base *)context_object);
+	if (inserted) {
+		driver_data->contexts.erase(*context_id);
+	}
 
 complete:
 	return status;
 }
 
-VAStatus RequestDestroyContext(VADriverContextP context, VAContextID context_id)
+VAStatus RequestDestroyContext(VADriverContextP va_context, VAContextID context_id)
 {
-	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	struct object_context *context_object;
+	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
 	int rc;
 
-	if (!driver_data->video_format)
+	if (!driver_data->video_format) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
+	}
 
-	context_object = CONTEXT(driver_data, context_id);
-	if (context_object == NULL)
+	if (!driver_data->contexts.contains(context_id)) {
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
+	}
+	const auto& context = driver_data->contexts.at(context_id);
 
 	rc = v4l2_set_stream(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, false);
 	if (rc < 0)
@@ -244,7 +240,7 @@ VAStatus RequestDestroyContext(VADriverContextP context, VAContextID context_id)
 	if (rc < 0)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
-	free(context_object->surfaces_ids);
+	free(context.surfaces_ids);
 
 	struct v4l2_requestbuffers reqbuf = {
 		.count = 0,
@@ -254,12 +250,11 @@ VAStatus RequestDestroyContext(VADriverContextP context, VAContextID context_id)
 
 	rc = ioctl(driver_data->device.video_fd, VIDIOC_REQBUFS, &reqbuf);
 	if (rc < 0) {
-		error_log(context, "Unable to free buffers: %s\n", strerror(errno));
+		error_log(va_context, "Unable to free buffers: %s\n", strerror(errno));
 		return -1;
 	}
 
-	object_heap_free(&driver_data->context_heap,
-			 (struct object_base *)context_object);
+	driver_data->contexts.erase(context_id);
 
 	return VA_STATUS_SUCCESS;
 }

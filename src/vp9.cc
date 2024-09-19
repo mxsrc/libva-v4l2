@@ -184,7 +184,7 @@ VAStatus vp9_store_buffer(RequestData *driver_data,
 }
 
 int vp9_set_controls(RequestData *data,
-		     struct object_context *context,
+		     const Context& context,
 		     struct object_surface *surface) {
 	GstVp9FrameHeader header = {};
 	if (parse_frame_header(surface, &header)) {

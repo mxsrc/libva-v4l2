@@ -98,12 +98,12 @@ static bool is_picture_null(VAPictureH264 *pic)
 }
 
 static struct h264_dpb_entry *
-dpb_find_invalid_entry(struct object_context *context)
+dpb_find_invalid_entry(Context& context)
 {
 	unsigned int i;
 
 	for (i = 0; i < H264_DPB_SIZE; i++) {
-		struct h264_dpb_entry *entry = &context->codec_state.h264.dpb.entries[i];
+		struct h264_dpb_entry *entry = &context.codec_state.h264.dpb.entries[i];
 
 		if (!entry->valid && !entry->reserved)
 			return entry;
@@ -113,14 +113,14 @@ dpb_find_invalid_entry(struct object_context *context)
 }
 
 static struct h264_dpb_entry *
-dpb_find_oldest_unused_entry(struct object_context *context)
+dpb_find_oldest_unused_entry(Context& context)
 {
 	unsigned int min_age = UINT_MAX;
 	unsigned int i;
 	struct h264_dpb_entry *match = NULL;
 
 	for (i = 0; i < H264_DPB_SIZE; i++) {
-		struct h264_dpb_entry *entry = &context->codec_state.h264.dpb.entries[i];
+		struct h264_dpb_entry *entry = &context.codec_state.h264.dpb.entries[i];
 
 		if (!entry->used && (entry->age < min_age)) {
 			min_age = entry->age;
@@ -131,7 +131,7 @@ dpb_find_oldest_unused_entry(struct object_context *context)
 	return match;
 }
 
-static struct h264_dpb_entry *dpb_find_entry(struct object_context *context)
+static struct h264_dpb_entry *dpb_find_entry(Context& context)
 {
 	struct h264_dpb_entry *entry;
 
@@ -142,13 +142,13 @@ static struct h264_dpb_entry *dpb_find_entry(struct object_context *context)
 	return entry;
 }
 
-static struct h264_dpb_entry *dpb_lookup(struct object_context *context,
+static struct h264_dpb_entry *dpb_lookup(Context& context,
 					 VAPictureH264 *pic, struct v4l2_h264_reference *ref)
 {
 	unsigned int i;
 
 	for (i = 0; i < H264_DPB_SIZE; i++) {
-		struct h264_dpb_entry *entry = &context->codec_state.h264.dpb.entries[i];
+		struct h264_dpb_entry *entry = &context.codec_state.h264.dpb.entries[i];
 
 		if (!entry->valid)
 			continue;
@@ -179,7 +179,7 @@ static void dpb_clear_entry(struct h264_dpb_entry *entry, bool reserved)
 		entry->reserved = true;
 }
 
-static void dpb_insert(struct object_context *context, VAPictureH264 *pic,
+static void dpb_insert(Context& context, VAPictureH264 *pic,
 		       struct h264_dpb_entry *entry)
 {
 	if (is_picture_null(pic))
@@ -192,7 +192,7 @@ static void dpb_insert(struct object_context *context, VAPictureH264 *pic,
 		entry = dpb_find_entry(context);
 
 	memcpy(&entry->pic, pic, sizeof(entry->pic));
-	entry->age = context->codec_state.h264.dpb.age;
+	entry->age = context.codec_state.h264.dpb.age;
 	entry->valid = true;
 	entry->reserved = false;
 
@@ -200,15 +200,15 @@ static void dpb_insert(struct object_context *context, VAPictureH264 *pic,
 		entry->used = true;
 }
 
-static void dpb_update(struct object_context *context,
+static void dpb_update(Context& context,
 		       VAPictureParameterBufferH264 *parameters)
 {
 	unsigned int i;
 
-	context->codec_state.h264.dpb.age++;
+	context.codec_state.h264.dpb.age++;
 
 	for (i = 0; i < H264_DPB_SIZE; i++) {
-		struct h264_dpb_entry *entry = &context->codec_state.h264.dpb.entries[i];
+		struct h264_dpb_entry *entry = &context.codec_state.h264.dpb.entries[i];
 
 		entry->used = false;
 	}
@@ -222,7 +222,7 @@ static void dpb_update(struct object_context *context,
 
 		entry = dpb_lookup(context, pic, NULL);
 		if (entry) {
-			entry->age = context->codec_state.h264.dpb.age;
+			entry->age = context.codec_state.h264.dpb.age;
 			entry->used = true;
 		} else {
 			dpb_insert(context, pic, NULL);
@@ -231,14 +231,14 @@ static void dpb_update(struct object_context *context,
 }
 
 static void h264_fill_dpb(RequestData *data,
-			  struct object_context *context,
+			  Context& context,
 			  struct v4l2_ctrl_h264_decode_params *decode)
 {
 	int i;
 
 	for (i = 0; i < H264_DPB_SIZE; i++) {
 		struct v4l2_h264_dpb_entry *dpb = &decode->dpb[i];
-		struct h264_dpb_entry *entry = &context->codec_state.h264.dpb.entries[i];
+		struct h264_dpb_entry *entry = &context.codec_state.h264.dpb.entries[i];
 		struct object_surface *surface =
 			SURFACE(data, entry->pic.picture_id);
 		uint64_t timestamp;
@@ -266,7 +266,7 @@ static void h264_fill_dpb(RequestData *data,
 }
 
 static void h264_va_picture_to_v4l2(RequestData *driver_data,
-				    struct object_context *context,
+				    Context& context,
 				    struct object_surface *surface,
 				    VAPictureParameterBufferH264 *VAPicture,
 				    struct v4l2_ctrl_h264_decode_params *decode,
@@ -339,7 +339,7 @@ static void h264_va_picture_to_v4l2(RequestData *driver_data,
 }
 
 static void h264_va_matrix_to_v4l2(RequestData *driver_data,
-				   struct object_context *context,
+				   const Context& context,
 				   VAIQMatrixBufferH264 *VAMatrix,
 				   struct v4l2_ctrl_h264_scaling_matrix *v4l2_matrix)
 {
@@ -380,7 +380,7 @@ static void h264_copy_pred_table(struct v4l2_h264_weight_factors *factors,
 }
 
 static void h264_va_slice_to_v4l2(RequestData *driver_data,
-				  struct object_context *context,
+				  Context& context,
 				  VASliceParameterBufferH264 *VASlice,
 				  VAPictureParameterBufferH264 *VAPicture,
 				  struct v4l2_ctrl_h264_slice_params *slice)
@@ -515,13 +515,13 @@ VAStatus h264_store_buffer(RequestData *driver_data,
 
 
 int h264_set_controls(RequestData *driver_data,
-		      struct object_context *context,
+		      Context& context,
 		      struct object_surface *surface)
 {
-	if (!driver_data->configs.contains(context->config_id)) {
+	if (!driver_data->configs.contains(context.config_id)) {
 		return VA_STATUS_ERROR_INVALID_CONFIG;
 	}
-	const auto& config = driver_data->configs.at(context->config_id);
+	const auto& config = driver_data->configs.at(context.config_id);
 
 	struct v4l2_ctrl_h264_scaling_matrix matrix = { 0 };
 	struct v4l2_ctrl_h264_decode_params decode = { 0 };

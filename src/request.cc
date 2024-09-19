@@ -122,8 +122,6 @@ extern "C" VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 
 	context->pDriverData = driver_data;
 
-	object_heap_init(&driver_data->context_heap,
-			 sizeof(struct object_context), CONTEXT_ID_OFFSET);
 	object_heap_init(&driver_data->surface_heap,
 			 sizeof(struct object_surface), SURFACE_ID_OFFSET);
 	object_heap_init(&driver_data->buffer_heap,
@@ -144,26 +142,29 @@ extern "C" VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 	return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestTerminate(VADriverContextP context)
+VAStatus RequestTerminate(VADriverContextP va_context)
 {
-	auto driver_data = static_cast<RequestData*>(context->pDriverData);
+	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
 	struct object_buffer *buffer_object;
 	struct object_image *image_object;
 	struct object_surface *surface_object;
-	struct object_context *context_object;
 	int iterator;
 
 	v4l2_m2m_device_close(&driver_data->device);
 
 	/* Cleanup leftover buffers. */
 	for (auto&& [id, config] : driver_data->configs) {
-		RequestDestroyConfig(context, id);
+		RequestDestroyConfig(va_context, id);
+	}
+
+	for (auto&& [id, ctx] : driver_data->contexts) {
+		RequestDestroyContext(va_context, id);
 	}
 
 	image_object = (struct object_image *)
 		object_heap_first(&driver_data->image_heap, &iterator);
 	while (image_object != NULL) {
-		RequestDestroyImage(context, (VAImageID)image_object->base.id);
+		RequestDestroyImage(va_context, (VAImageID)image_object->base.id);
 		image_object = (struct object_image *)
 			object_heap_next(&driver_data->image_heap, &iterator);
 	}
@@ -173,7 +174,7 @@ VAStatus RequestTerminate(VADriverContextP context)
 	buffer_object = (struct object_buffer *)
 		object_heap_first(&driver_data->buffer_heap, &iterator);
 	while (buffer_object != NULL) {
-		RequestDestroyBuffer(context,
+		RequestDestroyBuffer(va_context,
 				     (VABufferID)buffer_object->base.id);
 		buffer_object = (struct object_buffer *)
 			object_heap_next(&driver_data->buffer_heap, &iterator);
@@ -184,7 +185,7 @@ VAStatus RequestTerminate(VADriverContextP context)
 	surface_object = (struct object_surface *)
 		object_heap_first(&driver_data->surface_heap, &iterator);
 	while (surface_object != NULL) {
-		RequestDestroySurfaces(context,
+		RequestDestroySurfaces(va_context,
 				      (VASurfaceID *)&surface_object->base.id, 1);
 		surface_object = (struct object_surface *)
 			object_heap_next(&driver_data->surface_heap, &iterator);
@@ -192,19 +193,8 @@ VAStatus RequestTerminate(VADriverContextP context)
 
 	object_heap_destroy(&driver_data->surface_heap);
 
-	context_object = (struct object_context *)
-		object_heap_first(&driver_data->context_heap, &iterator);
-	while (context_object != NULL) {
-		RequestDestroyContext(context,
-				      (VAContextID)context_object->base.id);
-		context_object = (struct object_context *)
-			object_heap_next(&driver_data->context_heap, &iterator);
-	}
-
-	object_heap_destroy(&driver_data->context_heap);
-
 	delete driver_data;
-	context->pDriverData = nullptr;
+	va_context->pDriverData = nullptr;
 
 	return VA_STATUS_SUCCESS;
 }

@@ -32,7 +32,7 @@ extern "C" {
 }
 
 struct object_buffer;
-struct object_context;
+struct Context;
 struct object_surface;
 struct RequestData;
 
@@ -55,5 +55,5 @@ VAStatus h264_store_buffer(RequestData *driver_data,
 				   struct object_surface *surface_object,
 				   struct object_buffer *buffer_object);
 int h264_set_controls(RequestData *data,
-		      struct object_context *context,
+		      Context& context,
 		      struct object_surface *surface);

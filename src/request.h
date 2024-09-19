@@ -50,7 +50,7 @@ extern "C" {
 
 struct RequestData {
 	std::map<VAConfigID, Config> configs;
-	struct object_heap context_heap;
+	std::map<VAContextID, Context> contexts;
 	struct object_heap surface_heap;
 	struct object_heap buffer_heap;
 	struct object_heap image_heap;
@@ -60,4 +60,4 @@ struct RequestData {
 };
 
 extern "C" VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context);
-VAStatus RequestTerminate(VADriverContextP context);
+VAStatus RequestTerminate(VADriverContextP va_context);

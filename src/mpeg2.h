@@ -30,7 +30,7 @@ extern "C" {
 }
 
 struct object_buffer;
-struct object_context;
+struct Context;
 struct object_surface;
 struct RequestData;
 
@@ -38,5 +38,5 @@ VAStatus mpeg2_store_buffer(RequestData *driver_data,
 				   struct object_surface *surface_object,
 				   struct object_buffer *buffer_object);
 int mpeg2_set_controls(RequestData *driver_data,
-		       struct object_context *context,
+		       const Context& context,
 		       struct object_surface *surface_object);

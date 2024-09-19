@@ -103,7 +103,7 @@ VAStatus mpeg2_store_buffer(RequestData *driver_data,
 
 
 int mpeg2_set_controls(RequestData *driver_data,
-		       struct object_context *context_object,
+		       const Context& context,
 		       struct object_surface *surface_object)
 {
 	VAPictureParameterBufferMPEG2 *va_picture =

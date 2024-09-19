@@ -31,15 +31,8 @@ extern "C" {
 }
 
 #include "h264.h"
-#include "object_heap.h"
 
-#define CONTEXT(data, id)                                                      \
-	((struct object_context *)object_heap_lookup(&(data)->context_heap, id))
-#define CONTEXT_ID_OFFSET		0x02000000
-
-struct object_context {
-	struct object_base base;
-
+struct Context {
 	VAConfigID config_id;
 	VASurfaceID render_surface_id;
 	VASurfaceID *surfaces_ids;
@@ -56,9 +49,9 @@ struct object_context {
 	} codec_state;
 };
 
-VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
+VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 			      int picture_width, int picture_height, int flags,
 			      VASurfaceID *surfaces_ids, int surfaces_count,
 			      VAContextID *context_id);
-VAStatus RequestDestroyContext(VADriverContextP context,
+VAStatus RequestDestroyContext(VADriverContextP va_context,
 			       VAContextID context_id);

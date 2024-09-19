@@ -231,7 +231,7 @@ VAStatus vp8_store_buffer(RequestData *driver_data,
 	return VA_STATUS_SUCCESS;
 }
 
-int vp8_set_controls(RequestData *data, struct object_context *context, struct object_surface *surface) {
+int vp8_set_controls(RequestData *data, const Context& context, struct object_surface *surface) {
 	struct v4l2_ctrl_vp8_frame frame = va_to_v4l2_frame(
 		data,
 		&surface->params.vp8.picture,

@@ -81,7 +81,7 @@ static VAStatus codec_store_buffer(RequestData *driver_data,
 }
 
 static VAStatus codec_set_controls(RequestData *driver_data,
-				   struct object_context *context,
+				   Context& context,
 				   VAProfile profile,
 				   struct object_surface *surface_object)
 {
@@ -111,51 +111,51 @@ static VAStatus codec_set_controls(RequestData *driver_data,
 	}
 }
 
-VAStatus RequestBeginPicture(VADriverContextP context, VAContextID context_id,
+VAStatus RequestBeginPicture(VADriverContextP va_context, VAContextID context_id,
 			     VASurfaceID surface_id)
 {
-	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	struct object_context *context_object;
+	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
 	struct object_surface *surface_object;
 
-	context_object = CONTEXT(driver_data, context_id);
-	if (context_object == NULL)
+	if (!driver_data->contexts.contains(context_id)) {
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
+	}
+	auto& context = driver_data->contexts.at(context_id);
 
 	surface_object = SURFACE(driver_data, surface_id);
 	if (surface_object == NULL)
 		return VA_STATUS_ERROR_INVALID_SURFACE;
 
 	if (surface_object->status == VASurfaceRendering)
-		RequestSyncSurface(context, surface_id);
+		RequestSyncSurface(va_context, surface_id);
 
 	surface_object->status = VASurfaceRendering;
-	context_object->render_surface_id = surface_id;
+	context.render_surface_id = surface_id;
 
 	return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestRenderPicture(VADriverContextP context, VAContextID context_id,
+VAStatus RequestRenderPicture(VADriverContextP va_context, VAContextID context_id,
 			      VABufferID *buffers_ids, int buffers_count)
 {
-	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	struct object_context *context_object;
+	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
 	struct object_surface *surface_object;
 	struct object_buffer *buffer_object;
 	int rc;
 	int i;
 
-	context_object = CONTEXT(driver_data, context_id);
-	if (context_object == NULL)
+	if (!driver_data->contexts.contains(context_id)) {
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
+	}
+	const auto& context = driver_data->contexts.at(context_id);
 
-	if (!driver_data->configs.contains(context_object->config_id)) {
+	if (!driver_data->configs.contains(context.config_id)) {
 		return VA_STATUS_ERROR_INVALID_CONFIG;
 	}
-	const auto& config = driver_data->configs.at(context_object->config_id);
+	const auto& config = driver_data->configs.at(context.config_id);
 
 	surface_object =
-		SURFACE(driver_data, context_object->render_surface_id);
+		SURFACE(driver_data, context.render_surface_id);
 	if (surface_object == NULL)
 		return VA_STATUS_ERROR_INVALID_SURFACE;
 
@@ -173,10 +173,9 @@ VAStatus RequestRenderPicture(VADriverContextP context, VAContextID context_id,
 	return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestEndPicture(VADriverContextP context, VAContextID context_id)
+VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id)
 {
-	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	struct object_context *context_object;
+	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
 	struct object_surface *surface_object;
 	int request_fd;
 	VAStatus status;
@@ -185,17 +184,18 @@ VAStatus RequestEndPicture(VADriverContextP context, VAContextID context_id)
 	if (!driver_data->video_format)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
-	context_object = CONTEXT(driver_data, context_id);
-	if (context_object == NULL)
+	if (!driver_data->contexts.contains(context_id)) {
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
+	}
+	auto& context = driver_data->contexts.at(context_id);
 
-	if (!driver_data->configs.contains(context_object->config_id)) {
+	if (!driver_data->configs.contains(context.config_id)) {
 		return VA_STATUS_ERROR_INVALID_CONFIG;
 	}
-	const auto& config = driver_data->configs.at(context_object->config_id);
+	const auto& config = driver_data->configs.at(context.config_id);
 
 	surface_object =
-		SURFACE(driver_data, context_object->render_surface_id);
+		SURFACE(driver_data, context.render_surface_id);
 	if (surface_object == NULL)
 		return VA_STATUS_ERROR_INVALID_SURFACE;
 
@@ -211,7 +211,7 @@ VAStatus RequestEndPicture(VADriverContextP context, VAContextID context_id)
 			surface_object->request_fd = request_fd;
 		}
 
-		rc = codec_set_controls(driver_data, context_object,
+		rc = codec_set_controls(driver_data, context,
 					config.profile, surface_object);
 		if (rc != VA_STATUS_SUCCESS)
 			return rc;
@@ -232,11 +232,11 @@ VAStatus RequestEndPicture(VADriverContextP context, VAContextID context_id)
 
 	surface_object->slices_size = 0;
 
-	status = RequestSyncSurface(context, context_object->render_surface_id);
+	status = RequestSyncSurface(va_context, context.render_surface_id);
 	if (status != VA_STATUS_SUCCESS)
 		return status;
 
-	context_object->render_surface_id = VA_INVALID_ID;
+	context.render_surface_id = VA_INVALID_ID;
 
 	return VA_STATUS_SUCCESS;
 }
