@@ -29,13 +29,13 @@
 VAStatus RequestCreateSubpicture(VADriverContextP context, VAImageID image_id,
 				 VASubpictureID *subpicture_id)
 {
-	return VA_STATUS_SUCCESS;
+	return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
 VAStatus RequestDestroySubpicture(VADriverContextP context,
 				  VASubpictureID subpicture_id)
 {
-	return VA_STATUS_SUCCESS;
+	return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
 VAStatus RequestQuerySubpictureFormats(VADriverContextP context,
@@ -43,21 +43,21 @@ VAStatus RequestQuerySubpictureFormats(VADriverContextP context,
 				       unsigned int *flags,
 				       unsigned int *formats_count)
 {
-	return VA_STATUS_SUCCESS;
+	return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
 VAStatus RequestSetSubpictureImage(VADriverContextP context,
 				   VASubpictureID subpicture_id,
 				   VAImageID image_id)
 {
-	return VA_STATUS_SUCCESS;
+	return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
 VAStatus RequestSetSubpicturePalette(VADriverContextP context,
 				     VASubpictureID subpicture_id,
 				     unsigned char *palette)
 {
-	return VA_STATUS_SUCCESS;
+	return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
 VAStatus RequestSetSubpictureChromakey(VADriverContextP context,
@@ -66,14 +66,14 @@ VAStatus RequestSetSubpictureChromakey(VADriverContextP context,
 				       unsigned int chromakey_max,
 				       unsigned int chromakey_mask)
 {
-	return VA_STATUS_SUCCESS;
+	return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
 VAStatus RequestSetSubpictureGlobalAlpha(VADriverContextP context,
 					 VASubpictureID subpicture_id,
 					 float global_alpha)
 {
-	return VA_STATUS_SUCCESS;
+	return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
 VAStatus RequestAssociateSubpicture(
@@ -83,7 +83,7 @@ VAStatus RequestAssociateSubpicture(
 	short dst_y, unsigned short dst_width, unsigned short dst_height,
 	unsigned int flags)
 {
-	return VA_STATUS_SUCCESS;
+	return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
 VAStatus RequestDeassociateSubpicture(VADriverContextP context,
@@ -91,5 +91,5 @@ VAStatus RequestDeassociateSubpicture(VADriverContextP context,
 				      VASurfaceID *surfaces_ids,
 				      int surfaces_count)
 {
-	return VA_STATUS_SUCCESS;
+	return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
