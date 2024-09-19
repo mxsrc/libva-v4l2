@@ -33,18 +33,17 @@
 struct v4l2_m2m_device {
 	int video_fd;
 	int media_fd;
+	struct v4l2_format capture_format;
+	struct v4l2_format output_format;
 };
 
 int v4l2_m2m_device_open(struct v4l2_m2m_device* dev, const char* video_path, const char* media_path);
 void v4l2_m2m_device_close(struct v4l2_m2m_device* dev);
+int v4l2_m2m_device_set_format(struct v4l2_m2m_device* dev, enum v4l2_buf_type type, unsigned int pixelformat,
+		    unsigned int width, unsigned int height);
 
 bool v4l2_find_format(int video_fd, unsigned int type,
 		      unsigned int pixelformat);
-int v4l2_set_format(int video_fd, unsigned int type, unsigned int pixelformat,
-		    unsigned int width, unsigned int height);
-int v4l2_get_format(int video_fd, unsigned int type, unsigned int *width,
-		    unsigned int *height, unsigned int *bytesperline,
-		    unsigned int *sizes, unsigned int *planes_count);
 int v4l2_query_buffer(int video_fd, unsigned int type, unsigned int index,
 		      unsigned int *lengths, unsigned int *offsets,
 		      unsigned* buffer_count);

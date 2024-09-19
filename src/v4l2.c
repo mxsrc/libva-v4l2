@@ -52,6 +52,16 @@ static int query_capabilities(int video_fd, unsigned int *capabilities)
 	return 0;
 }
 
+static int get_format(int video_fd, enum v4l2_buf_type type, struct v4l2_format* format) {
+	format->type = type;
+
+	if (ioctl(video_fd, VIDIOC_G_FMT, format) < 0) {
+		return -1;
+	}
+
+	return 0;
+}
+
 int v4l2_m2m_device_open(struct v4l2_m2m_device* dev, const char* video_path, const char* media_path) {
 	dev->video_fd = open(video_path, O_RDWR | O_NONBLOCK);
 	if (dev->video_fd < 0) {
@@ -77,6 +87,13 @@ int v4l2_m2m_device_open(struct v4l2_m2m_device* dev, const char* video_path, co
 		dev->media_fd = -1;
 	}
 
+	if (get_format(dev->video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, &dev->capture_format) < 0) {
+		goto error;
+	}
+	if (get_format(dev->video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, &dev->capture_format) < 0) {
+		goto error;
+	}
+
 	return 0;
 
 error:
@@ -95,28 +112,23 @@ void v4l2_m2m_device_close(struct v4l2_m2m_device* dev) {
 	}
 }
 
-static void v4l2_setup_format(struct v4l2_format *format, unsigned int type,
-			      unsigned int width, unsigned int height,
-			      unsigned int pixelformat)
-{
-	unsigned int sizeimage;
+int v4l2_m2m_device_set_format(struct v4l2_m2m_device* dev, enum v4l2_buf_type type, unsigned int pixelformat,
+		    unsigned int width, unsigned int height) {
+	struct v4l2_format* format = V4L2_TYPE_IS_CAPTURE(type) ? &dev->capture_format : &dev->output_format;
 
-	memset(format, 0, sizeof(*format));
 	format->type = type;
+	format->fmt.pix_mp.pixelformat = pixelformat;
+	format->fmt.pix_mp.width = width;
+	format->fmt.pix_mp.height = height;
 
-	sizeimage = V4L2_TYPE_IS_OUTPUT(type) ? SOURCE_SIZE_MAX : 0;
+	// Automatic size is insufficient for data buffers
+	format->fmt.pix_mp.plane_fmt[0].sizeimage = V4L2_TYPE_IS_OUTPUT(type) ? SOURCE_SIZE_MAX : 0;
 
-	if (V4L2_TYPE_IS_MULTIPLANAR(type)) {
-		format->fmt.pix_mp.width = width;
-		format->fmt.pix_mp.height = height;
-		format->fmt.pix_mp.plane_fmt[0].sizeimage = sizeimage;
-		format->fmt.pix_mp.pixelformat = pixelformat;
-	} else {
-		format->fmt.pix.width = width;
-		format->fmt.pix.height = height;
-		format->fmt.pix.sizeimage = sizeimage;
-		format->fmt.pix.pixelformat = pixelformat;
+	if (ioctl(dev->video_fd, VIDIOC_S_FMT, format) < 0) {
+		return -1;  // TODO: leaves format in an invalid state.
 	}
+
+	return 0;
 }
 
 bool v4l2_find_format(int video_fd, unsigned int type, unsigned int pixelformat)
@@ -142,87 +154,6 @@ bool v4l2_find_format(int video_fd, unsigned int type, unsigned int pixelformat)
 	return false;
 }
 
-int v4l2_set_format(int video_fd, unsigned int type, unsigned int pixelformat,
-		    unsigned int width, unsigned int height)
-{
-	struct v4l2_format format;
-	int rc;
-
-	v4l2_setup_format(&format, type, width, height, pixelformat);
-
-	rc = ioctl(video_fd, VIDIOC_S_FMT, &format);
-	if (rc < 0) {
-		request_log("Unable to set format for type %d: %s\n", type,
-			    strerror(errno));
-		return -1;
-	}
-
-	return 0;
-}
-
-int v4l2_get_format(int video_fd, unsigned int type, unsigned int *width,
-		    unsigned int *height, unsigned int *bytesperline,
-		    unsigned int *sizes, unsigned int *planes_count)
-{
-	struct v4l2_format format;
-	unsigned int count;
-	unsigned int i;
-	int rc;
-
-	memset(&format, 0, sizeof(format));
-	format.type = type;
-
-	rc = ioctl(video_fd, VIDIOC_G_FMT, &format);
-	if (rc < 0) {
-		request_log("Unable to get format for type %d: %s\n", type,
-			    strerror(errno));
-		return -1;
-	}
-
-	if (V4L2_TYPE_IS_MULTIPLANAR(type)) {
-		count = format.fmt.pix_mp.num_planes;
-
-		if (width != NULL)
-			*width = format.fmt.pix_mp.width;
-
-		if (height != NULL)
-			*height = format.fmt.pix_mp.height;
-
-		if (planes_count != NULL)
-			if (*planes_count > 0 && *planes_count < count)
-				count = *planes_count;
-
-		if (bytesperline != NULL)
-			for (i = 0; i < count; i++)
-				bytesperline[i] =
-					format.fmt.pix_mp.plane_fmt[i].bytesperline;
-
-		if (sizes != NULL)
-			for (i = 0; i < count; i++)
-				sizes[i] = format.fmt.pix_mp.plane_fmt[i].sizeimage;
-
-		if (planes_count != NULL)
-			*planes_count = count;
-	} else {
-		if (width != NULL)
-			*width = format.fmt.pix.width;
-
-		if (height != NULL)
-			*height = format.fmt.pix.height;
-
-		if (bytesperline != NULL)
-			bytesperline[0] = format.fmt.pix.bytesperline;
-
-		if (sizes != NULL)
-			sizes[0] = format.fmt.pix.sizeimage;
-
-		if (planes_count != NULL)
-			*planes_count = 1;
-	}
-
-	return 0;
-}
-
 int v4l2_query_buffer(int video_fd, unsigned int type, unsigned int index,
 		      unsigned int *lengths, unsigned int *offsets,
 		      unsigned* buffers_count)
@@ -243,7 +174,9 @@ int v4l2_query_buffer(int video_fd, unsigned int type, unsigned int index,
 		return -1;
 	}
 
-	*buffers_count = buffer.length;
+	if (buffers_count) {
+		*buffers_count = buffer.length;
+	}
 	if (V4L2_TYPE_IS_MULTIPLANAR(type)) {
 		if (lengths != NULL)
 			for (i = 0; i < buffer.length; i++)

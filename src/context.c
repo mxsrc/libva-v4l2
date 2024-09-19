@@ -124,7 +124,7 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 		goto error;
 	}
 
-	rc = v4l2_set_format(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, pixelformat,
+	rc = v4l2_m2m_device_set_format(&driver_data->device, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, pixelformat,
 			     picture_width, picture_height);
 	if (rc < 0) {
 		status = VA_STATUS_ERROR_OPERATION_FAILED;

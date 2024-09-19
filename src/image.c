@@ -31,6 +31,7 @@
 #include "video.h"
 
 #include <assert.h>
+#include <linux/videodev2.h>
 #include <string.h>
 
 #include "utils.h"
@@ -41,13 +42,11 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 {
 	struct request_data *driver_data = context->pDriverData;
 	unsigned int destination_sizes[VIDEO_MAX_PLANES];
-	unsigned int format_width, format_height;
 	struct object_image *image_object;
 	VABufferID buffer_id;
 	VAImageID id;
 	VAStatus status;
 	unsigned int i;
-	int rc;
 
 	if (!driver_data->video_format)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
@@ -57,16 +56,17 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 	image->width = width;
 	image->height = height;
 
-	// Have to query the format to get the actual height, which may differ due to block alignment.
-	rc = v4l2_get_format(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-			     &format_width, &format_height,
-			     image->pitches, destination_sizes,
-			     &image->num_planes);
-	if (rc < 0)
-		return VA_STATUS_ERROR_OPERATION_FAILED;
-
+	struct v4l2_pix_format_mplane* driver_format = &driver_data->device.capture_format.fmt.pix_mp;
 	if (driver_data->video_format->derive_layout) {
-		driver_data->video_format->derive_layout(format_width, format_height, destination_sizes, image->pitches, &image->num_planes);
+		driver_data->video_format->derive_layout(
+				driver_format->width, driver_format->height,  // Have to use the driver format to get the actual height, which may differ due to block alignment.
+				destination_sizes, image->pitches, &image->num_planes);
+	} else {
+		image->num_planes = driver_format->num_planes;
+		for (int i = 0; i < image->num_planes; i += 1) {
+			destination_sizes[i] = driver_format->plane_fmt[i].sizeimage;
+			image->pitches[i] = driver_format->plane_fmt[i].bytesperline;
+		}
 	}
 
 	for (i = 0; i < image->num_planes; i++) {
