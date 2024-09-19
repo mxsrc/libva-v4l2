@@ -28,6 +28,7 @@
 
 #include <cassert>
 #include <cstring>
+#include <stdexcept>
 
 extern "C" {
 #include <linux/videodev2.h>
@@ -139,7 +140,6 @@ VAStatus RequestRenderPicture(VADriverContextP context, VAContextID context_id,
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_context *context_object;
-	struct object_config *config_object;
 	struct object_surface *surface_object;
 	struct object_buffer *buffer_object;
 	int rc;
@@ -149,9 +149,10 @@ VAStatus RequestRenderPicture(VADriverContextP context, VAContextID context_id,
 	if (context_object == NULL)
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
 
-	config_object = CONFIG(driver_data, context_object->config_id);
-	if (config_object == NULL)
+	if (!driver_data->configs.contains(context_object->config_id)) {
 		return VA_STATUS_ERROR_INVALID_CONFIG;
+	}
+	const auto& config = driver_data->configs.at(context_object->config_id);
 
 	surface_object =
 		SURFACE(driver_data, context_object->render_surface_id);
@@ -163,7 +164,7 @@ VAStatus RequestRenderPicture(VADriverContextP context, VAContextID context_id,
 		if (buffer_object == NULL)
 			return VA_STATUS_ERROR_INVALID_BUFFER;
 
-		rc = codec_store_buffer(driver_data, config_object->profile,
+		rc = codec_store_buffer(driver_data, config.profile,
 					surface_object, buffer_object);
 		if (rc != VA_STATUS_SUCCESS)
 			return rc;
@@ -176,7 +177,6 @@ VAStatus RequestEndPicture(VADriverContextP context, VAContextID context_id)
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	struct object_context *context_object;
-	struct object_config *config_object;
 	struct object_surface *surface_object;
 	int request_fd;
 	VAStatus status;
@@ -189,9 +189,10 @@ VAStatus RequestEndPicture(VADriverContextP context, VAContextID context_id)
 	if (context_object == NULL)
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
 
-	config_object = CONFIG(driver_data, context_object->config_id);
-	if (config_object == NULL)
+	if (!driver_data->configs.contains(context_object->config_id)) {
 		return VA_STATUS_ERROR_INVALID_CONFIG;
+	}
+	const auto& config = driver_data->configs.at(context_object->config_id);
 
 	surface_object =
 		SURFACE(driver_data, context_object->render_surface_id);
@@ -211,7 +212,7 @@ VAStatus RequestEndPicture(VADriverContextP context, VAContextID context_id)
 		}
 
 		rc = codec_set_controls(driver_data, context_object,
-					config_object->profile, surface_object);
+					config.profile, surface_object);
 		if (rc != VA_STATUS_SUCCESS)
 			return rc;
 	}

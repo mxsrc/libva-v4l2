@@ -57,14 +57,14 @@ VA_DRIVER_INIT_FUNC(VADriverContextP context);
 
 extern "C" VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 {
-	RequestData *driver_data;
+	auto driver_data = new RequestData();
 	struct VADriverVTable *vtable = context->vtable;
 
 	context->version_major = VA_MAJOR_VERSION;
 	context->version_minor = VA_MINOR_VERSION;
 	context->max_profiles = V4L2_REQUEST_MAX_PROFILES;
 	context->max_entrypoints = V4L2_REQUEST_MAX_ENTRYPOINTS;
-	context->max_attributes = V4L2_REQUEST_MAX_CONFIG_ATTRIBUTES;
+	context->max_attributes = Config::max_attributes;
 	context->max_image_formats = V4L2_REQUEST_MAX_IMAGE_FORMATS;
 	context->max_subpic_formats = V4L2_REQUEST_MAX_SUBPIC_FORMATS;
 	context->max_display_attributes = V4L2_REQUEST_MAX_DISPLAY_ATTRIBUTES;
@@ -120,13 +120,8 @@ extern "C" VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 	vtable->vaLockSurface = RequestLockSurface;
 	vtable->vaUnlockSurface = RequestUnlockSurface;
 
-	driver_data = static_cast<RequestData*>(malloc(sizeof(*driver_data)));
-	memset(driver_data, 0, sizeof(*driver_data));
-
 	context->pDriverData = driver_data;
 
-	object_heap_init(&driver_data->config_heap,
-			 sizeof(struct object_config), CONFIG_ID_OFFSET);
 	object_heap_init(&driver_data->context_heap,
 			 sizeof(struct object_context), CONTEXT_ID_OFFSET);
 	object_heap_init(&driver_data->surface_heap,
@@ -156,12 +151,14 @@ VAStatus RequestTerminate(VADriverContextP context)
 	struct object_image *image_object;
 	struct object_surface *surface_object;
 	struct object_context *context_object;
-	struct object_config *config_object;
 	int iterator;
 
 	v4l2_m2m_device_close(&driver_data->device);
 
 	/* Cleanup leftover buffers. */
+	for (auto&& [id, config] : driver_data->configs) {
+		RequestDestroyConfig(context, id);
+	}
 
 	image_object = (struct object_image *)
 		object_heap_first(&driver_data->image_heap, &iterator);
@@ -205,17 +202,6 @@ VAStatus RequestTerminate(VADriverContextP context)
 	}
 
 	object_heap_destroy(&driver_data->context_heap);
-
-	config_object = (struct object_config *)
-		object_heap_first(&driver_data->config_heap, &iterator);
-	while (config_object != NULL) {
-		RequestDestroyConfig(context,
-				     (VAConfigID)config_object->base.id);
-		config_object = (struct object_config *)
-			object_heap_next(&driver_data->config_heap, &iterator);
-	}
-
-	object_heap_destroy(&driver_data->config_heap);
 
 	delete driver_data;
 	context->pDriverData = nullptr;

@@ -26,12 +26,15 @@
 
 #pragma once
 
+#include <map>
+
 extern "C" {
 #include <linux/videodev2.h>
 
 #include <va/va.h>
 }
 
+#include "config.h"
 #include "context.h"
 #include "object_heap.h"
 #include "v4l2.h"
@@ -41,13 +44,12 @@ extern "C" {
 
 #define V4L2_REQUEST_MAX_PROFILES		11
 #define V4L2_REQUEST_MAX_ENTRYPOINTS		5
-#define V4L2_REQUEST_MAX_CONFIG_ATTRIBUTES	10
 #define V4L2_REQUEST_MAX_IMAGE_FORMATS		10
 #define V4L2_REQUEST_MAX_SUBPIC_FORMATS		4
 #define V4L2_REQUEST_MAX_DISPLAY_ATTRIBUTES	4
 
 struct RequestData {
-	struct object_heap config_heap;
+	std::map<VAConfigID, Config> configs;
 	struct object_heap context_heap;
 	struct object_heap surface_heap;
 	struct object_heap buffer_heap;

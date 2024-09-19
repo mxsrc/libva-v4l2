@@ -25,6 +25,8 @@
 
 #pragma once
 
+#include <map>
+
 extern "C" {
 #include <va/va_backend.h>
 }
@@ -43,3 +45,14 @@ void info_log(VADriverContextP ctx, const char *format, ...) __attribute__ ((for
  * Utility function to access the libVA error callback.
  */
 void error_log(VADriverContextP ctx, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
+
+template<typename K, typename V>
+K smallest_free_key(const std::map<K, V>& map) {
+	K i = {};
+
+	for (auto it = map.cbegin(), end = map.cend();
+				   it != end && i == it->first; ++it, ++i)
+	{ }
+
+	return i;
+}

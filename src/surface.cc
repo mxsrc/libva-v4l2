@@ -316,8 +316,7 @@ VAStatus RequestQuerySurfaceAttributes(VADriverContextP context,
 				       unsigned int *attributes_count)
 {
 	VASurfaceAttrib *attributes_list;
-	unsigned int attributes_list_size = V4L2_REQUEST_MAX_CONFIG_ATTRIBUTES *
-					    sizeof(*attributes);
+	unsigned int attributes_list_size = Config::max_attributes * sizeof(*attributes);
 	int memory_types;
 	unsigned int i = 0;
 

@@ -26,6 +26,7 @@
 
 #include "config.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstring>
 
@@ -37,6 +38,7 @@ extern "C" {
 }
 
 #include "request.h"
+#include "utils.h"
 #include "v4l2.h"
 
 VAStatus RequestCreateConfig(VADriverContextP context, VAProfile profile,
@@ -45,8 +47,6 @@ VAStatus RequestCreateConfig(VADriverContextP context, VAProfile profile,
 			     VAConfigID *config_id)
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	struct object_config *config_object;
-	VAConfigID id;
 	int i, index;
 
  	// TODO: Should check whether profile is actually supported by driver in use.
@@ -71,28 +71,26 @@ VAStatus RequestCreateConfig(VADriverContextP context, VAProfile profile,
 		return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
 	}
 
-	if (attributes_count > V4L2_REQUEST_MAX_CONFIG_ATTRIBUTES)
-		attributes_count = V4L2_REQUEST_MAX_CONFIG_ATTRIBUTES;
-
-	id = object_heap_allocate(&driver_data->config_heap);
-	config_object = CONFIG(driver_data, id);
-	if (config_object == NULL)
-		return VA_STATUS_ERROR_ALLOCATION_FAILED;
-
-	config_object->profile = profile;
-	config_object->entrypoint = entrypoint;
-	config_object->attributes[0].type = VAConfigAttribRTFormat;
-	config_object->attributes[0].value = VA_RT_FORMAT_YUV420;
-	config_object->attributes_count = 1;
-
-	for (i = 1; i < attributes_count; i++) {
-		index = config_object->attributes_count++;
-		config_object->attributes[index].type = attributes[index].type;
-		config_object->attributes[index].value =
-			attributes[index].value;
+	if (static_cast<unsigned>(attributes_count) > Config::max_attributes) {
+		attributes_count = Config::max_attributes;
 	}
 
-	*config_id = id;
+	*config_id = smallest_free_key(driver_data->configs);
+	auto [config, inserted] = driver_data->configs.emplace(std::make_pair(*config_id, Config{
+		.profile = profile,
+		.entrypoint = entrypoint,
+		.attributes{{VAConfigAttribRTFormat, VA_RT_FORMAT_YUV420}},
+		.attributes_count = 1,
+	}));
+	if (!inserted) {
+		return VA_STATUS_ERROR_ALLOCATION_FAILED;
+	}
+
+	for (i = 1; i < attributes_count; i++) {
+		index = config->second.attributes_count++;
+		config->second.attributes[index].type = attributes[index].type;
+		config->second.attributes[index].value = attributes[index].value;
+	}
 
 	return VA_STATUS_SUCCESS;
 }
@@ -100,14 +98,10 @@ VAStatus RequestCreateConfig(VADriverContextP context, VAProfile profile,
 VAStatus RequestDestroyConfig(VADriverContextP context, VAConfigID config_id)
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	struct object_config *config_object;
 
-	config_object = CONFIG(driver_data, config_id);
-	if (config_object == NULL)
+	if (!driver_data->configs.erase(config_id)) {
 		return VA_STATUS_ERROR_INVALID_CONFIG;
-
-	object_heap_free(&driver_data->config_heap,
-			 (struct object_base *)config_object);
+	}
 
 	return VA_STATUS_SUCCESS;
 }
@@ -121,14 +115,14 @@ VAStatus RequestQueryConfigProfiles(VADriverContextP context,
 
 	found = v4l2_find_format(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_MPEG2) ||
 		v4l2_find_format(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_MPEG2_SLICE);
-	if (found && index < (V4L2_REQUEST_MAX_CONFIG_ATTRIBUTES - 2)) {
+	if (found && index < (Config::max_attributes - 2)) {
 		profiles[index++] = VAProfileMPEG2Simple;
 		profiles[index++] = VAProfileMPEG2Main;
 	}
 
 	found = v4l2_find_format(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_H264) ||
 		v4l2_find_format(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_H264_SLICE);
-	if (found && index < (V4L2_REQUEST_MAX_CONFIG_ATTRIBUTES - 5)) {
+	if (found && index < (Config::max_attributes - 5)) {
 		// TODO: Query `h264_profile` to determine exact supported profile set
 		profiles[index++] = VAProfileH264Main;
 		profiles[index++] = VAProfileH264High;
@@ -138,13 +132,13 @@ VAStatus RequestQueryConfigProfiles(VADriverContextP context,
 	}
 
 	found = v4l2_find_format(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP8_FRAME);
-	if (found && index < (V4L2_REQUEST_MAX_CONFIG_ATTRIBUTES - 1)) {
+	if (found && index < (Config::max_attributes - 1)) {
 		profiles[index++] = VAProfileVP8Version0_3;
 	}
 
 	found = v4l2_find_format(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP9) ||
 		v4l2_find_format(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP9_FRAME);
-	if (found && index < (V4L2_REQUEST_MAX_CONFIG_ATTRIBUTES - 1)) {
+	if (found && index < (Config::max_attributes - 1)) {
 		// TODO: Query `vp9_profile` to determine exact supported profile set
 		profiles[index++] = VAProfileVP9Profile0;
 		profiles[index++] = VAProfileVP9Profile1;
@@ -195,26 +189,26 @@ VAStatus RequestQueryConfigAttributes(VADriverContextP context,
 				      int *attributes_count)
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	struct object_config *config_object;
-	int i;
 
-	config_object = CONFIG(driver_data, config_id);
-	if (config_object == NULL)
+	if (!driver_data->configs.contains(config_id)) {
 		return VA_STATUS_ERROR_INVALID_CONFIG;
+	}
+	const auto& config = driver_data->configs.at(config_id);
 
 	if (profile != NULL)
-		*profile = config_object->profile;
+		*profile = config.profile;
 
 	if (entrypoint != NULL)
-		*entrypoint = config_object->entrypoint;
+		*entrypoint = config.entrypoint;
 
-	if (attributes_count != NULL)
-		*attributes_count = config_object->attributes_count;
+	if (attributes_count != NULL) {
+		*attributes_count = config.attributes_count;
+	}
 
 	/* Attributes might be NULL to retrieve the associated count. */
-	if (attributes != NULL)
-		for (i = 0; i < config_object->attributes_count; i++)
-			attributes[i] = config_object->attributes[i];
+	if (attributes != NULL) {
+		std::copy_n(config.attributes, config.attributes_count, attributes);
+	}
 
 	return VA_STATUS_SUCCESS;
 }

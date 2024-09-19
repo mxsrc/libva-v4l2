@@ -51,7 +51,6 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 			      VAContextID *context_id)
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	struct object_config *config_object;
 	struct object_surface *surface_object;
 	struct object_context *context_object = NULL;
 	unsigned int length;
@@ -68,11 +67,10 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 	if (!driver_data->video_format)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
-	config_object = CONFIG(driver_data, config_id);
-	if (config_object == NULL) {
-		status = VA_STATUS_ERROR_INVALID_CONFIG;
-		goto error;
+	if (!driver_data->configs.contains(config_id)) {
+		return VA_STATUS_ERROR_INVALID_CONFIG;
 	}
+	const auto& config = driver_data->configs.at(config_id);
 
 	id = object_heap_allocate(&driver_data->context_heap);
 	context_object = CONTEXT(driver_data, id);
@@ -82,7 +80,7 @@ VAStatus RequestCreateContext(VADriverContextP context, VAConfigID config_id,
 	}
 	memset(&context_object->codec_state, 0, sizeof(context_object->codec_state));
 
-	switch (config_object->profile) {
+	switch (config.profile) {
 	case VAProfileMPEG2Simple:
 	case VAProfileMPEG2Main:
 		pixelformat = V4L2_PIX_FMT_MPEG2_SLICE;

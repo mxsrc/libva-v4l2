@@ -518,10 +518,11 @@ int h264_set_controls(RequestData *driver_data,
 		      struct object_context *context,
 		      struct object_surface *surface)
 {
-	struct object_config* config_object = CONFIG(driver_data, context->config_id);
-	if (config_object == NULL) {
-		return VA_STATUS_ERROR_OPERATION_FAILED;
+	if (!driver_data->configs.contains(context->config_id)) {
+		return VA_STATUS_ERROR_INVALID_CONFIG;
 	}
+	const auto& config = driver_data->configs.at(context->config_id);
+
 	struct v4l2_ctrl_h264_scaling_matrix matrix = { 0 };
 	struct v4l2_ctrl_h264_decode_params decode = { 0 };
 	struct v4l2_ctrl_h264_slice_params slice = { 0 };
@@ -550,7 +551,7 @@ int h264_set_controls(RequestData *driver_data,
 			      &surface->params.h264.slice,
 			      &surface->params.h264.picture, &slice);
 
-	sps.profile_idc = va_profile_to_profile_idc(config_object->profile);
+	sps.profile_idc = va_profile_to_profile_idc(config.profile);
 	switch (surface->params.h264.slice.slice_type % 5) {
 		case H264_SLICE_P:
 			decode.flags |= V4L2_H264_DECODE_PARAM_FLAG_PFRAME;

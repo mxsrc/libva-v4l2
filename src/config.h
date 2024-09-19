@@ -30,19 +30,12 @@ extern "C" {
 #include <va/va_backend.h>
 }
 
-#include "object_heap.h"
-#include "request.h"
-
-#define CONFIG(data, id)                                                       \
-	((struct object_config *)object_heap_lookup(&(data)->config_heap, id))
-#define CONFIG_ID_OFFSET		0x01000000
-
-struct object_config {
-	struct object_base base;
+struct Config {
+	static constexpr unsigned max_attributes = 10;
 
 	VAProfile profile;
 	VAEntrypoint entrypoint;
-	VAConfigAttrib attributes[V4L2_REQUEST_MAX_CONFIG_ATTRIBUTES];
+	VAConfigAttrib attributes[max_attributes];
 	int attributes_count;
 };
 
