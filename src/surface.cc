@@ -78,6 +78,7 @@ VAStatus RequestCreateSurfaces2(VADriverContextP context, unsigned int format,
 		}
         }
 
+	std::lock_guard<std::mutex> guard(driver_data->mutex);
 	for (unsigned i = 0; i < surfaces_count; i++) {
 		surfaces_ids[i] = smallest_free_key(driver_data->surfaces);
 		auto [config, inserted] = driver_data->surfaces.emplace(std::make_pair(surfaces_ids[i], Surface{
@@ -194,6 +195,7 @@ VAStatus RequestDestroySurfaces(VADriverContextP context,
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	unsigned int j;
 
+	std::lock_guard<std::mutex> guard(driver_data->mutex);
 	for (int i = 0; i < surfaces_count; i++) {
 		if (!driver_data->surfaces.contains(surfaces_ids[i])) {
 			return VA_STATUS_ERROR_INVALID_SURFACE;

@@ -70,6 +70,7 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 	}
 	const auto& config = driver_data->configs.at(config_id);
 
+	std::lock_guard<std::mutex> guard(driver_data->mutex);
 	*context_id = smallest_free_key(driver_data->contexts);
 	auto [context, inserted] = driver_data->contexts.emplace(std::make_pair(*context_id, Context{
 		.config_id = config_id,
@@ -254,6 +255,7 @@ VAStatus RequestDestroyContext(VADriverContextP va_context, VAContextID context_
 		return -1;
 	}
 
+	std::lock_guard<std::mutex> guard(driver_data->mutex);
 	driver_data->contexts.erase(context_id);
 
 	return VA_STATUS_SUCCESS;
