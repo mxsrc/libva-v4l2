@@ -61,13 +61,13 @@ VAStatus mpeg2_store_buffer(RequestData *driver_data,
 	switch (buffer.type) {
 	case VAPictureParameterBufferType:
 		memcpy(&surface.params.mpeg2.picture,
-		       buffer.data,
+		       buffer.data.get(),
 		       sizeof(surface.params.mpeg2.picture));
 		break;
 
 	case VAIQMatrixBufferType:
 		memcpy(&surface.params.mpeg2.iqmatrix,
-		       buffer.data,
+		       buffer.data.get(),
 		       sizeof(surface.params.mpeg2.iqmatrix));
 		surface.params.mpeg2.iqmatrix_set = true;
 		break;
@@ -87,7 +87,7 @@ VAStatus mpeg2_store_buffer(RequestData *driver_data,
 		 */
 		memcpy(surface.source_data +
 			       surface.slices_size,
-		       buffer.data,
+		       buffer.data.get(),
 		       buffer.size * buffer.count);
 		surface.slices_size +=
 			buffer.size * buffer.count;

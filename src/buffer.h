@@ -27,6 +27,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 
 extern "C" {
 #include <va/va.h>
@@ -34,13 +35,13 @@ extern "C" {
 }
 
 struct Buffer {
+	Buffer(VABufferType type, unsigned count, unsigned size, VASurfaceID derived_surface_id);
+
 	VABufferType type;
-	unsigned int initial_count;
-	unsigned int count;
-
-	uint8_t* data;
+	unsigned initial_count;
+	unsigned count;
+	std::unique_ptr<uint8_t> data;
 	unsigned int size;
-
 	VASurfaceID derived_surface_id;
 	VABufferInfo info;
 };

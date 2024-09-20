@@ -145,14 +145,14 @@ VAStatus vp9_store_buffer(RequestData *driver_data,
 	switch (buffer.type) {
 	case VAPictureParameterBufferType:
 		memcpy(&surface.params.vp9.picture,
-		       buffer.data,
+		       buffer.data.get(),
 		       sizeof(surface.params.vp9.picture));
 		printf("\n");
 		return VA_STATUS_SUCCESS;
 
 	case VASliceParameterBufferType:
 		memcpy(&surface.params.vp9.slice,
-		       buffer.data,
+		       buffer.data.get(),
 		       sizeof(surface.params.vp9.slice));
 		printf("\n");
 		return VA_STATUS_SUCCESS;
@@ -167,7 +167,7 @@ VAStatus vp9_store_buffer(RequestData *driver_data,
 		printf("%d bytes.", surface.source_size);
 		memcpy(surface.source_data +
 			       surface.slices_size,
-		       buffer.data,
+		       buffer.data.get(),
 		       buffer.size * buffer.count);
 		surface.slices_size +=
 			buffer.size * buffer.count;

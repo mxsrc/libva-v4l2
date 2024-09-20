@@ -481,7 +481,7 @@ VAStatus h264_store_buffer(RequestData *driver_data,
 
 		memcpy(surface.source_data +
 			       surface.slices_size,
-		       buffer.data,
+		       buffer.data.get(),
 		       buffer.size * buffer.count);
 		surface.slices_size +=
 			buffer.size * buffer.count;
@@ -490,19 +490,19 @@ VAStatus h264_store_buffer(RequestData *driver_data,
 
 	case VAPictureParameterBufferType:
 		memcpy(&surface.params.h264.picture,
-		       buffer.data,
+		       buffer.data.get(),
 		       sizeof(surface.params.h264.picture));
 		break;
 
 	case VASliceParameterBufferType:
 		memcpy(&surface.params.h264.slice,
-		       buffer.data,
+		       buffer.data.get(),
 		       sizeof(surface.params.h264.slice));
 		break;
 
 	case VAIQMatrixBufferType:
 		memcpy(&surface.params.h264.matrix,
-		       buffer.data,
+		       buffer.data.get(),
 		       sizeof(surface.params.h264.matrix));
 		break;
 

@@ -193,7 +193,7 @@ VAStatus vp8_store_buffer(RequestData *driver_data,
 
 		memcpy(surface.source_data +
 			       surface.slices_size,
-		       buffer.data,
+		       buffer.data.get(),
 		       buffer.size * buffer.count);
 		surface.slices_size +=
 			buffer.size * buffer.count;
@@ -202,25 +202,25 @@ VAStatus vp8_store_buffer(RequestData *driver_data,
 
 	case VAPictureParameterBufferType:
 		memcpy(&surface.params.vp8.picture,
-		       buffer.data,
+		       buffer.data.get(),
 		       sizeof(surface.params.vp8.picture));
 		break;
 
 	case VASliceParameterBufferType:
 		memcpy(&surface.params.vp8.slice,
-		       buffer.data,
+		       buffer.data.get(),
 		       sizeof(surface.params.vp8.slice));
 		break;
 
 	case VAIQMatrixBufferType:
 		memcpy(&surface.params.vp8.iqmatrix,
-		       buffer.data,
+		       buffer.data.get(),
 		       sizeof(surface.params.vp8.iqmatrix));
 		break;
 
 	case VAProbabilityBufferType:
 		memcpy(&surface.params.vp8.probabilities,
-		       buffer.data,
+		       buffer.data.get(),
 		       sizeof(surface.params.vp8.probabilities));
 		break;
 

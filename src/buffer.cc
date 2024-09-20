@@ -48,6 +48,15 @@ extern "C" {
 #include "v4l2.h"
 
 
+Buffer::Buffer(VABufferType type, unsigned count, unsigned size, VASurfaceID derived_surface_id = VA_INVALID_ID) :
+	type(type),
+	initial_count(count),
+	count(count),
+	data(static_cast<uint8_t*>(malloc(size * count))),
+	size(size),
+	derived_surface_id(derived_surface_id),
+	info({ .handle = static_cast<uintptr_t>(-1) }) {}
+
 VAStatus RequestCreateBuffer(VADriverContextP context, VAContextID context_id,
 			     VABufferType type, unsigned int size,
 			     unsigned int count, void *data,
@@ -70,22 +79,13 @@ VAStatus RequestCreateBuffer(VADriverContextP context, VAContextID context_id,
 
 	std::lock_guard<std::mutex> guard(driver_data->mutex);
 	*buffer_id = smallest_free_key(driver_data->buffers);
-	auto [buffer, inserted] = driver_data->buffers.emplace(std::make_pair(*buffer_id, Buffer{
-		.type = type,
-		.initial_count = count,
-		.count = count,
-		.data = static_cast<uint8_t*>(malloc(size * count)),
-		.size = size,
-
-		.derived_surface_id = VA_INVALID_ID,
-		.info = { .handle = static_cast<uintptr_t>(-1) },
-	}));
+	auto [buffer, inserted] = driver_data->buffers.emplace(std::make_pair(*buffer_id, Buffer(type, count, size)));
 	if (!inserted || !buffer->second.data) {
 		return VA_STATUS_ERROR_ALLOCATION_FAILED;
 	}
 
 	if (data) {
-		std::copy_n(static_cast<uint8_t*>(data), size * count, buffer->second.data);
+		std::copy_n(static_cast<uint8_t*>(data), size * count, buffer->second.data.get());
 	}
 
 	return VA_STATUS_SUCCESS;
@@ -100,8 +100,6 @@ VAStatus RequestDestroyBuffer(VADriverContextP context, VABufferID buffer_id)
 	if (buffer_it == driver_data->buffers.end()) {
 		return VA_STATUS_ERROR_INVALID_BUFFER;
 	}
-
-	free(buffer_it->second.data);
 	driver_data->buffers.erase(buffer_it);
 
 	return VA_STATUS_SUCCESS;
@@ -117,7 +115,7 @@ VAStatus RequestMapBuffer(VADriverContextP context, VABufferID buffer_id,
 	}
 
 	/* Our buffers are always mapped. */
-	*data_map = driver_data->buffers.at(buffer_id).data;
+	*data_map = driver_data->buffers.at(buffer_id).data.get();
 
 	return VA_STATUS_SUCCESS;
 }
