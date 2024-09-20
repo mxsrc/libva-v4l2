@@ -120,15 +120,15 @@ static VAStatus copy_surface_to_image (RequestData *driver_data,
 				       const Surface& surface,
 				       VAImage *image)
 {
-	struct object_buffer *buffer_object;
 	unsigned int i;
 
-	buffer_object = BUFFER(driver_data, image->buf);
-	if (buffer_object == NULL)
-		return VA_STATUS_ERROR_INVALID_BUFFER;
+	if (!driver_data->buffers.contains(image->buf)) {
+		return VA_STATUS_ERROR_INVALID_CONFIG;
+	}
+	auto& buffer = driver_data->buffers.at(image->buf);
 
 	for (i = 0; i < surface.destination_logical_planes_count; i++) {
-		memcpy(buffer_object->data + image->offsets[i],
+		memcpy(buffer.data + image->offsets[i],
 		       surface.destination_plane_data[surface.destination_logical_plane_index[i]] + surface.destination_logical_plane_offset[i],
 		       surface.destination_logical_plane_size[i]);
 	}
@@ -140,7 +140,6 @@ VAStatus RequestDeriveImage(VADriverContextP context, VASurfaceID surface_id,
 			    VAImage *image)
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	struct object_buffer *buffer_object;
 	VAImageFormat format;
 	VAStatus status;
 
@@ -168,8 +167,10 @@ VAStatus RequestDeriveImage(VADriverContextP context, VASurfaceID surface_id,
 
 	surface.status = VASurfaceReady;
 
-	buffer_object = BUFFER(driver_data, image->buf);
-	buffer_object->derived_surface_id = surface_id;
+	if (!driver_data->buffers.contains(image->buf)) {
+		return VA_STATUS_ERROR_INVALID_CONFIG;
+	}
+	driver_data->buffers.at(image->buf).derived_surface_id = surface_id;;
 
 	return VA_STATUS_SUCCESS;
 }

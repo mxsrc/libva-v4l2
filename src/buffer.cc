@@ -26,8 +26,11 @@
 
 #include "buffer.h"
 
+#include <algorithm>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <mutex>
 
 extern "C" {
 #include <fcntl.h>
@@ -41,8 +44,9 @@ extern "C" {
 }
 
 #include "request.h"
-#include "surface.h"
+#include "utils.h"
 #include "v4l2.h"
+
 
 VAStatus RequestCreateBuffer(VADriverContextP context, VAContextID context_id,
 			     VABufferType type, unsigned int size,
@@ -50,10 +54,6 @@ VAStatus RequestCreateBuffer(VADriverContextP context, VAContextID context_id,
 			     VABufferID *buffer_id)
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	struct object_buffer *buffer_object = NULL;
-	uint8_t* buffer_data;
-	VAStatus status;
-	VABufferID id;
 
 	switch (type) {
 	case VAPictureParameterBufferType:
@@ -65,63 +65,44 @@ VAStatus RequestCreateBuffer(VADriverContextP context, VAContextID context_id,
 		break;
 
 	default:
-		status = VA_STATUS_ERROR_UNSUPPORTED_BUFFERTYPE;
-		goto error;
+		return VA_STATUS_ERROR_UNSUPPORTED_BUFFERTYPE;
 	}
 
-	id = object_heap_allocate(&driver_data->buffer_heap);
-	buffer_object = BUFFER(driver_data, id);
-	if (buffer_object == NULL) {
-		status = VA_STATUS_ERROR_ALLOCATION_FAILED;
-		goto error;
+	std::lock_guard<std::mutex> guard(driver_data->mutex);
+	*buffer_id = smallest_free_key(driver_data->buffers);
+	auto [buffer, inserted] = driver_data->buffers.emplace(std::make_pair(*buffer_id, Buffer{
+		.type = type,
+		.initial_count = count,
+		.count = count,
+		.data = static_cast<uint8_t*>(malloc(size * count)),
+		.size = size,
+
+		.derived_surface_id = VA_INVALID_ID,
+		.info = { .handle = static_cast<uintptr_t>(-1) },
+	}));
+	if (!inserted || !buffer->second.data) {
+		return VA_STATUS_ERROR_ALLOCATION_FAILED;
 	}
 
-	buffer_data = static_cast<uint8_t*>(malloc(size * count));
-	if (buffer_data == NULL) {
-		status = VA_STATUS_ERROR_ALLOCATION_FAILED;
-		goto error;
+	if (data) {
+		std::copy_n(static_cast<uint8_t*>(data), size * count, buffer->second.data);
 	}
 
-	if (data != NULL)
-		memcpy(buffer_data, data, size * count);
-
-	buffer_object->type = type;
-	buffer_object->initial_count = count;
-	buffer_object->count = count;
-	buffer_object->data = buffer_data;
-	buffer_object->size = size;
-
-	buffer_object->derived_surface_id = VA_INVALID_ID;
-	buffer_object->info.handle = (uintptr_t) -1;
-
-	*buffer_id = id;
-
-	status = VA_STATUS_SUCCESS;
-	goto complete;
-
-error:
-	if (buffer_object != NULL)
-		object_heap_free(&driver_data->buffer_heap,
-				 (struct object_base *)buffer_object);
-
-complete:
-	return status;
+	return VA_STATUS_SUCCESS;
 }
 
 VAStatus RequestDestroyBuffer(VADriverContextP context, VABufferID buffer_id)
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	struct object_buffer *buffer_object;
 
-	buffer_object = BUFFER(driver_data, buffer_id);
-	if (buffer_object == NULL)
+	std::lock_guard<std::mutex> guard(driver_data->mutex);
+	auto buffer_it = driver_data->buffers.find(buffer_id);
+	if (buffer_it == driver_data->buffers.end()) {
 		return VA_STATUS_ERROR_INVALID_BUFFER;
+	}
 
-	if (buffer_object->data != NULL)
-		free(buffer_object->data);
-
-	object_heap_free(&driver_data->buffer_heap,
-			 (struct object_base *)buffer_object);
+	free(buffer_it->second.data);
+	driver_data->buffers.erase(buffer_it);
 
 	return VA_STATUS_SUCCESS;
 }
@@ -130,14 +111,13 @@ VAStatus RequestMapBuffer(VADriverContextP context, VABufferID buffer_id,
 			  void **data_map)
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	struct object_buffer *buffer_object;
 
-	buffer_object = BUFFER(driver_data, buffer_id);
-	if (buffer_object == NULL || buffer_object->data == NULL)
-		return VA_STATUS_ERROR_INVALID_BUFFER;
+	if (!driver_data->buffers.contains(buffer_id)) {
+		return VA_STATUS_ERROR_INVALID_CONFIG;
+	}
 
 	/* Our buffers are always mapped. */
-	*data_map = buffer_object->data;
+	*data_map = driver_data->buffers.at(buffer_id).data;
 
 	return VA_STATUS_SUCCESS;
 }
@@ -145,13 +125,11 @@ VAStatus RequestMapBuffer(VADriverContextP context, VABufferID buffer_id,
 VAStatus RequestUnmapBuffer(VADriverContextP context, VABufferID buffer_id)
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	struct object_buffer *buffer_object;
-
-	buffer_object = BUFFER(driver_data, buffer_id);
-	if (buffer_object == NULL || buffer_object->data == NULL)
-		return VA_STATUS_ERROR_INVALID_BUFFER;
 
 	/* Our buffers are always mapped. */
+	if (!driver_data->buffers.contains(buffer_id)) {
+		return VA_STATUS_ERROR_INVALID_CONFIG;
+	}
 
 	return VA_STATUS_SUCCESS;
 }
@@ -160,16 +138,16 @@ VAStatus RequestBufferSetNumElements(VADriverContextP context,
 				     VABufferID buffer_id, unsigned int count)
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	struct object_buffer *buffer_object;
 
-	buffer_object = BUFFER(driver_data, buffer_id);
-	if (buffer_object == NULL)
-		return VA_STATUS_ERROR_INVALID_BUFFER;
+	if (!driver_data->buffers.contains(buffer_id)) {
+		return VA_STATUS_ERROR_INVALID_CONFIG;
+	}
+	auto& buffer = driver_data->buffers.at(buffer_id);
 
-	if (count > buffer_object->initial_count)
+	if (count > buffer.initial_count)
 		return VA_STATUS_ERROR_INVALID_PARAMETER;
 
-	buffer_object->count = count;
+	buffer.count = count;
 
 	return VA_STATUS_SUCCESS;
 }
@@ -179,15 +157,15 @@ VAStatus RequestBufferInfo(VADriverContextP context, VABufferID buffer_id,
 			   unsigned int *count)
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	struct object_buffer *buffer_object;
 
-	buffer_object = BUFFER(driver_data, buffer_id);
-	if (buffer_object == NULL)
-		return VA_STATUS_ERROR_INVALID_BUFFER;
+	if (!driver_data->buffers.contains(buffer_id)) {
+		return VA_STATUS_ERROR_INVALID_CONFIG;
+	}
+	auto& buffer = driver_data->buffers.at(buffer_id);
 
-	*type = buffer_object->type;
-	*size = buffer_object->size;
-	*count = buffer_object->count;
+	*type = buffer.type;
+	*size = buffer.size;
+	*count = buffer.count;
 
 	return VA_STATUS_SUCCESS;
 }
@@ -197,27 +175,31 @@ VAStatus RequestAcquireBufferHandle(VADriverContextP context,
 				    VABufferInfo *buffer_info)
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	struct object_buffer *buffer_object;
+
+	if (!driver_data->buffers.contains(buffer_id)) {
+		return VA_STATUS_ERROR_INVALID_CONFIG;
+	}
+	auto& buffer = driver_data->buffers.at(buffer_id);
+
 	int export_fd;
 	int rc;
 
-	if (!driver_data->video_format)
+	if (!driver_data->video_format) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
+	}
 
-	buffer_object = BUFFER(driver_data, buffer_id);
-	if (buffer_object == NULL || buffer_object->type != VAImageBufferType)
+	if (buffer.derived_surface_id == VA_INVALID_ID) {
 		return VA_STATUS_ERROR_INVALID_BUFFER;
+	}
 
-	if (buffer_object->derived_surface_id == VA_INVALID_ID)
-		return VA_STATUS_ERROR_INVALID_BUFFER;
-
-	if (!driver_data->surfaces.contains(buffer_object->derived_surface_id)) {
+	if (!driver_data->surfaces.contains(buffer.derived_surface_id)) {
 		return VA_STATUS_ERROR_INVALID_SURFACE;
 	}
-	const auto& surface = driver_data->surfaces.at(buffer_object->derived_surface_id);
+	const auto& surface = driver_data->surfaces.at(buffer.derived_surface_id);
 
-	if (surface.destination_planes_count > 1)
+	if (surface.destination_planes_count > 1) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
+	}
 
 	rc = v4l2_export_buffer(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
 				surface.destination_index, O_RDONLY,
@@ -226,10 +208,10 @@ VAStatus RequestAcquireBufferHandle(VADriverContextP context,
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	buffer_info->handle = (uintptr_t) export_fd;
-	buffer_info->type = buffer_object->type;
-	buffer_info->mem_size = buffer_object->size * buffer_object->count;
+	buffer_info->type = buffer.type;
+	buffer_info->mem_size = buffer.size * buffer.count;
 
-	buffer_object->info = *buffer_info;
+	buffer.info = *buffer_info;
 
 	return VA_STATUS_SUCCESS;
 }
@@ -238,21 +220,22 @@ VAStatus RequestReleaseBufferHandle(VADriverContextP context,
 	VABufferID buffer_id)
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	struct object_buffer *buffer_object;
 	int export_fd;
 
-	buffer_object = BUFFER(driver_data, buffer_id);
-	if (buffer_object == NULL)
-		return VA_STATUS_ERROR_INVALID_BUFFER;
+	if (!driver_data->buffers.contains(buffer_id)) {
+		return VA_STATUS_ERROR_INVALID_CONFIG;
+	}
+	auto& buffer = driver_data->buffers.at(buffer_id);
 
-	if (buffer_object->info.handle == (uintptr_t) -1)
+	if (buffer.info.handle == static_cast<uintptr_t>(-1)) {
 		return VA_STATUS_SUCCESS;
+	}
 
-	export_fd = (int) buffer_object->info.handle;
+	export_fd = static_cast<int>(buffer.info.handle);
 
 	close(export_fd);
 
-	buffer_object->info.handle = (uintptr_t) -1;
+	buffer.info.handle = static_cast<uintptr_t>(-1);
 
 	return VA_STATUS_SUCCESS;
 }

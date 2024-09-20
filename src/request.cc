@@ -122,8 +122,6 @@ extern "C" VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 
 	context->pDriverData = driver_data;
 
-	object_heap_init(&driver_data->buffer_heap,
-			 sizeof(struct object_buffer), BUFFER_ID_OFFSET);
 	object_heap_init(&driver_data->image_heap, sizeof(struct object_image),
 			 IMAGE_ID_OFFSET);
 
@@ -143,7 +141,6 @@ extern "C" VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 VAStatus RequestTerminate(VADriverContextP va_context)
 {
 	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
-	struct object_buffer *buffer_object;
 	struct object_image *image_object;
 	int iterator;
 
@@ -163,6 +160,10 @@ VAStatus RequestTerminate(VADriverContextP va_context)
 		RequestDestroySurfaces(va_context, &id_, 1);
 	}
 
+	for (auto&& [id, buffer] : driver_data->buffers) {
+		RequestDestroyBuffer(va_context, id);
+	}
+
 	image_object = (struct object_image *)
 		object_heap_first(&driver_data->image_heap, &iterator);
 	while (image_object != NULL) {
@@ -172,17 +173,6 @@ VAStatus RequestTerminate(VADriverContextP va_context)
 	}
 
 	object_heap_destroy(&driver_data->image_heap);
-
-	buffer_object = (struct object_buffer *)
-		object_heap_first(&driver_data->buffer_heap, &iterator);
-	while (buffer_object != NULL) {
-		RequestDestroyBuffer(va_context,
-				     (VABufferID)buffer_object->base.id);
-		buffer_object = (struct object_buffer *)
-			object_heap_next(&driver_data->buffer_heap, &iterator);
-	}
-
-	object_heap_destroy(&driver_data->buffer_heap);
 
 	delete driver_data;
 	va_context->pDriverData = nullptr;

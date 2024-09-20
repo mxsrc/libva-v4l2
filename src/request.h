@@ -27,6 +27,7 @@
 #pragma once
 
 #include <map>
+#include <mutex>
 
 extern "C" {
 #include <linux/videodev2.h>
@@ -34,6 +35,7 @@ extern "C" {
 #include <va/va.h>
 }
 
+#include "buffer.h"
 #include "config.h"
 #include "context.h"
 #include "object_heap.h"
@@ -52,11 +54,12 @@ struct RequestData {
 	std::map<VAConfigID, Config> configs;
 	std::map<VAContextID, Context> contexts;
 	std::map<VASurfaceID, Surface> surfaces;
-	struct object_heap buffer_heap;
+	std::map<VABufferID, Buffer> buffers;
 	struct object_heap image_heap;
 	struct v4l2_m2m_device device;
 
 	const struct video_format *video_format;
+	std::mutex mutex;
 };
 
 extern "C" VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context);

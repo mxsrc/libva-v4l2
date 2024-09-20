@@ -7,8 +7,7 @@
 #include <gst/codecparsers/gstvp9parser.h>
 #include <gst/codecs/gstvp9statefulparser.h>
 
-#include "buffer.h"
-#include "surface.h"
+#include "request.h"
 #include "utils.h"
 #include "v4l2.h"
 
@@ -142,18 +141,18 @@ struct v4l2_ctrl_vp9_compressed_hdr gst_to_v4l2_compressed_header(GstVp9FrameHea
 
 VAStatus vp9_store_buffer(RequestData *driver_data,
 			  Surface& surface,
-			  struct object_buffer *buffer_object) {
-	switch (buffer_object->type) {
+			  const Buffer& buffer) {
+	switch (buffer.type) {
 	case VAPictureParameterBufferType:
 		memcpy(&surface.params.vp9.picture,
-		       buffer_object->data,
+		       buffer.data,
 		       sizeof(surface.params.vp9.picture));
 		printf("\n");
 		return VA_STATUS_SUCCESS;
 
 	case VASliceParameterBufferType:
 		memcpy(&surface.params.vp9.slice,
-		       buffer_object->data,
+		       buffer.data,
 		       sizeof(surface.params.vp9.slice));
 		printf("\n");
 		return VA_STATUS_SUCCESS;
@@ -168,16 +167,16 @@ VAStatus vp9_store_buffer(RequestData *driver_data,
 		printf("%d bytes.", surface.source_size);
 		memcpy(surface.source_data +
 			       surface.slices_size,
-		       buffer_object->data,
-		       buffer_object->size * buffer_object->count);
+		       buffer.data,
+		       buffer.size * buffer.count);
 		surface.slices_size +=
-			buffer_object->size * buffer_object->count;
+			buffer.size * buffer.count;
 		surface.slices_count++;
 		printf("\n");
 		return VA_STATUS_SUCCESS;
 
 	default:
-		request_log("Unsupported buffer type: %d\n", buffer_object->type);
+		request_log("Unsupported buffer type: %d\n", buffer.type);
 		printf("\n");
 		return VA_STATUS_ERROR_UNSUPPORTED_BUFFERTYPE;
 	}

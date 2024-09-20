@@ -56,18 +56,18 @@ static const uint8_t default_intra_quantisation_matrix[] = {
 
 VAStatus mpeg2_store_buffer(RequestData *driver_data,
 				   Surface& surface,
-				   struct object_buffer *buffer_object)
+				   const Buffer& buffer)
 {
-	switch (buffer_object->type) {
+	switch (buffer.type) {
 	case VAPictureParameterBufferType:
 		memcpy(&surface.params.mpeg2.picture,
-		       buffer_object->data,
+		       buffer.data,
 		       sizeof(surface.params.mpeg2.picture));
 		break;
 
 	case VAIQMatrixBufferType:
 		memcpy(&surface.params.mpeg2.iqmatrix,
-		       buffer_object->data,
+		       buffer.data,
 		       sizeof(surface.params.mpeg2.iqmatrix));
 		surface.params.mpeg2.iqmatrix_set = true;
 		break;
@@ -87,10 +87,10 @@ VAStatus mpeg2_store_buffer(RequestData *driver_data,
 		 */
 		memcpy(surface.source_data +
 			       surface.slices_size,
-		       buffer_object->data,
-		       buffer_object->size * buffer_object->count);
+		       buffer.data,
+		       buffer.size * buffer.count);
 		surface.slices_size +=
-			buffer_object->size * buffer_object->count;
+			buffer.size * buffer.count;
 		surface.slices_count++;
 		break;
 

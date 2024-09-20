@@ -26,20 +26,14 @@
 
 #pragma once
 
+#include <cstdint>
+
 extern "C" {
+#include <va/va.h>
 #include <va/va_backend.h>
 }
 
-#include "object_heap.h"
-#include "request.h"
-
-#define BUFFER(data, id)                                                       \
-	((struct object_buffer *)object_heap_lookup(&(data)->buffer_heap, id))
-#define BUFFER_ID_OFFSET		0x08000000
-
-struct object_buffer {
-	struct object_base base;
-
+struct Buffer {
 	VABufferType type;
 	unsigned int initial_count;
 	unsigned int count;

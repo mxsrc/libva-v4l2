@@ -31,9 +31,9 @@ extern "C" {
 #include <va/va.h>
 }
 
+#include "buffer.h"
 #include "surface.h"
 
-struct object_buffer;
 struct Context;
 struct RequestData;
 
@@ -54,7 +54,7 @@ struct h264_dpb {
 
 VAStatus h264_store_buffer(RequestData *driver_data,
 				   Surface& surface,
-				   struct object_buffer *buffer_object);
+				   const Buffer& buffer);
 int h264_set_controls(RequestData *data,
 		      Context& context,
 		      Surface& surface);

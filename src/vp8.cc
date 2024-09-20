@@ -175,9 +175,9 @@ static size_t prefix_data(uint8_t* data, const VAPictureParameterBufferVP8* pict
 
 VAStatus vp8_store_buffer(RequestData *driver_data,
 			  Surface& surface,
-			  struct object_buffer *buffer_object)
+			  const Buffer& buffer)
 {
-	switch (buffer_object->type) {
+	switch (buffer.type) {
 	case VASliceDataBufferType:
 		/*
 		 * Since there is no guarantee that the allocation
@@ -193,34 +193,34 @@ VAStatus vp8_store_buffer(RequestData *driver_data,
 
 		memcpy(surface.source_data +
 			       surface.slices_size,
-		       buffer_object->data,
-		       buffer_object->size * buffer_object->count);
+		       buffer.data,
+		       buffer.size * buffer.count);
 		surface.slices_size +=
-			buffer_object->size * buffer_object->count;
+			buffer.size * buffer.count;
 		surface.slices_count++;
 		break;
 
 	case VAPictureParameterBufferType:
 		memcpy(&surface.params.vp8.picture,
-		       buffer_object->data,
+		       buffer.data,
 		       sizeof(surface.params.vp8.picture));
 		break;
 
 	case VASliceParameterBufferType:
 		memcpy(&surface.params.vp8.slice,
-		       buffer_object->data,
+		       buffer.data,
 		       sizeof(surface.params.vp8.slice));
 		break;
 
 	case VAIQMatrixBufferType:
 		memcpy(&surface.params.vp8.iqmatrix,
-		       buffer_object->data,
+		       buffer.data,
 		       sizeof(surface.params.vp8.iqmatrix));
 		break;
 
 	case VAProbabilityBufferType:
 		memcpy(&surface.params.vp8.probabilities,
-		       buffer_object->data,
+		       buffer.data,
 		       sizeof(surface.params.vp8.probabilities));
 		break;
 

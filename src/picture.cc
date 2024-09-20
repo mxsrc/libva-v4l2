@@ -52,28 +52,28 @@ extern "C" {
 static VAStatus codec_store_buffer(RequestData *driver_data,
 				   VAProfile profile,
 				   Surface& surface,
-				   struct object_buffer *buffer_object)
+				   const Buffer& buffer)
 {
 	switch (profile) {
 	case VAProfileMPEG2Simple:
 	case VAProfileMPEG2Main:
-		return mpeg2_store_buffer(driver_data, surface, buffer_object);
+		return mpeg2_store_buffer(driver_data, surface, buffer);
 
 	case VAProfileH264Main:
 	case VAProfileH264High:
 	case VAProfileH264ConstrainedBaseline:
 	case VAProfileH264MultiviewHigh:
 	case VAProfileH264StereoHigh:
-		return h264_store_buffer(driver_data, surface, buffer_object);
+		return h264_store_buffer(driver_data, surface, buffer);
 
 	case VAProfileVP8Version0_3:
-		return vp8_store_buffer(driver_data, surface, buffer_object);
+		return vp8_store_buffer(driver_data, surface, buffer);
 
 	case VAProfileVP9Profile0:
 	case VAProfileVP9Profile1:
 	case VAProfileVP9Profile2:
 	case VAProfileVP9Profile3:
-		return vp9_store_buffer(driver_data, surface, buffer_object);
+		return vp9_store_buffer(driver_data, surface, buffer);
 
 	default:
 		return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
@@ -139,7 +139,6 @@ VAStatus RequestRenderPicture(VADriverContextP va_context, VAContextID context_i
 			      VABufferID *buffers_ids, int buffers_count)
 {
 	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
-	struct object_buffer *buffer_object;
 	int rc;
 	int i;
 
@@ -159,12 +158,12 @@ VAStatus RequestRenderPicture(VADriverContextP va_context, VAContextID context_i
 	auto& surface = driver_data->surfaces.at(context.render_surface_id);
 
 	for (i = 0; i < buffers_count; i++) {
-		buffer_object = BUFFER(driver_data, buffers_ids[i]);
-		if (buffer_object == NULL)
-			return VA_STATUS_ERROR_INVALID_BUFFER;
+		if (!driver_data->buffers.contains(buffers_ids[i])) {
+			return VA_STATUS_ERROR_INVALID_CONFIG;
+		}
 
 		rc = codec_store_buffer(driver_data, config.profile,
-					surface, buffer_object);
+					surface, driver_data->buffers.at(buffers_ids[i]));
 		if (rc != VA_STATUS_SUCCESS)
 			return rc;
 	}
