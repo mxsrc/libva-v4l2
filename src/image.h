@@ -30,17 +30,6 @@ extern "C" {
 #include <va/va_backend.h>
 }
 
-#include "object_heap.h"
-
-#define IMAGE(data, id)							\
-	((struct object_image *)object_heap_lookup(&(data)->image_heap, id))
-#define IMAGE_ID_OFFSET			0x10000000
-
-struct object_image {
-	struct object_base base;
-	VAImage image;
-};
-
 VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 			    int width, int height, VAImage *image);
 VAStatus RequestDestroyImage(VADriverContextP context, VAImageID image_id);

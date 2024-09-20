@@ -122,9 +122,6 @@ extern "C" VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 
 	context->pDriverData = driver_data;
 
-	object_heap_init(&driver_data->image_heap, sizeof(struct object_image),
-			 IMAGE_ID_OFFSET);
-
 	const char* video_path = getenv("LIBVA_V4L2_REQUEST_VIDEO_PATH");
 	if (!video_path) {
 		video_path = "/dev/video0";
@@ -141,8 +138,6 @@ extern "C" VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 VAStatus RequestTerminate(VADriverContextP va_context)
 {
 	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
-	struct object_image *image_object;
-	int iterator;
 
 	v4l2_m2m_device_close(&driver_data->device);
 
@@ -164,15 +159,9 @@ VAStatus RequestTerminate(VADriverContextP va_context)
 		RequestDestroyBuffer(va_context, id);
 	}
 
-	image_object = (struct object_image *)
-		object_heap_first(&driver_data->image_heap, &iterator);
-	while (image_object != NULL) {
-		RequestDestroyImage(va_context, (VAImageID)image_object->base.id);
-		image_object = (struct object_image *)
-			object_heap_next(&driver_data->image_heap, &iterator);
+	for (auto&& [id, image] : driver_data->images) {
+		RequestDestroyImage(va_context, id);
 	}
-
-	object_heap_destroy(&driver_data->image_heap);
 
 	delete driver_data;
 	va_context->pDriverData = nullptr;

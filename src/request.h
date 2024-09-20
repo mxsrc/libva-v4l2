@@ -55,7 +55,7 @@ struct RequestData {
 	std::map<VAContextID, Context> contexts;
 	std::map<VASurfaceID, Surface> surfaces;
 	std::map<VABufferID, Buffer> buffers;
-	struct object_heap image_heap;
+	std::map<VAImageID, VAImage> images;
 	struct v4l2_m2m_device device;
 
 	const struct video_format *video_format;

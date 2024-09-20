@@ -28,6 +28,7 @@
 
 #include <cassert>
 #include <cstring>
+#include <va/va.h>
 
 extern "C" {
 #include <linux/videodev2.h>
@@ -36,6 +37,7 @@ extern "C" {
 #include "buffer.h"
 #include "request.h"
 #include "surface.h"
+#include "utils.h"
 #include "v4l2.h"
 #include "video.h"
 
@@ -44,9 +46,7 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	unsigned int destination_sizes[VIDEO_MAX_PLANES];
-	struct object_image *image_object;
 	VABufferID buffer_id;
-	VAImageID id;
 	VAStatus status;
 	unsigned int i;
 
@@ -76,22 +76,19 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 		image->offsets[i] = i > 0 ? destination_sizes[i - 1] : 0;
 	}
 
-	id = object_heap_allocate(&driver_data->image_heap);
-	image_object = IMAGE(driver_data, id);
-	if (image_object == NULL)
-		return VA_STATUS_ERROR_ALLOCATION_FAILED;
-
 	status = RequestCreateBuffer(context, 0, VAImageBufferType, image->data_size, 1,
 				     NULL, &buffer_id);
 	if (status != VA_STATUS_SUCCESS) {
-		object_heap_free(&driver_data->image_heap,
-				 (struct object_base *)image_object);
 		return status;
 	}
-
 	image->buf = buffer_id;
-	image->image_id = id;
-	image_object->image = *image;
+
+	std::lock_guard<std::mutex> guard(driver_data->mutex);
+	image->image_id = smallest_free_key(driver_data->images);
+	auto [image_it, inserted] = driver_data->images.emplace(std::make_pair(image->image_id, *image));
+	if (!inserted) {
+		return VA_STATUS_ERROR_ALLOCATION_FAILED;
+	}
 
 	return VA_STATUS_SUCCESS;
 }
@@ -99,19 +96,21 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 VAStatus RequestDestroyImage(VADriverContextP context, VAImageID image_id)
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	struct object_image *image_object;
-	VAStatus status;
 
-	image_object = IMAGE(driver_data, image_id);
-	if (image_object == NULL)
+	if (!driver_data->images.contains(image_id)) {
 		return VA_STATUS_ERROR_INVALID_IMAGE;
+	}
+	auto& image = driver_data->images.at(image_id);
 
-	status = RequestDestroyBuffer(context, image_object->image.buf);
-	if (status != VA_STATUS_SUCCESS)
+	VAStatus status = RequestDestroyBuffer(context, image.buf);
+	if (status != VA_STATUS_SUCCESS) {
 		return status;
+	}
 
-	object_heap_free(&driver_data->image_heap,
-			 (struct object_base *)image_object);
+	std::lock_guard<std::mutex> guard(driver_data->mutex);
+	if (!driver_data->images.erase(image_id)) {
+		return VA_STATUS_ERROR_INVALID_IMAGE;
+	}
 
 	return VA_STATUS_SUCCESS;
 }
@@ -170,7 +169,7 @@ VAStatus RequestDeriveImage(VADriverContextP context, VASurfaceID surface_id,
 	if (!driver_data->buffers.contains(image->buf)) {
 		return VA_STATUS_ERROR_INVALID_CONFIG;
 	}
-	driver_data->buffers.at(image->buf).derived_surface_id = surface_id;;
+	driver_data->buffers.at(image->buf).derived_surface_id = surface_id;
 
 	return VA_STATUS_SUCCESS;
 }
@@ -195,22 +194,20 @@ VAStatus RequestGetImage(VADriverContextP context, VASurfaceID surface_id,
 			 VAImageID image_id)
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	struct object_image *image_object;
-	VAImage *image;
 
 	if (!driver_data->surfaces.contains(surface_id)) {
 		return VA_STATUS_ERROR_INVALID_SURFACE;
 	}
 
-	image_object = IMAGE(driver_data, image_id);
-	if (image_object == NULL)
+	if (!driver_data->images.contains(image_id)) {
 		return VA_STATUS_ERROR_INVALID_IMAGE;
+	}
+	auto& image = driver_data->images.at(image_id);
 
-	image = &image_object->image;
-	if (x != 0 || y != 0 || width != image->width || height != image->height)
+	if (x != 0 || y != 0 || width != image.width || height != image.height)
 		return VA_STATUS_ERROR_UNIMPLEMENTED;
 
-	return copy_surface_to_image (driver_data, driver_data->surfaces.at(surface_id), image);
+	return copy_surface_to_image (driver_data, driver_data->surfaces.at(surface_id), &image);
 }
 
 VAStatus RequestPutImage(VADriverContextP context, VASurfaceID surface_id,
