@@ -30,6 +30,7 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
+#include <system_error>
 
 extern "C" {
 #include <linux/videodev2.h>
@@ -54,7 +55,6 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 	decltype(driver_data->surfaces)::iterator surface;
 	unsigned int length;
 	unsigned int offset;
-	unsigned usurfaces_count;
 	unsigned buffer_count = 0;
 	uint8_t *source_data = static_cast<uint8_t*>(MAP_FAILED);
 	VASurfaceID *ids = NULL;
@@ -129,9 +129,9 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 		goto error;
 	}
 
-	rc = v4l2_m2m_device_set_format(&driver_data->device, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, pixelformat,
-			     picture_width, picture_height);
-	if (rc < 0) {
+	try {
+		driver_data->device.set_format(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, pixelformat, picture_width, picture_height);
+	} catch (std::system_error& e) {
 		status = VA_STATUS_ERROR_OPERATION_FAILED;
 		goto error;
 	}
@@ -142,9 +142,9 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 		goto error;
 	}
 
-	usurfaces_count = surfaces_count;
-	rc = v4l2_m2m_device_request_buffers(&driver_data->device, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, &usurfaces_count);
-	if (rc < 0) {
+	try {
+		driver_data->device.request_buffers(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surfaces_count);
+	} catch (std::system_error& e) {
 		status = VA_STATUS_ERROR_ALLOCATION_FAILED;
 		goto error;
 	}

@@ -57,7 +57,14 @@ VA_DRIVER_INIT_FUNC(VADriverContextP context);
 
 extern "C" VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 {
-	auto driver_data = new RequestData();
+
+	const char* video_path = getenv("LIBVA_V4L2_REQUEST_VIDEO_PATH");
+	if (!video_path) {
+		video_path = "/dev/video0";
+	}
+	const char* media_path = getenv("LIBVA_V4L2_REQUEST_MEDIA_PATH");
+	auto driver_data = new RequestData(video_path, media_path);
+
 	struct VADriverVTable *vtable = context->vtable;
 
 	context->version_major = VA_MAJOR_VERSION;
@@ -122,24 +129,12 @@ extern "C" VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 
 	context->pDriverData = driver_data;
 
-	const char* video_path = getenv("LIBVA_V4L2_REQUEST_VIDEO_PATH");
-	if (!video_path) {
-		video_path = "/dev/video0";
-	}
-	const char* media_path = getenv("LIBVA_V4L2_REQUEST_MEDIA_PATH");
-
-	if (v4l2_m2m_device_open(&driver_data->device, video_path, media_path) < 0) {
-		return VA_STATUS_ERROR_OPERATION_FAILED;
-	}
-
 	return VA_STATUS_SUCCESS;
 }
 
 VAStatus RequestTerminate(VADriverContextP va_context)
 {
 	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
-
-	v4l2_m2m_device_close(&driver_data->device);
 
 	/* Cleanup leftover buffers. */
 	for (auto&& [id, config] : driver_data->configs) {

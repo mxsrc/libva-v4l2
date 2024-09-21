@@ -30,6 +30,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
+#include <system_error>
 
 extern "C" {
 #include <fcntl.h>
@@ -108,18 +109,20 @@ VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surf
 	}
 	const auto& surface = driver_data->surfaces.at(surfaces_ids[0]);
 
-	if (v4l2_m2m_device_set_format(&driver_data->device,
-			    V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-			    driver_data->video_format->v4l2_format,
-			    surface.width, surface.height) < 0)
+	try {
+		driver_data->device.set_format(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
+			    driver_data->video_format->v4l2_format, surface.width, surface.height);
+	} catch(std::system_error& e) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
+	}
 
 	struct v4l2_pix_format_mplane* driver_format = &driver_data->device.capture_format.fmt.pix_mp;
 
-	if (v4l2_m2m_device_request_buffers(&driver_data->device,
-				V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-				&surfaces_count) < 0)
+	try {
+		driver_data->device.request_buffers(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surfaces_count);
+	} catch(std::system_error& e) {
 		return VA_STATUS_ERROR_ALLOCATION_FAILED;
+	}
 
 	for (unsigned i = 0; i < surfaces_count; i++) {
 		if (!driver_data->surfaces.contains(surfaces_ids[i])) {

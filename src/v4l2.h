@@ -24,13 +24,22 @@
 
 #pragma once
 
+#include <string>
+#include <optional>
+
 extern "C" {
 #include <linux/videodev2.h>
 }
 
 #define SOURCE_SIZE_MAX						(1024 * 1024)
 
-struct v4l2_m2m_device {
+class V4L2M2MDevice {
+public:
+	V4L2M2MDevice(const std::string& video_path, const std::optional<std::string> media_path);
+	~V4L2M2MDevice();
+	void set_format(enum v4l2_buf_type type, unsigned int pixelformat, unsigned int width, unsigned int height);
+	unsigned request_buffers(enum v4l2_buf_type type, unsigned count);
+
 	int video_fd;
 	int media_fd;
 	struct v4l2_format capture_format;
@@ -38,12 +47,6 @@ struct v4l2_m2m_device {
 	unsigned capture_buffer_count;
 	unsigned output_buffer_count;
 };
-
-int v4l2_m2m_device_open(struct v4l2_m2m_device* dev, const char* video_path, const char* media_path);
-void v4l2_m2m_device_close(struct v4l2_m2m_device* dev);
-int v4l2_m2m_device_set_format(struct v4l2_m2m_device* dev, enum v4l2_buf_type type, unsigned int pixelformat,
-		    unsigned int width, unsigned int height);
-int v4l2_m2m_device_request_buffers(struct v4l2_m2m_device* dev, enum v4l2_buf_type type, unsigned* buffers_count);
 
 bool v4l2_find_format(int video_fd, enum v4l2_buf_type type,
 		      unsigned int pixelformat);

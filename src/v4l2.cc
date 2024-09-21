@@ -27,6 +27,7 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
+#include <system_error>
 
 extern "C" {
 #include <fcntl.h>
@@ -38,91 +39,57 @@ extern "C" {
 
 #include "utils.h"
 
-static int query_capabilities(int video_fd, unsigned int *capabilities)
-{
+template<typename F, typename... Args>
+std::invoke_result_t<F, Args...>
+errno_wrapper(F f, Args... args) {
+	std::invoke_result_t<F, Args...> result = f(std::forward<Args>(args)...);
+	if (result < 0) {
+		throw std::system_error(errno, std::generic_category());
+	}
+	return result;
+}
+
+static unsigned query_capabilities(int video_fd) {
 	struct v4l2_capability capability = {0};
-	int rc = ioctl(video_fd, VIDIOC_QUERYCAP, &capability);
-	if (rc < 0) {
-		return -1;
-	}
+	errno_wrapper(ioctl, video_fd, VIDIOC_QUERYCAP, &capability);
 
-	if (capabilities != NULL) {
-		if ((capability.capabilities & V4L2_CAP_DEVICE_CAPS) != 0) {
-			*capabilities = capability.device_caps;
-		} else {
-			*capabilities = capability.capabilities;
-		}
-	}
-
-	return 0;
-}
-
-static int get_format(int video_fd, enum v4l2_buf_type type, struct v4l2_format* format) {
-	format->type = type;
-
-	if (ioctl(video_fd, VIDIOC_G_FMT, format) < 0) {
-		return -1;
-	}
-
-	return 0;
-}
-
-int v4l2_m2m_device_open(struct v4l2_m2m_device* dev, const char* video_path, const char* media_path) {
-	dev->video_fd = open(video_path, O_RDWR | O_NONBLOCK);
-	if (dev->video_fd < 0) {
-		return -1;
-	}
-
-	unsigned capabilities;
-	int rc = query_capabilities(dev->video_fd, &capabilities);
-	if (rc < 0) {
-		goto error;
-	}
-
-	if (!(capabilities & (V4L2_CAP_VIDEO_M2M | V4L2_CAP_VIDEO_M2M_MPLANE))) {
-		goto error;
-	}
-
-	if (media_path != NULL) {
-		dev->media_fd = open(media_path, O_RDWR | O_NONBLOCK);
-		if (dev->media_fd < 0) {
-			goto error;
-		}
+	if ((capability.capabilities & V4L2_CAP_DEVICE_CAPS) != 0) {
+		return capability.device_caps;
 	} else {
-		dev->media_fd = -1;
-	}
-
-	if (get_format(dev->video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, &dev->capture_format) < 0) {
-		goto error;
-	}
-	if (get_format(dev->video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, &dev->capture_format) < 0) {
-		goto error;
-	}
-
-	dev->capture_buffer_count = 0;
-	dev->output_buffer_count = 0;
-
-	return 0;
-
-error:
-	close(dev->video_fd);
-	return -1;
-}
-
-void v4l2_m2m_device_close(struct v4l2_m2m_device* dev) {
-	if (dev->video_fd >= 0) {
-		close(dev->video_fd);
-		dev->video_fd = -1;
-	}
-	if (dev->media_fd >= 0) {
-		close(dev->media_fd);
-		dev->media_fd = -1;
+		return capability.capabilities;
 	}
 }
 
-int v4l2_m2m_device_set_format(struct v4l2_m2m_device* dev, enum v4l2_buf_type type, unsigned int pixelformat,
+static v4l2_format get_format(int video_fd, v4l2_buf_type type) {
+	v4l2_format result = { .type = type };
+	errno_wrapper(ioctl, video_fd, VIDIOC_G_FMT, &result);
+	return result;
+}
+
+V4L2M2MDevice::V4L2M2MDevice(const std::string& video_path, const std::optional<std::string> media_path) :
+		video_fd(errno_wrapper(open, video_path.c_str(), O_RDWR | O_NONBLOCK)),
+		media_fd((media_path) ? errno_wrapper(open, media_path->c_str(), O_RDWR | O_NONBLOCK) : -1),
+		capture_format(get_format(video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)),
+		output_format(get_format(video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)) {
+	if (!(query_capabilities(video_fd) & (V4L2_CAP_VIDEO_M2M | V4L2_CAP_VIDEO_M2M_MPLANE))) {
+		std::runtime_error("Missing device capabilities");
+	}
+}
+
+V4L2M2MDevice::~V4L2M2MDevice() {
+	if (video_fd >= 0) {
+		close(video_fd);
+		video_fd = -1;
+	}
+	if (media_fd >= 0) {
+		close(media_fd);
+		media_fd = -1;
+	}
+}
+
+void V4L2M2MDevice::set_format(v4l2_buf_type type, unsigned int pixelformat,
 		    unsigned int width, unsigned int height) {
-	struct v4l2_format* format = V4L2_TYPE_IS_CAPTURE(type) ? &dev->capture_format : &dev->output_format;
+	struct v4l2_format* format = V4L2_TYPE_IS_CAPTURE(type) ? &capture_format : &output_format;
 
 	format->type = type;
 	format->fmt.pix_mp.pixelformat = pixelformat;
@@ -132,28 +99,19 @@ int v4l2_m2m_device_set_format(struct v4l2_m2m_device* dev, enum v4l2_buf_type t
 	// Automatic size is insufficient for data buffers
 	format->fmt.pix_mp.plane_fmt[0].sizeimage = V4L2_TYPE_IS_OUTPUT(type) ? SOURCE_SIZE_MAX : 0;
 
-	if (ioctl(dev->video_fd, VIDIOC_S_FMT, format) < 0) {
-		return -1;  // TODO: leaves format in an invalid state.
-	}
-
-	return 0;
+	errno_wrapper(ioctl, video_fd, VIDIOC_S_FMT, format);
 }
 
-int v4l2_m2m_device_request_buffers(struct v4l2_m2m_device* dev, enum v4l2_buf_type type, unsigned* buffers_count) {
+unsigned V4L2M2MDevice::request_buffers(v4l2_buf_type type, unsigned count) {
 	struct v4l2_requestbuffers buffers = {
-		.count = *buffers_count,
+		.count = count,
 		.type = type,
 		.memory = V4L2_MEMORY_MMAP,
 	};
 
-	if (ioctl(dev->video_fd, VIDIOC_REQBUFS, &buffers) < 0) {
-		request_log("Unable to request buffers: %s\n", strerror(errno));
-		return -1;
-	}
+	errno_wrapper(ioctl, video_fd, VIDIOC_REQBUFS, &buffers);
 
-	*buffers_count = buffers.count;  // Actual amount may differ
-
-	return 0;
+	return buffers.count;  // Actual amount may differ
 }
 
 bool v4l2_find_format(int video_fd, enum v4l2_buf_type type, unsigned int pixelformat)

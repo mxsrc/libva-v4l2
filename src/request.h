@@ -28,6 +28,8 @@
 
 #include <map>
 #include <mutex>
+#include <string>
+#include <optional>
 
 extern "C" {
 #include <linux/videodev2.h>
@@ -51,12 +53,15 @@ extern "C" {
 #define V4L2_REQUEST_MAX_DISPLAY_ATTRIBUTES	4
 
 struct RequestData {
+	RequestData(const std::string& video_path, const std::optional<std::string> media_path) :
+		device(video_path, media_path) {}
+
 	std::map<VAConfigID, Config> configs;
 	std::map<VAContextID, Context> contexts;
 	std::map<VASurfaceID, Surface> surfaces;
 	std::map<VABufferID, Buffer> buffers;
 	std::map<VAImageID, VAImage> images;
-	struct v4l2_m2m_device device;
+	V4L2M2MDevice device;
 
 	const struct video_format *video_format;
 	std::mutex mutex;
