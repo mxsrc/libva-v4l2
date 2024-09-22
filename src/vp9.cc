@@ -146,14 +146,12 @@ VAStatus vp9_store_buffer(RequestData *driver_data,
 		memcpy(&surface.params.vp9.picture,
 		       buffer.data.get(),
 		       sizeof(surface.params.vp9.picture));
-		printf("\n");
 		return VA_STATUS_SUCCESS;
 
 	case VASliceParameterBufferType:
 		memcpy(&surface.params.vp9.slice,
 		       buffer.data.get(),
 		       sizeof(surface.params.vp9.slice));
-		printf("\n");
 		return VA_STATUS_SUCCESS;
 
 	case VASliceDataBufferType:
@@ -163,7 +161,6 @@ VAStatus vp9_store_buffer(RequestData *driver_data,
 		 * RenderPicture), we can't use a V4L2 buffer directly
 		 * and have to copy from a regular buffer.
 		 */
-		printf("%d bytes.", surface.source_size);
 		if (surface.slices_size + buffer.size * buffer.count > surface.source_size) {
 			return VA_STATUS_ERROR_NOT_ENOUGH_BUFFER;
 		}
@@ -174,12 +171,10 @@ VAStatus vp9_store_buffer(RequestData *driver_data,
 		surface.slices_size +=
 			buffer.size * buffer.count;
 		surface.slices_count++;
-		printf("\n");
 		return VA_STATUS_SUCCESS;
 
 	default:
 		request_log("Unsupported buffer type: %d\n", buffer.type);
-		printf("\n");
 		return VA_STATUS_ERROR_UNSUPPORTED_BUFFERTYPE;
 	}
 }
