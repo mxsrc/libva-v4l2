@@ -35,8 +35,6 @@ extern "C" {
 struct Context {
 	VAConfigID config_id;
 	VASurfaceID render_surface_id;
-	VASurfaceID *surfaces_ids;
-	int surfaces_count;
 
 	int picture_width;
 	int picture_height;

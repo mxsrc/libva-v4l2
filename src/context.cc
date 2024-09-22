@@ -57,7 +57,6 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 	unsigned int offset;
 	unsigned buffer_count = 0;
 	uint8_t *source_data = static_cast<uint8_t*>(MAP_FAILED);
-	VASurfaceID *ids = NULL;
 	VAStatus status;
 	unsigned int pixelformat;
 	int rc;
@@ -75,7 +74,6 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 	auto [context, inserted] = driver_data->contexts.emplace(std::make_pair(*context_id, Context{
 		.config_id = config_id,
 		.render_surface_id = VA_INVALID_ID,
-		.surfaces_count = surfaces_count,
 		.picture_width = picture_width,
 		.picture_height = picture_height,
 		.flags = flags,
@@ -149,20 +147,6 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 		goto error;
 	}
 
-	/*
-	 * The surface_ids array has been allocated by the caller and
-	 * we don't have any indication wrt its life time. Let's make sure
-	 * its life span is under our control.
-	 */
-	ids = static_cast<VASurfaceID*>(malloc(surfaces_count * sizeof(VASurfaceID)));
-	if (ids == NULL) {
-		status = VA_STATUS_ERROR_ALLOCATION_FAILED;
-		goto error;
-	}
-
-	memcpy(ids, surfaces_ids, surfaces_count * sizeof(VASurfaceID));
-	context->second.surfaces_ids = ids;
-
 	for (int i = 0; i < surfaces_count; i++) {
 		surface = driver_data->surfaces.find(surfaces_ids[i]);
 		if (surface == driver_data->surfaces.end()) {
@@ -208,9 +192,6 @@ error:
 	if (source_data != MAP_FAILED)
 		munmap(source_data, length);
 
-	if (ids != NULL)
-		free(ids);
-
 	if (inserted) {
 		driver_data->contexts.erase(*context_id);
 	}
@@ -228,10 +209,11 @@ VAStatus RequestDestroyContext(VADriverContextP va_context, VAContextID context_
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 
+	std::lock_guard<std::mutex> guard(driver_data->mutex);
 	if (!driver_data->contexts.contains(context_id)) {
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
 	}
-	const auto& context = driver_data->contexts.at(context_id);
+	driver_data->contexts.erase(context_id);
 
 	rc = v4l2_set_stream(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, false);
 	if (rc < 0)
@@ -240,8 +222,6 @@ VAStatus RequestDestroyContext(VADriverContextP va_context, VAContextID context_
 	rc = v4l2_set_stream(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, false);
 	if (rc < 0)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
-
-	free(context.surfaces_ids);
 
 	struct v4l2_requestbuffers reqbuf = {
 		.count = 0,
@@ -255,8 +235,6 @@ VAStatus RequestDestroyContext(VADriverContextP va_context, VAContextID context_
 		return -1;
 	}
 
-	std::lock_guard<std::mutex> guard(driver_data->mutex);
-	driver_data->contexts.erase(context_id);
 
 	return VA_STATUS_SUCCESS;
 }
