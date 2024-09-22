@@ -29,8 +29,8 @@ enum {
 
 static struct v4l2_vp8_segment segment(VAPictureParameterBufferVP8* picture) {
 	struct v4l2_vp8_segment result = {
-		.quant_update = { 0 },  // FIXME
-		.lf_update = { 0 },  // FIXME: picture->loop_filter_level? Already used those...
+		.quant_update = {},  // FIXME
+		.lf_update = {},  // FIXME: picture->loop_filter_level? Already used those...
 		.flags = 
 			((picture->pic_fields.bits.segmentation_enabled) ? V4L2_VP8_SEGMENT_FLAG_ENABLED : 0u) | 
 			((picture->pic_fields.bits.update_mb_segmentation_map) ? V4L2_VP8_SEGMENT_FLAG_UPDATE_MAP : 0u) | 
@@ -46,8 +46,8 @@ static struct v4l2_vp8_segment segment(VAPictureParameterBufferVP8* picture) {
 
 static struct v4l2_vp8_loop_filter lf(VAPictureParameterBufferVP8* picture) {
 	struct v4l2_vp8_loop_filter result = {
-		.ref_frm_delta = { 0 },
-		.mb_mode_delta = { 0 },
+		.ref_frm_delta = {},
+		.mb_mode_delta = {},
 		.sharpness_level = static_cast<uint8_t>(picture->pic_fields.bits.sharpness_level),
 		.level = picture->loop_filter_level[0],  // FIXME: Which segment?
 		.flags =

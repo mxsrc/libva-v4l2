@@ -523,13 +523,13 @@ int h264_set_controls(RequestData *driver_data,
 	}
 	auto& config = driver_data->configs.at(context.config_id);
 
-	struct v4l2_ctrl_h264_scaling_matrix matrix = { 0 };
-	struct v4l2_ctrl_h264_decode_params decode = { 0 };
-	struct v4l2_ctrl_h264_slice_params slice = { 0 };
-	struct v4l2_ctrl_h264_pps pps = { 0 };
-	struct v4l2_ctrl_h264_sps sps = { 0 };
+	struct v4l2_ctrl_h264_scaling_matrix matrix = {};
+	struct v4l2_ctrl_h264_decode_params decode = {};
+	struct v4l2_ctrl_h264_slice_params slice = {};
+	struct v4l2_ctrl_h264_pps pps = {};
+	struct v4l2_ctrl_h264_sps sps = {};
 	struct h264_dpb_entry *output;
-	struct v4l2_ext_control controls[8] = { 0 };
+	struct v4l2_ext_control controls[8] = {};
 	int i = 0;
 	int rc;
 
@@ -562,7 +562,7 @@ int h264_set_controls(RequestData *driver_data,
 	}
 
 	if (V4L2_H264_CTRL_PRED_WEIGHTS_REQUIRED(&pps, &slice)) {
-		struct v4l2_ctrl_h264_pred_weights weights = { 0 };
+		struct v4l2_ctrl_h264_pred_weights weights = {};
 		h264_va_slice_to_predicted_weights(&surface.params.h264.slice, &slice, &weights);
 
 		controls[i++] = (struct v4l2_ext_control){

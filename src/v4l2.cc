@@ -50,7 +50,7 @@ errno_wrapper(F f, Args... args) {
 }
 
 static unsigned query_capabilities(int video_fd) {
-	struct v4l2_capability capability = {0};
+	struct v4l2_capability capability = {};
 	errno_wrapper(ioctl, video_fd, VIDIOC_QUERYCAP, &capability);
 
 	if ((capability.capabilities & V4L2_CAP_DEVICE_CAPS) != 0) {
@@ -316,7 +316,7 @@ int v4l2_set_control(int video_fd, int request_fd, unsigned int id, void *data,
 int v4l2_set_controls(int video_fd, int request_fd, struct v4l2_ext_control* controls,
 		     unsigned int count)
 {
-	struct v4l2_ext_controls meta = { 0 };
+	struct v4l2_ext_controls meta = {};
 	int rc;
 
 	meta.controls = controls;

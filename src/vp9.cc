@@ -92,7 +92,6 @@ static struct v4l2_ctrl_vp9_frame va_to_v4l2_frame(RequestData *data, VADecPictu
 			((picture->pic_fields.bits.golden_ref_frame_sign_bias) ? V4L2_VP9_SIGN_BIAS_GOLDEN : 0) |
 			((picture->pic_fields.bits.alt_ref_frame_sign_bias) ? V4L2_VP9_SIGN_BIAS_ALT : 0)),
 		.reset_frame_context = static_cast<uint8_t>((picture->pic_fields.bits.reset_frame_context > 0) ? picture->pic_fields.bits.reset_frame_context - 1 : 0),  // V4L2 codes the value differently
-		//FIXME.reset_frame_context = picture->pic_fields.bits.frame_context_idx,
 		.profile = picture->profile,
 		.bit_depth = picture->bit_depth,
 		.interpolation_filter = header->interpolation_filter,
@@ -116,7 +115,7 @@ static struct v4l2_ctrl_vp9_frame va_to_v4l2_frame(RequestData *data, VADecPictu
 
 struct v4l2_ctrl_vp9_compressed_hdr gst_to_v4l2_compressed_header(GstVp9FrameHeader* header) {
 	struct v4l2_ctrl_vp9_compressed_hdr result = {
-		.tx_mode = header->tx_mode,
+		.tx_mode = static_cast<uint8_t>(header->tx_mode),
 	};
 
 	memcpy(result.tx8, header->delta_probabilities.tx_probs_8x8, GST_VP9_TX_SIZE_CONTEXTS * (GST_VP9_TX_SIZES - 3));
@@ -193,7 +192,7 @@ int vp9_set_controls(RequestData *data,
 	struct v4l2_ctrl_vp9_frame frame = va_to_v4l2_frame(data, &surface.params.vp9.picture, &surface.params.vp9.slice, &header);
 	struct v4l2_ctrl_vp9_compressed_hdr hdr = gst_to_v4l2_compressed_header(&header);
 
-	struct v4l2_ext_control controls[2] = { 0 };
+	struct v4l2_ext_control controls[2] = {};
 	controls[0] = (struct v4l2_ext_control){
 		.id = V4L2_CID_STATELESS_VP9_FRAME,
 		.size = sizeof(frame),

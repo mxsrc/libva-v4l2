@@ -111,9 +111,9 @@ int mpeg2_set_controls(RequestData *driver_data,
 	VAIQMatrixBufferMPEG2 *iqmatrix =
 		&surface.params.mpeg2.iqmatrix;
 	bool iqmatrix_set = surface.params.mpeg2.iqmatrix_set;
-	struct v4l2_ctrl_mpeg2_picture picture = { 0 };
-	struct v4l2_ctrl_mpeg2_sequence sequence = { 0 };
-	struct v4l2_ctrl_mpeg2_quantisation quantisation = { 0 };
+	struct v4l2_ctrl_mpeg2_picture picture = {};
+	struct v4l2_ctrl_mpeg2_sequence sequence = {};
+	struct v4l2_ctrl_mpeg2_quantisation quantisation = {};
 	unsigned int i;
 	int rc;
 

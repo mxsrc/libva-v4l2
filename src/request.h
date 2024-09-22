@@ -63,7 +63,7 @@ struct RequestData {
 	std::map<VAImageID, VAImage> images;
 	V4L2M2MDevice device;
 
-	const struct video_format *video_format;
+	const struct video_format* video_format = nullptr;
 	std::mutex mutex;
 };
 
