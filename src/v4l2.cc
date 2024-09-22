@@ -126,6 +126,13 @@ bool V4L2M2MDevice::format_supported(v4l2_buf_type type, unsigned pixelformat) {
 	return false;
 }
 
+void V4L2M2MDevice::set_streaming(bool enable) {
+	v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+	errno_wrapper(ioctl, video_fd, enable ? VIDIOC_STREAMON : VIDIOC_STREAMOFF, &type);
+	type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+	errno_wrapper(ioctl, video_fd, enable ? VIDIOC_STREAMON : VIDIOC_STREAMOFF, &type);
+}
+
 int v4l2_query_buffer(int video_fd, enum v4l2_buf_type type, unsigned int index,
 		      unsigned int *lengths, unsigned int *offsets,
 		      unsigned* buffers_count)
@@ -319,22 +326,6 @@ int v4l2_set_controls(int video_fd, int request_fd, struct v4l2_ext_control* con
 	rc = ioctl(video_fd, VIDIOC_S_EXT_CTRLS, &meta);
 	if (rc < 0) {
 		request_log("Unable to set control: %s\n", strerror(errno));
-		return -1;
-	}
-
-	return 0;
-}
-
-int v4l2_set_stream(int video_fd, enum v4l2_buf_type type, bool enable)
-{
-	enum v4l2_buf_type buf_type = type;
-	int rc;
-
-	rc = ioctl(video_fd, enable ? VIDIOC_STREAMON : VIDIOC_STREAMOFF,
-		   &buf_type);
-	if (rc < 0) {
-		request_log("Unable to %sable stream: %s\n",
-			    enable ? "en" : "dis", strerror(errno));
 		return -1;
 	}
 

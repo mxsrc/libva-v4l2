@@ -40,6 +40,7 @@ public:
 	void set_format(enum v4l2_buf_type type, unsigned int pixelformat, unsigned int width, unsigned int height);
 	unsigned request_buffers(enum v4l2_buf_type type, unsigned count);
 	bool format_supported(v4l2_buf_type type, unsigned pixelformat);
+	void set_streaming(bool enable);
 
 	int video_fd;
 	int media_fd;
@@ -63,4 +64,3 @@ int v4l2_export_buffer(int video_fd, enum v4l2_buf_type type, unsigned int index
 int v4l2_set_control(int video_fd, int request_fd, unsigned int id, void *data,
 		     unsigned int size);
 int v4l2_set_controls(int video_fd, int request_fd, struct v4l2_ext_control*,  unsigned int count);
-int v4l2_set_stream(int video_fd, enum v4l2_buf_type type, bool enable);

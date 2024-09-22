@@ -173,16 +173,11 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 		surface->second.source_size = length;
 	}
 
-	rc = v4l2_set_stream(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, true);
-	if (rc < 0) {
-		status = VA_STATUS_ERROR_OPERATION_FAILED;
-		goto error;
-	}
-
-	rc = v4l2_set_stream(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, true);
-	if (rc < 0) {
-		status = VA_STATUS_ERROR_OPERATION_FAILED;
-		goto error;
+	try {
+		driver_data->device.set_streaming(true);
+	} catch (std::system_error& e) {
+		error_log(va_context, "Unable to enable streaming: %s\n", e.what());
+		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 
 	status = VA_STATUS_SUCCESS;
@@ -215,26 +210,14 @@ VAStatus RequestDestroyContext(VADriverContextP va_context, VAContextID context_
 	}
 	driver_data->contexts.erase(context_id);
 
-	rc = v4l2_set_stream(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, false);
-	if (rc < 0)
+	try {
+		driver_data->device.set_streaming(false);
+	} catch (std::system_error& e) {
+		error_log(va_context, "Unable to disable streaming: %s\n", e.what());
 		return VA_STATUS_ERROR_OPERATION_FAILED;
-
-	rc = v4l2_set_stream(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, false);
-	if (rc < 0)
-		return VA_STATUS_ERROR_OPERATION_FAILED;
-
-	struct v4l2_requestbuffers reqbuf = {
-		.count = 0,
-		.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-		.memory = V4L2_MEMORY_MMAP,
-	};
-
-	rc = ioctl(driver_data->device.video_fd, VIDIOC_REQBUFS, &reqbuf);
-	if (rc < 0) {
-		error_log(va_context, "Unable to free buffers: %s\n", strerror(errno));
-		return -1;
 	}
 
+	driver_data->device.request_buffers(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, 0);
 
 	return VA_STATUS_SUCCESS;
 }
