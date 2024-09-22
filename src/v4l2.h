@@ -39,6 +39,7 @@ public:
 	~V4L2M2MDevice();
 	void set_format(enum v4l2_buf_type type, unsigned int pixelformat, unsigned int width, unsigned int height);
 	unsigned request_buffers(enum v4l2_buf_type type, unsigned count);
+	bool format_supported(v4l2_buf_type type, unsigned pixelformat);
 
 	int video_fd;
 	int media_fd;
@@ -48,8 +49,6 @@ public:
 	unsigned output_buffer_count;
 };
 
-bool v4l2_find_format(int video_fd, enum v4l2_buf_type type,
-		      unsigned int pixelformat);
 int v4l2_query_buffer(int video_fd, enum v4l2_buf_type type, unsigned int index,
 		      unsigned int *lengths, unsigned int *offsets,
 		      unsigned* buffer_count);

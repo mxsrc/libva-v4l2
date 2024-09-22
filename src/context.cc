@@ -94,9 +94,9 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 	case VAProfileH264ConstrainedBaseline:
 	case VAProfileH264MultiviewHigh:
 	case VAProfileH264StereoHigh:
-		if (v4l2_find_format(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_H264)) {
+		if (driver_data->device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_H264)) {
 			pixelformat = V4L2_PIX_FMT_H264;
-		} else if (v4l2_find_format(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_H264_SLICE)) {
+		} else if (driver_data->device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_H264_SLICE)) {
 			pixelformat = V4L2_PIX_FMT_H264_SLICE;
 		} else {
 			status = VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
@@ -112,9 +112,9 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 	case VAProfileVP9Profile1:
 	case VAProfileVP9Profile2:
 	case VAProfileVP9Profile3:
-		if (v4l2_find_format(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP9)) {
+		if (driver_data->device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP9)) {
 			pixelformat = V4L2_PIX_FMT_VP9;
-		} else if (v4l2_find_format(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP9_FRAME)) {
+		} else if (driver_data->device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP9_FRAME)) {
 			pixelformat = V4L2_PIX_FMT_VP9_FRAME;
 		} else {
 			status = VA_STATUS_ERROR_UNSUPPORTED_PROFILE;

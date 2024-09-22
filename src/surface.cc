@@ -66,13 +66,9 @@ VAStatus RequestCreateSurfaces2(VADriverContextP context, unsigned int format,
 		return VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT;
 
         if (!driver_data->video_format) {
-		if (v4l2_find_format(driver_data->device.video_fd,
-				     V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-				     V4L2_PIX_FMT_NV12)) {
+		if (driver_data->device.format_supported(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_PIX_FMT_NV12)) {
 			driver_data->video_format = video_format_find(V4L2_PIX_FMT_NV12);
-		} else if (v4l2_find_format(driver_data->device.video_fd,
-				     V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-				     V4L2_PIX_FMT_NV12M)) {
+		} else if (driver_data->device.format_supported(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_PIX_FMT_NV12M)) {
 			driver_data->video_format = video_format_find(V4L2_PIX_FMT_NV12M);
 		} else {
 			return VA_STATUS_ERROR_OPERATION_FAILED;

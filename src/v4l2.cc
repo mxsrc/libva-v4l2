@@ -114,26 +114,15 @@ unsigned V4L2M2MDevice::request_buffers(v4l2_buf_type type, unsigned count) {
 	return buffers.count;  // Actual amount may differ
 }
 
-bool v4l2_find_format(int video_fd, enum v4l2_buf_type type, unsigned int pixelformat)
-{
-	struct v4l2_fmtdesc fmtdesc;
-	int rc;
-
-	memset(&fmtdesc, 0, sizeof(fmtdesc));
-	fmtdesc.type = type;
-	fmtdesc.index = 0;
-
-	do {
-		rc = ioctl(video_fd, VIDIOC_ENUM_FMT, &fmtdesc);
-		if (rc < 0)
-			break;
-
-		if (fmtdesc.pixelformat == pixelformat)
+bool V4L2M2MDevice::format_supported(v4l2_buf_type type, unsigned pixelformat) {
+	for (
+			v4l2_fmtdesc fmtdesc = { .type = type };
+			ioctl(video_fd, VIDIOC_ENUM_FMT, &fmtdesc) >= 0;
+			fmtdesc.index += 1) {
+		if (fmtdesc.pixelformat == pixelformat) {
 			return true;
-
-		fmtdesc.index++;
-	} while (rc >= 0);
-
+		}
+	}
 	return false;
 }
 
