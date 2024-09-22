@@ -31,6 +31,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
+#include <stdexcept>
 
 extern "C" {
 #include <fcntl.h>
@@ -180,7 +181,6 @@ VAStatus RequestAcquireBufferHandle(VADriverContextP context,
 	auto& buffer = driver_data->buffers.at(buffer_id);
 
 	int export_fd;
-	int rc;
 
 	if (!driver_data->video_format) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
@@ -199,11 +199,13 @@ VAStatus RequestAcquireBufferHandle(VADriverContextP context,
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 
-	rc = v4l2_export_buffer(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-				surface.destination_index, O_RDONLY,
-				&export_fd, 1);
-	if (rc < 0)
+	try {
+		driver_data->device.export_buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
+				surface.destination_index, O_RDONLY, &export_fd, 1);
+	} catch(std::runtime_error& e) {
+		error_log(context, "Failed to export buffer: %s\n", e.what());
 		return VA_STATUS_ERROR_OPERATION_FAILED;
+	}
 
 	buffer_info->handle = (uintptr_t) export_fd;
 	buffer_info->type = buffer.type;

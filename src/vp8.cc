@@ -1,6 +1,7 @@
 #include "vp8.h"
 
 #include <cstring>
+#include <stdexcept>
 
 extern "C" {
 #include <linux/v4l2-controls.h>
@@ -243,12 +244,11 @@ int vp8_set_controls(RequestData *data, const Context& context, Surface& surface
 		&surface.params.vp8.probabilities
 	);
 
-	int rc = v4l2_set_control(data->device.video_fd,
-			      surface.request_fd,
-			      V4L2_CID_STATELESS_VP8_FRAME,
-			      &frame, sizeof(frame));
-	if (rc < 0)
+	try {
+		data->device.set_control(surface.request_fd, V4L2_CID_STATELESS_VP8_FRAME, &frame, sizeof(frame));
+	} catch(std::runtime_error& e) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
+	}
 
 	return VA_STATUS_SUCCESS;
 }

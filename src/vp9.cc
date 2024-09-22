@@ -201,8 +201,10 @@ int vp9_set_controls(RequestData *data,
 		.size = sizeof(hdr),
 		.ptr = &hdr,
 	};
-	int rc = v4l2_set_controls(data->device.video_fd, surface.request_fd, controls, 2);
-	if (rc < 0) {
+
+	try {
+	data->device.set_controls(surface.request_fd, std::span(controls, 2));
+	} catch(std::runtime_error& e) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 

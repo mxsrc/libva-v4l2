@@ -55,11 +55,9 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 	decltype(driver_data->surfaces)::iterator surface;
 	unsigned int length;
 	unsigned int offset;
-	unsigned buffer_count = 0;
 	uint8_t *source_data = static_cast<uint8_t*>(MAP_FAILED);
 	VAStatus status;
 	unsigned int pixelformat;
-	int rc;
 
 	if (!driver_data->video_format)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
@@ -154,12 +152,7 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 			goto error;
 		}
 
-		rc = v4l2_query_buffer(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-				       i, &length, &offset, &buffer_count);
-		if (rc < 0) {
-			status = VA_STATUS_ERROR_ALLOCATION_FAILED;
-			goto error;
-		}
+		driver_data->device.query_buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, i, &length, &offset);
 
 		source_data = static_cast<uint8_t*>(mmap(NULL, length, PROT_READ | PROT_WRITE,
 				   MAP_SHARED, driver_data->device.video_fd, offset));
@@ -198,7 +191,6 @@ complete:
 VAStatus RequestDestroyContext(VADriverContextP va_context, VAContextID context_id)
 {
 	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
-	int rc;
 
 	if (!driver_data->video_format) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;

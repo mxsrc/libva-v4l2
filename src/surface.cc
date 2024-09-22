@@ -30,6 +30,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
+#include <stdexcept>
 #include <system_error>
 
 extern "C" {
@@ -131,12 +132,10 @@ VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surf
 		}
 
 		unsigned map_offsets[VIDEO_MAX_PLANES];
-		if (v4l2_query_buffer(driver_data->device.video_fd,
+		if (driver_data->device.query_buffer(
 				      V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-				      i,
-				      surface.destination_plane_size,
-				      map_offsets,
-				      NULL) < 0)
+				      i, surface.destination_plane_size,
+				      map_offsets) < 0)
 			return VA_STATUS_ERROR_ALLOCATION_FAILED;
 
 		for (int j = 0; j < driver_format->num_planes; j++) {
@@ -262,17 +261,11 @@ VAStatus RequestSyncSurface(VADriverContextP context, VASurfaceID surface_id)
 		}
 	}
 
-	rc = v4l2_dequeue_buffer(driver_data->device.video_fd, -1, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-				 surface.source_index, 1);
-	if (rc < 0) {
-		status = VA_STATUS_ERROR_OPERATION_FAILED;
-		goto error;
-	}
-
-	rc = v4l2_dequeue_buffer(driver_data->device.video_fd, -1, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-				 surface.destination_index,
-				 surface.destination_planes_count);
-	if (rc < 0) {
+	try {
+		driver_data->device.dequeue_buffer(-1, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.source_index);
+		driver_data->device.dequeue_buffer(-1, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index);
+	} catch (std::runtime_error& e) {
+		error_log(context, "Failed to dequeue buffer: %s\n", e.what());
 		status = VA_STATUS_ERROR_OPERATION_FAILED;
 		goto error;
 	}
@@ -410,7 +403,6 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 	unsigned int size;
 	unsigned int i;
 	VAStatus status;
-	int rc;
 
 	if (!driver_data->video_format)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
@@ -426,10 +418,11 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 	export_fds_count = surface.destination_planes_count;
 	export_fds = static_cast<int*>(malloc(export_fds_count * sizeof(*export_fds)));
 
-	rc = v4l2_export_buffer(driver_data->device.video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-				surface.destination_index, O_RDONLY,
-				export_fds, export_fds_count);
-	if (rc < 0) {
+	try {
+		driver_data->device.export_buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index,
+				O_RDONLY, export_fds, export_fds_count);
+	} catch(std::runtime_error& e) {
+		error_log(context, "Failed to export buffer: %s\n", e.what());
 		status = VA_STATUS_ERROR_OPERATION_FAILED;
 		goto error;
 	}

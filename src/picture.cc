@@ -29,6 +29,7 @@
 #include <cassert>
 #include <cstring>
 #include <stdexcept>
+#include <system_error>
 
 extern "C" {
 #include <linux/videodev2.h>
@@ -45,6 +46,7 @@ extern "C" {
 #include "mpeg2.h"
 #include "request.h"
 #include "surface.h"
+#include "utils.h"
 #include "v4l2.h"
 #include "vp8.h"
 #include "vp9.h"
@@ -214,18 +216,16 @@ VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id)
 			return rc;
 	}
 
-	rc = v4l2_queue_buffer(driver_data->device.video_fd, -1, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, NULL,
-			       surface.destination_index, 0,
-			       surface.destination_planes_count);
-	if (rc < 0)
-		return VA_STATUS_ERROR_OPERATION_FAILED;
+	try {
+		driver_data->device.queue_buffer(-1, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, NULL,
+				surface.destination_index, 0, surface.destination_planes_count);
 
-	rc = v4l2_queue_buffer(driver_data->device.video_fd, request_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-			       &surface.timestamp,
-			       surface.source_index,
-			       surface.slices_size, 1);
-	if (rc < 0)
+		driver_data->device.queue_buffer(request_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+				&surface.timestamp, surface.source_index, surface.slices_size, 1);
+	} catch (std::system_error& e) {
+		error_log(va_context, "Unable to queue buffer: %s\n", e.what());
 		return VA_STATUS_ERROR_OPERATION_FAILED;
+	}
 
 	surface.slices_size = 0;
 

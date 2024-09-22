@@ -24,8 +24,10 @@
 
 #pragma once
 
-#include <string>
 #include <optional>
+#include <string>
+#include <span>
+#include <vector>
 
 extern "C" {
 #include <linux/videodev2.h>
@@ -40,6 +42,14 @@ public:
 	void set_format(enum v4l2_buf_type type, unsigned int pixelformat, unsigned int width, unsigned int height);
 	unsigned request_buffers(enum v4l2_buf_type type, unsigned count);
 	bool format_supported(v4l2_buf_type type, unsigned pixelformat);
+	unsigned query_buffer(v4l2_buf_type type, unsigned index, unsigned *lengths, unsigned *offsets);
+	void queue_buffer(int request_fd, v4l2_buf_type type, timeval* timestamp,
+			unsigned index, unsigned size, unsigned buffers_count);
+	void dequeue_buffer(int request_fd, v4l2_buf_type type, unsigned index);
+	void export_buffer(v4l2_buf_type type, unsigned index, unsigned flags,
+			int *export_fds, unsigned export_fds_count);
+	void set_control(int request_fd, unsigned id, void* data, unsigned size);
+	void set_controls(int request_fd, std::span<v4l2_ext_control> controls);
 	void set_streaming(bool enable);
 
 	int video_fd;
@@ -49,18 +59,3 @@ public:
 	unsigned capture_buffer_count;
 	unsigned output_buffer_count;
 };
-
-int v4l2_query_buffer(int video_fd, enum v4l2_buf_type type, unsigned int index,
-		      unsigned int *lengths, unsigned int *offsets,
-		      unsigned* buffer_count);
-int v4l2_queue_buffer(int video_fd, int request_fd, enum v4l2_buf_type type,
-		      struct timeval *timestamp, unsigned int index,
-		      unsigned int size, unsigned int buffers_count);
-int v4l2_dequeue_buffer(int video_fd, int request_fd, enum v4l2_buf_type type,
-			unsigned int index, unsigned int buffers_count);
-int v4l2_export_buffer(int video_fd, enum v4l2_buf_type type, unsigned int index,
-		       unsigned int flags, int *export_fds,
-		       unsigned int export_fds_count);
-int v4l2_set_control(int video_fd, int request_fd, unsigned int id, void *data,
-		     unsigned int size);
-int v4l2_set_controls(int video_fd, int request_fd, struct v4l2_ext_control*,  unsigned int count);

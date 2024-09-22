@@ -27,6 +27,7 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
+#include <stdexcept>
 #include <system_error>
 
 extern "C" {
@@ -126,16 +127,7 @@ bool V4L2M2MDevice::format_supported(v4l2_buf_type type, unsigned pixelformat) {
 	return false;
 }
 
-void V4L2M2MDevice::set_streaming(bool enable) {
-	v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-	errno_wrapper(ioctl, video_fd, enable ? VIDIOC_STREAMON : VIDIOC_STREAMOFF, &type);
-	type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-	errno_wrapper(ioctl, video_fd, enable ? VIDIOC_STREAMON : VIDIOC_STREAMOFF, &type);
-}
-
-int v4l2_query_buffer(int video_fd, enum v4l2_buf_type type, unsigned int index,
-		      unsigned int *lengths, unsigned int *offsets,
-		      unsigned* buffers_count)
+unsigned V4L2M2MDevice::query_buffer(v4l2_buf_type type, unsigned index, unsigned *lengths, unsigned *offsets)
 {
 	struct v4l2_plane planes[VIDEO_MAX_PLANES] = {};
 	struct v4l2_buffer buffer = {
@@ -144,56 +136,45 @@ int v4l2_query_buffer(int video_fd, enum v4l2_buf_type type, unsigned int index,
 		.m = { .planes = planes },
 		.length = VIDEO_MAX_PLANES,
 	};
-	unsigned int i;
-	int rc;
+	errno_wrapper(ioctl, video_fd, VIDIOC_QUERYBUF, &buffer);
 
-	rc = ioctl(video_fd, VIDIOC_QUERYBUF, &buffer);
-	if (rc < 0) {
-		request_log("Unable to query buffer: %s\n", strerror(errno));
-		return -1;
-	}
-
-	if (buffers_count) {
-		*buffers_count = buffer.length;
-	}
 	if (V4L2_TYPE_IS_MULTIPLANAR(type)) {
-		if (lengths != NULL)
-			for (i = 0; i < buffer.length; i++)
+		if (lengths) {
+			for (unsigned i = 0; i < buffer.length; i++) {
 				lengths[i] = buffer.m.planes[i].length;
+			}
+		}
 
-		if (offsets != NULL)
-			for (i = 0; i < buffer.length; i++)
+		if (offsets) {
+			for (unsigned i = 0; i < buffer.length; i++) {
 				offsets[i] = buffer.m.planes[i].m.mem_offset;
+			}
+		}
+		return buffer.length;
 	} else {
-		if (lengths != NULL)
+		if (lengths) {
 			lengths[0] = buffer.length;
+		}
 
-		if (offsets != NULL)
+		if (offsets) {
 			offsets[0] = buffer.m.offset;
+		}
+		return 1;
 	}
-
-	return 0;
 }
 
-int v4l2_queue_buffer(int video_fd, int request_fd, enum v4l2_buf_type type,
-		      struct timeval *timestamp, unsigned int index,
-		      unsigned int size, unsigned int buffers_count)
-{
-	struct v4l2_plane planes[buffers_count];
-	struct v4l2_buffer buffer;
-	unsigned int i;
-	int rc;
+void V4L2M2MDevice::queue_buffer(int request_fd, v4l2_buf_type type, timeval* timestamp,
+		unsigned index, unsigned size, unsigned buffers_count) {
+	struct v4l2_plane planes[VIDEO_MAX_PLANES] = {};
+	struct v4l2_buffer buffer = {
+		.index = index,
+		.type = type,
+		.memory = V4L2_MEMORY_MMAP,
+		.m = { .planes = planes },
+		.length = buffers_count,
+	};
 
-	memset(planes, 0, sizeof(planes));
-	memset(&buffer, 0, sizeof(buffer));
-
-	buffer.type = type;
-	buffer.memory = V4L2_MEMORY_MMAP;
-	buffer.index = index;
-	buffer.length = buffers_count;
-	buffer.m.planes = planes;
-
-	for (i = 0; i < buffers_count; i++)
+	for (unsigned i = 0; i < buffers_count; i++)
 		if (V4L2_TYPE_IS_MULTIPLANAR(type))
 			buffer.m.planes[i].bytesused = size;
 		else
@@ -207,127 +188,72 @@ int v4l2_queue_buffer(int video_fd, int request_fd, enum v4l2_buf_type type,
 	if (timestamp != NULL)
 		buffer.timestamp = *timestamp;
 
-	rc = ioctl(video_fd, VIDIOC_QBUF, &buffer);
-	if (rc < 0) {
-		request_log("Unable to queue buffer: %s\n", strerror(errno));
-		return -1;
-	}
-
-	return 0;
+	errno_wrapper(ioctl, video_fd, VIDIOC_QBUF, &buffer);
 }
 
-int v4l2_dequeue_buffer(int video_fd, int request_fd, enum v4l2_buf_type type,
-			unsigned int index, unsigned int buffers_count)
+void V4L2M2MDevice::dequeue_buffer(int request_fd, v4l2_buf_type type, unsigned index)
 {
-	struct v4l2_plane planes[buffers_count];
-	struct v4l2_buffer buffer;
-	int rc;
-
-	memset(planes, 0, sizeof(planes));
-	memset(&buffer, 0, sizeof(buffer));
-
-	buffer.type = type;
-	buffer.memory = V4L2_MEMORY_MMAP;
-	buffer.index = index;
-	buffer.length = buffers_count;
-	buffer.m.planes = planes;
+	struct v4l2_plane planes[VIDEO_MAX_PLANES] = {};
+	struct v4l2_buffer buffer = {
+		.index = index,
+		.type = type,
+		.memory = V4L2_MEMORY_MMAP,
+		.m = { .planes = planes },
+		.length = VIDEO_MAX_PLANES,
+	};
 
 	if (request_fd >= 0) {
 		buffer.flags = V4L2_BUF_FLAG_REQUEST_FD;
 		buffer.request_fd = request_fd;
 	}
 
-	rc = ioctl(video_fd, VIDIOC_DQBUF, &buffer);
-	if (rc < 0) {
-		request_log("Unable to dequeue buffer: %s\n", strerror(errno));
-		return -1;
-	}
+	errno_wrapper(ioctl, video_fd, VIDIOC_DQBUF, &buffer);
 	if (buffer.flags & V4L2_BUF_FLAG_ERROR) {
-		request_log("Dequeued buffer marked erroneous by driver.\n");
-		return -1;
+		throw std::runtime_error("Dequeued buffer marked erroneous by driver.");
 	}
-
-	return 0;
 }
 
-int v4l2_export_buffer(int video_fd, enum v4l2_buf_type type, unsigned int index,
-		       unsigned int flags, int *export_fds,
-		       unsigned int export_fds_count)
-{
-	struct v4l2_exportbuffer exportbuffer;
-	unsigned int i;
-	int rc;
+void V4L2M2MDevice::export_buffer(v4l2_buf_type type, unsigned index, unsigned flags,
+		int *export_fds, unsigned export_fds_count) {
+	for (unsigned i = 0; i < export_fds_count; i++) {
+		v4l2_exportbuffer exportbuffer = {
+			.type = type,
+			.index = index,
+			.plane = i,
+			.flags = flags,
+		};
 
-	for (i = 0; i < export_fds_count; i++) {
-		memset(&exportbuffer, 0, sizeof(exportbuffer));
-		exportbuffer.type = type;
-		exportbuffer.index = index;
-		exportbuffer.plane = i;
-		exportbuffer.flags = flags;
-
-		rc = ioctl(video_fd, VIDIOC_EXPBUF, &exportbuffer);
-		if (rc < 0) {
-			request_log("Unable to export buffer: %s\n",
-				    strerror(errno));
-			return -1;
-		}
-
+		errno_wrapper(ioctl, video_fd, VIDIOC_EXPBUF, &exportbuffer);
 		export_fds[i] = exportbuffer.fd;
 	}
-
-	return 0;
 }
 
-int v4l2_set_control(int video_fd, int request_fd, unsigned int id, void *data,
-		     unsigned int size)
-{
-	struct v4l2_ext_control control;
-	struct v4l2_ext_controls controls;
-	int rc;
-
-	memset(&control, 0, sizeof(control));
-	memset(&controls, 0, sizeof(controls));
-
-	control.id = id;
-	control.ptr = data;
-	control.size = size;
-
-	controls.controls = &control;
-	controls.count = 1;
-
-	if (request_fd >= 0) {
-		controls.which = V4L2_CTRL_WHICH_REQUEST_VAL;
-		controls.request_fd = request_fd;
-	}
-
-	rc = ioctl(video_fd, VIDIOC_S_EXT_CTRLS, &controls);
-	if (rc < 0) {
-		request_log("Unable to set control: %s\n", strerror(errno));
-		return -1;
-	}
-
-	return 0;
+void V4L2M2MDevice::set_control(int request_fd, unsigned id, void* data, unsigned size) {
+	v4l2_ext_control control = {
+		.id = id,
+		.size = size,
+		.ptr = data,
+	};
+	set_controls(request_fd, std::span(&control, 1));
 }
 
-int v4l2_set_controls(int video_fd, int request_fd, struct v4l2_ext_control* controls,
-		     unsigned int count)
-{
-	struct v4l2_ext_controls meta = {};
-	int rc;
-
-	meta.controls = controls;
-	meta.count = count;
+void V4L2M2MDevice::set_controls(int request_fd, std::span<v4l2_ext_control> controls) {
+	struct v4l2_ext_controls meta = {
+		.count = static_cast<uint32_t>(controls.size()),
+		.controls = controls.data(),
+	};
 
 	if (request_fd >= 0) {
 		meta.which = V4L2_CTRL_WHICH_REQUEST_VAL;
 		meta.request_fd = request_fd;
 	}
 
-	rc = ioctl(video_fd, VIDIOC_S_EXT_CTRLS, &meta);
-	if (rc < 0) {
-		request_log("Unable to set control: %s\n", strerror(errno));
-		return -1;
-	}
+	errno_wrapper(ioctl, video_fd, VIDIOC_S_EXT_CTRLS, &meta);
+}
 
-	return 0;
+void V4L2M2MDevice::set_streaming(bool enable) {
+	v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+	errno_wrapper(ioctl, video_fd, enable ? VIDIOC_STREAMON : VIDIOC_STREAMOFF, &type);
+	type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+	errno_wrapper(ioctl, video_fd, enable ? VIDIOC_STREAMON : VIDIOC_STREAMOFF, &type);
 }

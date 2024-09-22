@@ -534,7 +534,6 @@ int h264_set_controls(RequestData *driver_data,
 	struct h264_dpb_entry *output;
 	struct v4l2_ext_control controls[8] = {};
 	int i = 0;
-	int rc;
 
 	output = dpb_lookup(context, &surface.params.h264.picture.CurrPic,
 			    NULL);
@@ -599,8 +598,9 @@ int h264_set_controls(RequestData *driver_data,
 		.ptr = &matrix,
 	};
 
-	rc = v4l2_set_controls(driver_data->device.video_fd, surface.request_fd, controls, i);
-	if (rc < 0) {
+	try {
+		driver_data->device.set_controls(surface.request_fd, std::span(controls, i));
+	} catch(std::runtime_error& e) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 

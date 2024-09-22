@@ -27,6 +27,7 @@
 
 #include <cassert>
 #include <cstring>
+#include <stdexcept>
 #include <va/va.h>
 
 extern "C" {
@@ -119,7 +120,6 @@ int mpeg2_set_controls(RequestData *driver_data,
 	struct v4l2_ctrl_mpeg2_sequence sequence = {};
 	struct v4l2_ctrl_mpeg2_quantisation quantisation = {};
 	unsigned int i;
-	int rc;
 
 	sequence.horizontal_size = va_picture->horizontal_size;
 	sequence.vertical_size = va_picture->vertical_size;
@@ -128,12 +128,12 @@ int mpeg2_set_controls(RequestData *driver_data,
 	sequence.profile_and_level_indication = 0;
 	sequence.chroma_format = 1; // 4:2:0
 
-	rc = v4l2_set_control(driver_data->device.video_fd,
-			      surface.request_fd,
-			      V4L2_CID_STATELESS_MPEG2_SEQUENCE,
-			      &sequence, sizeof(sequence));
-	if (rc < 0)
+	try {
+		driver_data->device.set_control(surface.request_fd, V4L2_CID_STATELESS_MPEG2_SEQUENCE,
+				&sequence, sizeof(sequence));
+	} catch(std::runtime_error& e) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
+	}
 
 	picture.picture_coding_type = va_picture->picture_coding_type;
 	picture.f_code[0][0] = (va_picture->f_code >> 12) & 0x0f;
@@ -161,12 +161,12 @@ int mpeg2_set_controls(RequestData *driver_data,
 		(va_picture->picture_coding_extension.bits.progressive_frame ? V4L2_MPEG2_PIC_FLAG_PROGRESSIVE : 0)
 	);
 
-	rc = v4l2_set_control(driver_data->device.video_fd,
-			      surface.request_fd,
-			      V4L2_CID_STATELESS_MPEG2_PICTURE,
-			      &picture, sizeof(picture));
-	if (rc < 0)
+	try {
+		driver_data->device.set_control(surface.request_fd, V4L2_CID_STATELESS_MPEG2_PICTURE,
+				&picture, sizeof(picture));
+	} catch(std::runtime_error& e) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
+	}
 
 
 	if (iqmatrix_set) {
@@ -178,12 +178,12 @@ int mpeg2_set_controls(RequestData *driver_data,
 			quantisation.chroma_non_intra_quantiser_matrix[i] = iqmatrix->load_chroma_non_intra_quantiser_matrix ? iqmatrix->chroma_non_intra_quantiser_matrix[i] : default_intra_quantisation_matrix[i];
 		}
 
-		rc = v4l2_set_control(driver_data->device.video_fd,
-				      surface.request_fd,
-				      V4L2_CID_STATELESS_MPEG2_QUANTISATION,
-				      &quantisation, sizeof(quantisation));
-		if (rc < 0)
+		try {
+			driver_data->device.set_control(surface.request_fd, V4L2_CID_STATELESS_MPEG2_QUANTISATION,
+					&quantisation, sizeof(quantisation));
+		} catch(std::runtime_error& e) {
 			return VA_STATUS_ERROR_OPERATION_FAILED;
+		}
 	}
 
 	return 0;
