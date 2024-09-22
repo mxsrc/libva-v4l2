@@ -164,6 +164,9 @@ VAStatus vp9_store_buffer(RequestData *driver_data,
 		 * and have to copy from a regular buffer.
 		 */
 		printf("%d bytes.", surface.source_size);
+		if (surface.slices_size + buffer.size * buffer.count > surface.source_size) {
+			return VA_STATUS_ERROR_NOT_ENOUGH_BUFFER;
+		}
 		memcpy(surface.source_data +
 			       surface.slices_size,
 		       buffer.data.get(),

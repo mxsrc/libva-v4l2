@@ -27,6 +27,7 @@
 
 #include <cassert>
 #include <cstring>
+#include <va/va.h>
 
 extern "C" {
 #include <linux/videodev2.h>
@@ -85,6 +86,9 @@ VAStatus mpeg2_store_buffer(RequestData *driver_data,
 		 * RenderPicture), we can't use a V4L2 buffer directly
 		 * and have to copy from a regular buffer.
 		 */
+		if (surface.slices_size + buffer.size * buffer.count > surface.source_size) {
+			return VA_STATUS_ERROR_NOT_ENOUGH_BUFFER;
+		}
 		memcpy(surface.source_data +
 			       surface.slices_size,
 		       buffer.data.get(),
