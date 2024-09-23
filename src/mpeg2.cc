@@ -62,16 +62,11 @@ VAStatus mpeg2_store_buffer(RequestData *driver_data,
 {
 	switch (buffer.type) {
 	case VAPictureParameterBufferType:
-		memcpy(&surface.params.mpeg2.picture,
-		       buffer.data.get(),
-		       sizeof(surface.params.mpeg2.picture));
+		surface.params.mpeg2.picture = reinterpret_cast<VAPictureParameterBufferMPEG2*>(buffer.data.get());
 		break;
 
 	case VAIQMatrixBufferType:
-		memcpy(&surface.params.mpeg2.iqmatrix,
-		       buffer.data.get(),
-		       sizeof(surface.params.mpeg2.iqmatrix));
-		surface.params.mpeg2.iqmatrix_set = true;
+		surface.params.mpeg2.iqmatrix = reinterpret_cast<VAIQMatrixBufferMPEG2*>(buffer.data.get());
 		break;
 
 	case VASliceParameterBufferType:
@@ -110,11 +105,8 @@ int mpeg2_set_controls(RequestData *driver_data,
 		       const Context& context,
 		       Surface& surface)
 {
-	VAPictureParameterBufferMPEG2 *va_picture =
-		&surface.params.mpeg2.picture;
-	VAIQMatrixBufferMPEG2 *iqmatrix =
-		&surface.params.mpeg2.iqmatrix;
-	bool iqmatrix_set = surface.params.mpeg2.iqmatrix_set;
+	VAPictureParameterBufferMPEG2 *va_picture = surface.params.mpeg2.picture;
+	VAIQMatrixBufferMPEG2 *iqmatrix = surface.params.mpeg2.iqmatrix;
 	struct v4l2_ctrl_mpeg2_picture picture = {};
 	struct v4l2_ctrl_mpeg2_sequence sequence = {};
 	struct v4l2_ctrl_mpeg2_quantisation quantisation = {};
@@ -168,7 +160,7 @@ int mpeg2_set_controls(RequestData *driver_data,
 	}
 
 
-	if (iqmatrix_set) {
+	if (iqmatrix) {
 		for (i = 0; i < 64; i++) {
 			// The V4L2 API allows to set all or none of the quantisation matrices, so use default values for matrices that are not to be loaded.
 			quantisation.intra_quantiser_matrix[i] = iqmatrix->load_intra_quantiser_matrix ? iqmatrix->intra_quantiser_matrix[i] : default_non_intra_quantisation_matrix_value;

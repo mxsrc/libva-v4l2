@@ -57,25 +57,24 @@ struct Surface {
 
 	union {
 		struct {
-			VAPictureParameterBufferMPEG2 picture;
-			VASliceParameterBufferMPEG2 slice;
-			VAIQMatrixBufferMPEG2 iqmatrix;
-			bool iqmatrix_set;
+			VAPictureParameterBufferMPEG2* picture;
+			VASliceParameterBufferMPEG2* slice;
+			VAIQMatrixBufferMPEG2* iqmatrix;
 		} mpeg2;
 		struct {
-			VAIQMatrixBufferH264 matrix;
-			VAPictureParameterBufferH264 picture;
-			VASliceParameterBufferH264 slice;
+			VAIQMatrixBufferH264* matrix;
+			VAPictureParameterBufferH264* picture;
+			VASliceParameterBufferH264* slice;
 		} h264;
 		struct {
-			VAPictureParameterBufferVP8 picture;
-			VASliceParameterBufferVP8 slice;
-			VAProbabilityDataBufferVP8 probabilities;
-			VAIQMatrixBufferVP8 iqmatrix;
+			VAPictureParameterBufferVP8* picture;
+			VASliceParameterBufferVP8* slice;
+			VAProbabilityDataBufferVP8* probabilities;
+			VAIQMatrixBufferVP8* iqmatrix;
 		} vp8;
 		struct {
-			VADecPictureParameterBufferVP9 picture;
-			VASliceParameterBufferVP9 slice;
+			VADecPictureParameterBufferVP9* picture;
+			VASliceParameterBufferVP9* slice;
 		} vp9;
 	} params;
 

@@ -10,6 +10,8 @@
 #include "request.h"
 #include "utils.h"
 #include "v4l2.h"
+#include <va/va_dec_vp8.h>
+#include <va/va_dec_vp9.h>
 
 /**
  * The structured data libVA passed doesn't contain all information we need, so we parse the headers ourselves (i.e. have gstreamer do it).
@@ -143,15 +145,11 @@ VAStatus vp9_store_buffer(RequestData *driver_data,
 			  const Buffer& buffer) {
 	switch (buffer.type) {
 	case VAPictureParameterBufferType:
-		memcpy(&surface.params.vp9.picture,
-		       buffer.data.get(),
-		       sizeof(surface.params.vp9.picture));
+		surface.params.vp9.picture = reinterpret_cast<VADecPictureParameterBufferVP9*>(buffer.data.get());
 		return VA_STATUS_SUCCESS;
 
 	case VASliceParameterBufferType:
-		memcpy(&surface.params.vp9.slice,
-		       buffer.data.get(),
-		       sizeof(surface.params.vp9.slice));
+		surface.params.vp9.slice = reinterpret_cast<VASliceParameterBufferVP9*>(buffer.data.get());
 		return VA_STATUS_SUCCESS;
 
 	case VASliceDataBufferType:
@@ -186,7 +184,7 @@ int vp9_set_controls(RequestData *data,
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 
-	struct v4l2_ctrl_vp9_frame frame = va_to_v4l2_frame(data, &surface.params.vp9.picture, &surface.params.vp9.slice, &header);
+	struct v4l2_ctrl_vp9_frame frame = va_to_v4l2_frame(data, surface.params.vp9.picture, surface.params.vp9.slice, &header);
 	struct v4l2_ctrl_vp9_compressed_hdr hdr = gst_to_v4l2_compressed_header(&header);
 
 	struct v4l2_ext_control controls[2] = {};

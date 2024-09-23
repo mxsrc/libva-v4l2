@@ -234,6 +234,7 @@ VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id)
 		return status;
 
 	context.render_surface_id = VA_INVALID_ID;
+	memset(&surface.params, 0, sizeof(surface.params));
 
 	return VA_STATUS_SUCCESS;
 }

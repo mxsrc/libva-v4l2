@@ -188,8 +188,8 @@ VAStatus vp8_store_buffer(RequestData *driver_data,
 		 */
 		surface.source_size_used += prefix_data(
 			surface.source_data.data() + surface.source_size_used,
-			&surface.params.vp8.picture,
-			&surface.params.vp8.slice
+			surface.params.vp8.picture,
+			surface.params.vp8.slice
 		);
 
 		if (surface.source_size_used + buffer.size * buffer.count > surface.source_data.size()) {
@@ -204,27 +204,19 @@ VAStatus vp8_store_buffer(RequestData *driver_data,
 		break;
 
 	case VAPictureParameterBufferType:
-		memcpy(&surface.params.vp8.picture,
-		       buffer.data.get(),
-		       sizeof(surface.params.vp8.picture));
+		surface.params.vp8.picture = reinterpret_cast<VAPictureParameterBufferVP8*>(buffer.data.get());
 		break;
 
 	case VASliceParameterBufferType:
-		memcpy(&surface.params.vp8.slice,
-		       buffer.data.get(),
-		       sizeof(surface.params.vp8.slice));
+		surface.params.vp8.slice = reinterpret_cast<VASliceParameterBufferVP8*>(buffer.data.get());
 		break;
 
 	case VAIQMatrixBufferType:
-		memcpy(&surface.params.vp8.iqmatrix,
-		       buffer.data.get(),
-		       sizeof(surface.params.vp8.iqmatrix));
+		surface.params.vp8.iqmatrix = reinterpret_cast<VAIQMatrixBufferVP8*>(buffer.data.get());
 		break;
 
 	case VAProbabilityBufferType:
-		memcpy(&surface.params.vp8.probabilities,
-		       buffer.data.get(),
-		       sizeof(surface.params.vp8.probabilities));
+		surface.params.vp8.probabilities = reinterpret_cast<VAProbabilityDataBufferVP8*>(buffer.data.get());
 		break;
 
 	default:
@@ -237,10 +229,10 @@ VAStatus vp8_store_buffer(RequestData *driver_data,
 int vp8_set_controls(RequestData *data, const Context& context, Surface& surface) {
 	struct v4l2_ctrl_vp8_frame frame = va_to_v4l2_frame(
 		data,
-		&surface.params.vp8.picture,
-		&surface.params.vp8.slice,
-		&surface.params.vp8.iqmatrix,
-		&surface.params.vp8.probabilities
+		surface.params.vp8.picture,
+		surface.params.vp8.slice,
+		surface.params.vp8.iqmatrix,
+		surface.params.vp8.probabilities
 	);
 
 	try {

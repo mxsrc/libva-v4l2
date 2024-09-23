@@ -491,21 +491,15 @@ VAStatus h264_store_buffer(RequestData *driver_data,
 		break;
 
 	case VAPictureParameterBufferType:
-		memcpy(&surface.params.h264.picture,
-		       buffer.data.get(),
-		       sizeof(surface.params.h264.picture));
+		surface.params.h264.picture = reinterpret_cast<VAPictureParameterBufferH264*>(buffer.data.get());
 		break;
 
 	case VASliceParameterBufferType:
-		memcpy(&surface.params.h264.slice,
-		       buffer.data.get(),
-		       sizeof(surface.params.h264.slice));
+		surface.params.h264.slice = reinterpret_cast<VASliceParameterBufferH264*>(buffer.data.get());
 		break;
 
 	case VAIQMatrixBufferType:
-		memcpy(&surface.params.h264.matrix,
-		       buffer.data.get(),
-		       sizeof(surface.params.h264.matrix));
+		surface.params.h264.matrix = reinterpret_cast<VAIQMatrixBufferH264*>(buffer.data.get());
 		break;
 
 	default:
@@ -534,26 +528,26 @@ int h264_set_controls(RequestData *driver_data,
 	struct v4l2_ext_control controls[8] = {};
 	int i = 0;
 
-	output = dpb_lookup(context, &surface.params.h264.picture.CurrPic,
+	output = dpb_lookup(context, &surface.params.h264.picture->CurrPic,
 			    NULL);
 	if (!output)
 		output = dpb_find_entry(context);
 
 	dpb_clear_entry(output, true);
 
-	dpb_update(context, &surface.params.h264.picture);
+	dpb_update(context, surface.params.h264.picture);
 
 	h264_va_picture_to_v4l2(driver_data, context,
-				&surface.params.h264.picture,
+				surface.params.h264.picture,
 				&decode, &pps, &sps);
 	h264_va_matrix_to_v4l2(driver_data, context,
-			       &surface.params.h264.matrix, &matrix);
+			       surface.params.h264.matrix, &matrix);
 	h264_va_slice_to_v4l2(driver_data, context,
-			      &surface.params.h264.slice,
-			      &surface.params.h264.picture, &slice);
+			      surface.params.h264.slice,
+			      surface.params.h264.picture, &slice);
 
 	sps.profile_idc = va_profile_to_profile_idc(config.profile);
-	switch (surface.params.h264.slice.slice_type % 5) {
+	switch (surface.params.h264.slice->slice_type % 5) {
 		case H264_SLICE_P:
 			decode.flags |= V4L2_H264_DECODE_PARAM_FLAG_PFRAME;
 			break;
@@ -564,7 +558,7 @@ int h264_set_controls(RequestData *driver_data,
 
 	if (V4L2_H264_CTRL_PRED_WEIGHTS_REQUIRED(&pps, &slice)) {
 		struct v4l2_ctrl_h264_pred_weights weights = {};
-		h264_va_slice_to_predicted_weights(&surface.params.h264.slice, &slice, &weights);
+		h264_va_slice_to_predicted_weights(surface.params.h264.slice, &slice, &weights);
 
 		controls[i++] = (struct v4l2_ext_control){
 			.id = V4L2_CID_STATELESS_H264_PRED_WEIGHTS,
@@ -603,7 +597,7 @@ int h264_set_controls(RequestData *driver_data,
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 
-	dpb_insert(context, &surface.params.h264.picture.CurrPic, output);
+	dpb_insert(context, &surface.params.h264.picture->CurrPic, output);
 
 	return VA_STATUS_SUCCESS;
 }
