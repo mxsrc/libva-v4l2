@@ -475,20 +475,19 @@ VAStatus h264_store_buffer(RequestData *driver_data,
 		 * RenderPicture), we can't use a V4L2 buffer directly
 		 * and have to copy from a regular buffer.
 		 */
-		surface.slices_size += prefix_data(
-			surface.source_data + surface.slices_size
+		surface.source_size_used += prefix_data(
+			surface.source_data + surface.source_size_used
 		);
 
-		if (surface.slices_size + buffer.size * buffer.count > surface.source_size) {
+		if (surface.source_size_used + buffer.size * buffer.count > surface.source_size) {
 			return VA_STATUS_ERROR_NOT_ENOUGH_BUFFER;
 		}
 		memcpy(surface.source_data +
-			       surface.slices_size,
+			       surface.source_size_used,
 		       buffer.data.get(),
 		       buffer.size * buffer.count);
-		surface.slices_size +=
+		surface.source_size_used +=
 			buffer.size * buffer.count;
-		surface.slices_count++;
 		break;
 
 	case VAPictureParameterBufferType:

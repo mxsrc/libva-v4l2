@@ -221,13 +221,13 @@ VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id)
 				surface.destination_index, 0, surface.destination_planes_count);
 
 		driver_data->device.queue_buffer(request_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-				&surface.timestamp, surface.source_index, surface.slices_size, 1);
+				&surface.timestamp, surface.source_index, surface.source_size_used, 1);
 	} catch (std::system_error& e) {
 		error_log(va_context, "Unable to queue buffer: %s\n", e.what());
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 
-	surface.slices_size = 0;
+	surface.source_size_used = 0;
 
 	status = RequestSyncSurface(va_context, context.render_surface_id);
 	if (status != VA_STATUS_SUCCESS)

@@ -40,6 +40,7 @@ struct Surface {
 	unsigned int source_index;
 	uint8_t* source_data;
 	unsigned int source_size;
+	unsigned int source_size_used;
 
 	unsigned int destination_index;
 	uint8_t* destination_plane_data[VIDEO_MAX_PLANES];
@@ -51,9 +52,6 @@ struct Surface {
 	unsigned int destination_logical_plane_pitch[VIDEO_MAX_PLANES];
 	unsigned int destination_logical_plane_offset[VIDEO_MAX_PLANES];
 	unsigned int destination_logical_planes_count;
-
-	unsigned int slices_size;
-	unsigned int slices_count;
 
 	struct timeval timestamp;
 
