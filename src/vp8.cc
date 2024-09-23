@@ -178,6 +178,7 @@ VAStatus vp8_store_buffer(RequestData *driver_data,
 			  Surface& surface,
 			  const Buffer& buffer)
 {
+	const auto source_data = driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.destination_index).mapping()[0];
 	switch (buffer.type) {
 	case VASliceDataBufferType:
 		/*
@@ -187,20 +188,16 @@ VAStatus vp8_store_buffer(RequestData *driver_data,
 		 * and have to copy from a regular buffer.
 		 */
 		surface.source_size_used += prefix_data(
-			surface.source_data.data() + surface.source_size_used,
+			source_data.data() + surface.source_size_used,
 			surface.params.vp8.picture,
 			surface.params.vp8.slice
 		);
 
-		if (surface.source_size_used + buffer.size * buffer.count > surface.source_data.size()) {
+		if (surface.source_size_used + buffer.size * buffer.count > source_data.size()) {
 			return VA_STATUS_ERROR_NOT_ENOUGH_BUFFER;
 		}
-		memcpy(surface.source_data.data() +
-			       surface.source_size_used,
-		       buffer.data.get(),
-		       buffer.size * buffer.count);
-		surface.source_size_used +=
-			buffer.size * buffer.count;
+		memcpy(source_data.data() + surface.source_size_used, buffer.data.get(), buffer.size * buffer.count);
+		surface.source_size_used += buffer.size * buffer.count;
 		break;
 
 	case VAPictureParameterBufferType:

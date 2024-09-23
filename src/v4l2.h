@@ -38,25 +38,42 @@ extern "C" {
 
 class V4L2M2MDevice {
 public:
+	class Buffer {
+	public:
+		void queue(int request_fd=-1, timeval* timestamp=nullptr, unsigned size=0) const;
+		void dequeue() const;
+		std::vector<int> export_(unsigned flags) const;
+		std::vector<std::span<uint8_t>> mapping() const { return mapping_; }
+
+		Buffer(V4L2M2MDevice& owner, v4l2_buf_type type, unsigned index);
+		Buffer(Buffer&& other);
+		Buffer& operator=(Buffer&& other);
+		~Buffer();
+
+		V4L2M2MDevice& owner_;
+		v4l2_buf_type type_;
+		unsigned index_;
+		std::vector<std::span<uint8_t>> mapping_;
+
+		friend class V4L2M2MDevice;
+	};
+
 	V4L2M2MDevice(const std::string& video_path, const std::optional<std::string> media_path);
 	~V4L2M2MDevice();
 	void set_format(enum v4l2_buf_type type, unsigned int pixelformat, unsigned int width, unsigned int height);
 	unsigned request_buffers(enum v4l2_buf_type type, unsigned count);
 	bool format_supported(v4l2_buf_type type, unsigned pixelformat);
-	std::vector<std::span<uint8_t>> map_buffer(v4l2_buf_type type, unsigned index);
-	void queue_buffer(int request_fd, v4l2_buf_type type, timeval* timestamp,
-			unsigned index, unsigned size, unsigned buffers_count);
-	void dequeue_buffer(int request_fd, v4l2_buf_type type, unsigned index);
-	void export_buffer(v4l2_buf_type type, unsigned index, unsigned flags,
-			int *export_fds, unsigned export_fds_count);
+	const Buffer& buffer(v4l2_buf_type type, unsigned index);
 	void set_control(int request_fd, unsigned id, void* data, unsigned size);
 	void set_controls(int request_fd, std::span<v4l2_ext_control> controls);
 	void set_streaming(bool enable);
 
-	int video_fd;
-	int media_fd;
+	const int video_fd;
+	const int media_fd;
 	struct v4l2_format capture_format;
 	struct v4l2_format output_format;
-	unsigned capture_buffer_count;
-	unsigned output_buffer_count;
+
+private:
+	std::vector<Buffer> capture_buffers;
+	std::vector<Buffer> output_buffers;
 };

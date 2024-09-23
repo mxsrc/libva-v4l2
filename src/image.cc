@@ -127,8 +127,10 @@ static VAStatus copy_surface_to_image (RequestData *driver_data,
 	auto& buffer = driver_data->buffers.at(image->buf);
 
 	for (i = 0; i < surface.destination_logical_planes_count; i++) {
+		const auto& mapping = driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index).mapping();
+
 		memcpy(buffer.data.get() + image->offsets[i],
-		       surface.destination_plane_data[surface.destination_logical_plane_index[i]].data() + surface.destination_logical_plane_offset[i],
+		       mapping[surface.destination_logical_plane_index[i]].data() + surface.destination_logical_plane_offset[i],
 		       surface.destination_logical_plane_size[i]);
 	}
 

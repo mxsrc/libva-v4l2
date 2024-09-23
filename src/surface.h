@@ -41,11 +41,9 @@ struct Surface {
 	unsigned height;
 
 	unsigned int source_index;
-	std::span<uint8_t> source_data;
 	unsigned int source_size_used;
 
 	unsigned int destination_index;
-	std::vector<std::span<uint8_t>> destination_plane_data;
 
 	unsigned int destination_logical_plane_index[VIDEO_MAX_PLANES];
 	unsigned int destination_logical_plane_size[VIDEO_MAX_PLANES];

@@ -180,8 +180,6 @@ VAStatus RequestAcquireBufferHandle(VADriverContextP context,
 	}
 	auto& buffer = driver_data->buffers.at(buffer_id);
 
-	int export_fd;
-
 	if (!driver_data->video_format) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
@@ -195,19 +193,20 @@ VAStatus RequestAcquireBufferHandle(VADriverContextP context,
 	}
 	const auto& surface = driver_data->surfaces.at(buffer.derived_surface_id);
 
-	if (surface.destination_plane_data.size() > 1) {
-		return VA_STATUS_ERROR_OPERATION_FAILED;
-	}
-
 	try {
-		driver_data->device.export_buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-				surface.destination_index, O_RDONLY, &export_fd, 1);
+		auto export_fds = driver_data->device
+				.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index)
+				.export_(O_RDONLY);
+		if (export_fds.size() != 1) {
+			error_log(context, "Compressed buffer is multiplanar\n");
+			return VA_STATUS_ERROR_OPERATION_FAILED;
+		}
+		buffer_info->handle = static_cast<uintptr_t>(export_fds[0]);
 	} catch(std::runtime_error& e) {
 		error_log(context, "Failed to export buffer: %s\n", e.what());
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 
-	buffer_info->handle = (uintptr_t) export_fd;
 	buffer_info->type = buffer.type;
 	buffer_info->mem_size = buffer.size * buffer.count;
 

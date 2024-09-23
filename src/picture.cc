@@ -28,7 +28,6 @@
 
 #include <cassert>
 #include <cstring>
-#include <stdexcept>
 #include <system_error>
 
 extern "C" {
@@ -217,11 +216,8 @@ VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id)
 	}
 
 	try {
-		driver_data->device.queue_buffer(-1, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, NULL,
-				surface.destination_index, 0, surface.destination_plane_data.size());
-
-		driver_data->device.queue_buffer(request_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-				&surface.timestamp, surface.source_index, surface.source_size_used, 1);
+		driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index).queue();
+		driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.source_index).queue(request_fd, &surface.timestamp, surface.source_size_used);
 	} catch (std::system_error& e) {
 		error_log(va_context, "Unable to queue buffer: %s\n", e.what());
 		return VA_STATUS_ERROR_OPERATION_FAILED;

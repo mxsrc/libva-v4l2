@@ -54,7 +54,6 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
 	decltype(driver_data->surfaces)::iterator surface;
 	unsigned int length;
-	uint8_t *source_data = static_cast<uint8_t*>(MAP_FAILED);
 	VAStatus status;
 	unsigned int pixelformat;
 
@@ -152,7 +151,6 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 		}
 
 		surface->second.source_index = i;
-		surface->second.source_data = driver_data->device.map_buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, i)[0];
 	}
 
 	try {
@@ -166,9 +164,6 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 	goto complete;
 
 error:
-	if (source_data != MAP_FAILED)
-		munmap(source_data, length);
-
 	if (inserted) {
 		driver_data->contexts.erase(*context_id);
 	}

@@ -31,6 +31,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <stdexcept>
+#include <ranges>
 #include <system_error>
 
 extern "C" {
@@ -127,12 +128,6 @@ VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surf
 		}
 		auto& surface = driver_data->surfaces.at(surfaces_ids[i]);
 
-		if (surface.destination_plane_data.size() > 0) {  // Already initialized
-			continue;
-		}
-
-		surface.destination_plane_data = driver_data->device.map_buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, i);
-
 		if (driver_data->video_format->derive_layout) {  // (logical) single plane
 			driver_data->video_format->derive_layout(
 					driver_format->width, driver_format->height,
@@ -180,17 +175,6 @@ VAStatus RequestDestroySurfaces(VADriverContextP context,
 			return VA_STATUS_ERROR_INVALID_SURFACE;
 		}
 		auto& surface = driver_data->surfaces.at(surfaces_ids[i]);
-
-		if (surface.source_data.data() &&
-		    surface.source_data.size() > 0)
-			munmap(surface.source_data.data(),
-			       surface.source_data.size());
-
-		for (auto&& data : surface.destination_plane_data) {
-			if (data.data() && data.size() > 0) {
-				munmap(data.data(), data.size());
-			}
-		}
 
 		if (surface.request_fd > 0)
 			close(surface.request_fd);
@@ -243,8 +227,8 @@ VAStatus RequestSyncSurface(VADriverContextP context, VASurfaceID surface_id)
 	}
 
 	try {
-		driver_data->device.dequeue_buffer(-1, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.source_index);
-		driver_data->device.dequeue_buffer(-1, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index);
+		driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.source_index).dequeue();
+		driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index).dequeue();
 	} catch (std::runtime_error& e) {
 		error_log(context, "Failed to dequeue buffer: %s\n", e.what());
 		status = VA_STATUS_ERROR_OPERATION_FAILED;
@@ -378,12 +362,6 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	auto surface_descriptor = static_cast<VADRMPRIMESurfaceDescriptor*>(descriptor);
-	int *export_fds = NULL;
-	unsigned int export_fds_count;
-	unsigned int planes_count;
-	unsigned int size;
-	unsigned int i;
-	VAStatus status;
 
 	if (!driver_data->video_format)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
@@ -396,62 +374,38 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 	}
 	const auto& surface = driver_data->surfaces.at(surface_id);
 
-	export_fds_count = surface.destination_plane_data.size();
-	export_fds = static_cast<int*>(malloc(export_fds_count * sizeof(*export_fds)));
-
+	auto& destination_buffer = driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index);
+	std::vector<int> export_fds;
 	try {
-		driver_data->device.export_buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index,
-				O_RDONLY, export_fds, export_fds_count);
+		export_fds = destination_buffer.export_(O_RDONLY);
 	} catch(std::runtime_error& e) {
 		error_log(context, "Failed to export buffer: %s\n", e.what());
-		status = VA_STATUS_ERROR_OPERATION_FAILED;
-		goto error;
+		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
-
-	planes_count = surface.destination_logical_planes_count;
 
 	surface_descriptor->fourcc = VA_FOURCC_NV12;
 	surface_descriptor->width = surface.width;
 	surface_descriptor->height = surface.height;
-	surface_descriptor->num_objects = export_fds_count;
+	surface_descriptor->num_objects = export_fds.size();
 
-	size = 0;
-
-	if (export_fds_count == 1)
-		for (i = 0; i < planes_count; i++)
-			size += surface.destination_logical_plane_size[i];
-
-	for (i = 0; i < export_fds_count; i++) {
+	const auto& mapping = destination_buffer.mapping();
+	for (unsigned i = 0; i < export_fds.size(); i += 1) {
 		surface_descriptor->objects[i].drm_format_modifier =
 			driver_data->video_format->drm_modifier;
 		surface_descriptor->objects[i].fd = export_fds[i];
-		surface_descriptor->objects[i].size = export_fds_count == 1 ?
-						      size :
-						      surface.destination_logical_plane_size[i];
+		surface_descriptor->objects[i].size = mapping[i].size();
 	}
 
 	surface_descriptor->num_layers = 1;
 
 	surface_descriptor->layers[0].drm_format = driver_data->video_format->drm_format;
-	surface_descriptor->layers[0].num_planes = planes_count;
+	surface_descriptor->layers[0].num_planes = surface.destination_logical_planes_count;
 
-	for (i = 0; i < planes_count; i++) {
-		surface_descriptor->layers[0].object_index[i] = export_fds_count == 1 ? 0 : i;
+	for (unsigned i = 0; i < surface_descriptor->layers[0].num_planes; i++) {
+		surface_descriptor->layers[0].object_index[i] = surface.destination_logical_plane_index[i];
 		surface_descriptor->layers[0].offset[i] = (i > 0 ) ? (surface_descriptor->layers[0].offset[i] + surface.destination_logical_plane_size[i]) : 0;
 		surface_descriptor->layers[0].pitch[i] = surface.destination_logical_plane_pitch[i];
 	}
 
-	status = VA_STATUS_SUCCESS;
-	goto complete;
-
-error:
-	for (i = 0; i < export_fds_count; i++)
-		if (export_fds[i] >= 0)
-			close(export_fds[i]);
-
-complete:
-	if (export_fds != NULL)
-		free(export_fds);
-
-	return status;
+	return VA_STATUS_SUCCESS;
 }

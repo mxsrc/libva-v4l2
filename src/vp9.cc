@@ -16,7 +16,7 @@
 /**
  * The structured data libVA passed doesn't contain all information we need, so we parse the headers ourselves (i.e. have gstreamer do it).
  */
-static int parse_frame_header(const Surface& surface, GstVp9FrameHeader* header) {
+static int parse_frame_header(std::span<uint8_t> data, GstVp9FrameHeader* header) {
 	int ret = 0;
 	GstVp9StatefulParser* parser = gst_vp9_stateful_parser_new();
 	if (!parser) {
@@ -26,13 +26,13 @@ static int parse_frame_header(const Surface& surface, GstVp9FrameHeader* header)
 
 	if (gst_vp9_stateful_parser_parse_uncompressed_frame_header(
 			parser, header,
-			surface.source_data.data(), surface.source_data.size()
+			data.data(), data.size()
 	) != GST_VP9_PARSER_OK) {
 		goto exit_parser_allocated;
 	}
 	if (gst_vp9_stateful_parser_parse_compressed_frame_header(
 			parser, header,
-			surface.source_data.data() + header->frame_header_length_in_bytes, surface.source_data.size()
+			data.data() + header->frame_header_length_in_bytes, data.size()
 	) != GST_VP9_PARSER_OK) {
 		goto exit_parser_allocated;
 	}
@@ -143,6 +143,8 @@ struct v4l2_ctrl_vp9_compressed_hdr gst_to_v4l2_compressed_header(GstVp9FrameHea
 VAStatus vp9_store_buffer(RequestData *driver_data,
 			  Surface& surface,
 			  const Buffer& buffer) {
+	const auto source_data = driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.destination_index).mapping()[0];
+
 	switch (buffer.type) {
 	case VAPictureParameterBufferType:
 		surface.params.vp9.picture = reinterpret_cast<VADecPictureParameterBufferVP9*>(buffer.data.get());
@@ -159,15 +161,11 @@ VAStatus vp9_store_buffer(RequestData *driver_data,
 		 * RenderPicture), we can't use a V4L2 buffer directly
 		 * and have to copy from a regular buffer.
 		 */
-		if (surface.source_size_used + buffer.size * buffer.count > surface.source_data.size()) {
+		if (surface.source_size_used + buffer.size * buffer.count > source_data.size()) {
 			return VA_STATUS_ERROR_NOT_ENOUGH_BUFFER;
 		}
-		memcpy(surface.source_data.data() +
-			       surface.source_size_used,
-		       buffer.data.get(),
-		       buffer.size * buffer.count);
-		surface.source_size_used +=
-			buffer.size * buffer.count;
+		memcpy(source_data.data() + surface.source_size_used, buffer.data.get(), buffer.size * buffer.count);
+		surface.source_size_used += buffer.size * buffer.count;
 		return VA_STATUS_SUCCESS;
 
 	default:
@@ -180,7 +178,8 @@ int vp9_set_controls(RequestData *data,
 		     const Context& context,
 		     Surface& surface) {
 	GstVp9FrameHeader header = {};
-	if (parse_frame_header(surface, &header)) {
+
+	if (parse_frame_header(data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.source_index).mapping()[0], &header)) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 
