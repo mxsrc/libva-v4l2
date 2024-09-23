@@ -218,7 +218,7 @@ VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id)
 
 	try {
 		driver_data->device.queue_buffer(-1, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, NULL,
-				surface.destination_index, 0, surface.destination_planes_count);
+				surface.destination_index, 0, surface.destination_plane_data.size());
 
 		driver_data->device.queue_buffer(request_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
 				&surface.timestamp, surface.source_index, surface.source_size_used, 1);

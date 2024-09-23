@@ -127,28 +127,11 @@ VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surf
 		}
 		auto& surface = driver_data->surfaces.at(surfaces_ids[i]);
 
-		if (surface.destination_plane_data[0]) {  // Already initialized
+		if (surface.destination_plane_data.size() > 0) {  // Already initialized
 			continue;
 		}
 
-		unsigned map_offsets[VIDEO_MAX_PLANES];
-		if (driver_data->device.query_buffer(
-				      V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-				      i, surface.destination_plane_size,
-				      map_offsets) < 0)
-			return VA_STATUS_ERROR_ALLOCATION_FAILED;
-
-		for (int j = 0; j < driver_format->num_planes; j++) {
-			surface.destination_plane_data[j] =
-				static_cast<uint8_t*>(mmap(NULL,
-				     surface.destination_plane_size[j],
-				     PROT_READ | PROT_WRITE, MAP_SHARED,
-				     driver_data->device.video_fd,
-				     map_offsets[j]));
-
-			if (surface.destination_plane_data[j] == MAP_FAILED)
-				return VA_STATUS_ERROR_ALLOCATION_FAILED;
-		}
+		surface.destination_plane_data = driver_data->device.map_buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, i);
 
 		if (driver_data->video_format->derive_layout) {  // (logical) single plane
 			driver_data->video_format->derive_layout(
@@ -173,7 +156,6 @@ VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surf
 		}
 
 		surface.destination_index = i;
-		surface.destination_planes_count = driver_format->num_planes;
 	}
 
 	return VA_STATUS_SUCCESS;
@@ -191,7 +173,6 @@ VAStatus RequestDestroySurfaces(VADriverContextP context,
 				VASurfaceID *surfaces_ids, int surfaces_count)
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	unsigned int j;
 
 	std::lock_guard<std::mutex> guard(driver_data->mutex);
 	for (int i = 0; i < surfaces_count; i++) {
@@ -200,16 +181,16 @@ VAStatus RequestDestroySurfaces(VADriverContextP context,
 		}
 		auto& surface = driver_data->surfaces.at(surfaces_ids[i]);
 
-		if (surface.source_data != NULL &&
-		    surface.source_size > 0)
-			munmap(surface.source_data,
-			       surface.source_size);
+		if (surface.source_data.data() &&
+		    surface.source_data.size() > 0)
+			munmap(surface.source_data.data(),
+			       surface.source_data.size());
 
-		for (j = 0; j < surface.destination_planes_count; j++)
-			if (surface.destination_plane_data[j] != NULL &&
-			    surface.destination_plane_size[j] > 0)
-				munmap(surface.destination_plane_data[j],
-				       surface.destination_plane_size[j]);
+		for (auto&& data : surface.destination_plane_data) {
+			if (data.data() && data.size() > 0) {
+				munmap(data.data(), data.size());
+			}
+		}
 
 		if (surface.request_fd > 0)
 			close(surface.request_fd);
@@ -415,7 +396,7 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 	}
 	const auto& surface = driver_data->surfaces.at(surface_id);
 
-	export_fds_count = surface.destination_planes_count;
+	export_fds_count = surface.destination_plane_data.size();
 	export_fds = static_cast<int*>(malloc(export_fds_count * sizeof(*export_fds)));
 
 	try {

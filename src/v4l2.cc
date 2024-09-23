@@ -127,7 +127,7 @@ bool V4L2M2MDevice::format_supported(v4l2_buf_type type, unsigned pixelformat) {
 	return false;
 }
 
-unsigned V4L2M2MDevice::query_buffer(v4l2_buf_type type, unsigned index, unsigned *lengths, unsigned *offsets)
+std::vector<std::span<uint8_t>> V4L2M2MDevice::map_buffer(v4l2_buf_type type, unsigned index)
 {
 	struct v4l2_plane planes[VIDEO_MAX_PLANES] = {};
 	struct v4l2_buffer buffer = {
@@ -138,29 +138,18 @@ unsigned V4L2M2MDevice::query_buffer(v4l2_buf_type type, unsigned index, unsigne
 	};
 	errno_wrapper(ioctl, video_fd, VIDIOC_QUERYBUF, &buffer);
 
-	if (V4L2_TYPE_IS_MULTIPLANAR(type)) {
-		if (lengths) {
-			for (unsigned i = 0; i < buffer.length; i++) {
-				lengths[i] = buffer.m.planes[i].length;
-			}
+	std::vector<std::span<uint8_t>> result(buffer.length);
+	for (unsigned i = 0; i < buffer.length; i++) {
+		result[i] = {
+			static_cast<uint8_t*>(mmap(NULL, buffer.m.planes[i].length, PROT_READ | PROT_WRITE, MAP_SHARED,
+						video_fd, buffer.m.planes[i].m.mem_offset)),
+			buffer.m.planes[i].length
+		};
+		if (result[i].data() == MAP_FAILED) {
+			throw std::system_error(errno, std::generic_category());
 		}
-
-		if (offsets) {
-			for (unsigned i = 0; i < buffer.length; i++) {
-				offsets[i] = buffer.m.planes[i].m.mem_offset;
-			}
-		}
-		return buffer.length;
-	} else {
-		if (lengths) {
-			lengths[0] = buffer.length;
-		}
-
-		if (offsets) {
-			offsets[0] = buffer.m.offset;
-		}
-		return 1;
 	}
+	return result;
 }
 
 void V4L2M2MDevice::queue_buffer(int request_fd, v4l2_buf_type type, timeval* timestamp,

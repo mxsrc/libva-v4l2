@@ -24,13 +24,13 @@ static int parse_frame_header(const Surface& surface, GstVp9FrameHeader* header)
 
 	if (gst_vp9_stateful_parser_parse_uncompressed_frame_header(
 			parser, header,
-			surface.source_data, surface.source_size
+			surface.source_data.data(), surface.source_data.size()
 	) != GST_VP9_PARSER_OK) {
 		goto exit_parser_allocated;
 	}
 	if (gst_vp9_stateful_parser_parse_compressed_frame_header(
 			parser, header,
-			surface.source_data + header->frame_header_length_in_bytes, surface.source_size
+			surface.source_data.data() + header->frame_header_length_in_bytes, surface.source_data.size()
 	) != GST_VP9_PARSER_OK) {
 		goto exit_parser_allocated;
 	}
@@ -161,10 +161,10 @@ VAStatus vp9_store_buffer(RequestData *driver_data,
 		 * RenderPicture), we can't use a V4L2 buffer directly
 		 * and have to copy from a regular buffer.
 		 */
-		if (surface.source_size_used + buffer.size * buffer.count > surface.source_size) {
+		if (surface.source_size_used + buffer.size * buffer.count > surface.source_data.size()) {
 			return VA_STATUS_ERROR_NOT_ENOUGH_BUFFER;
 		}
-		memcpy(surface.source_data +
+		memcpy(surface.source_data.data() +
 			       surface.source_size_used,
 		       buffer.data.get(),
 		       buffer.size * buffer.count);

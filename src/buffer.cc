@@ -195,7 +195,7 @@ VAStatus RequestAcquireBufferHandle(VADriverContextP context,
 	}
 	const auto& surface = driver_data->surfaces.at(buffer.derived_surface_id);
 
-	if (surface.destination_planes_count > 1) {
+	if (surface.destination_plane_data.size() > 1) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 

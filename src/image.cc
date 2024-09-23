@@ -128,7 +128,7 @@ static VAStatus copy_surface_to_image (RequestData *driver_data,
 
 	for (i = 0; i < surface.destination_logical_planes_count; i++) {
 		memcpy(buffer.data.get() + image->offsets[i],
-		       surface.destination_plane_data[surface.destination_logical_plane_index[i]] + surface.destination_logical_plane_offset[i],
+		       surface.destination_plane_data[surface.destination_logical_plane_index[i]].data() + surface.destination_logical_plane_offset[i],
 		       surface.destination_logical_plane_size[i]);
 	}
 

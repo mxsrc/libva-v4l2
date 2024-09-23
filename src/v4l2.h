@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <span>
@@ -42,7 +43,7 @@ public:
 	void set_format(enum v4l2_buf_type type, unsigned int pixelformat, unsigned int width, unsigned int height);
 	unsigned request_buffers(enum v4l2_buf_type type, unsigned count);
 	bool format_supported(v4l2_buf_type type, unsigned pixelformat);
-	unsigned query_buffer(v4l2_buf_type type, unsigned index, unsigned *lengths, unsigned *offsets);
+	std::vector<std::span<uint8_t>> map_buffer(v4l2_buf_type type, unsigned index);
 	void queue_buffer(int request_fd, v4l2_buf_type type, timeval* timestamp,
 			unsigned index, unsigned size, unsigned buffers_count);
 	void dequeue_buffer(int request_fd, v4l2_buf_type type, unsigned index);

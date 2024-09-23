@@ -26,6 +26,9 @@
 
 #pragma once
 
+#include <span>
+#include <vector>
+
 extern "C" {
 #include <linux/videodev2.h>
 
@@ -38,14 +41,11 @@ struct Surface {
 	unsigned height;
 
 	unsigned int source_index;
-	uint8_t* source_data;
-	unsigned int source_size;
+	std::span<uint8_t> source_data;
 	unsigned int source_size_used;
 
 	unsigned int destination_index;
-	uint8_t* destination_plane_data[VIDEO_MAX_PLANES];
-	unsigned int destination_plane_size[VIDEO_MAX_PLANES];
-	unsigned int destination_planes_count;
+	std::vector<std::span<uint8_t>> destination_plane_data;
 
 	unsigned int destination_logical_plane_index[VIDEO_MAX_PLANES];
 	unsigned int destination_logical_plane_size[VIDEO_MAX_PLANES];
