@@ -129,24 +129,17 @@ VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surf
 		auto& surface = driver_data->surfaces.at(surfaces_ids[i]);
 
 		if (driver_data->video_format->derive_layout) {  // (logical) single plane
-			driver_data->video_format->derive_layout(
-					driver_format->width, driver_format->height,
-					surface.destination_logical_plane_size, surface.destination_logical_plane_pitch,
-					&surface.destination_logical_planes_count);
-
-			for (unsigned j = 0; j < surface.destination_logical_planes_count; j += 1) {
-				surface.destination_logical_plane_index[j] = 0;
-				surface.destination_logical_plane_offset[j] = (j > 0) ?
-					(surface.destination_logical_plane_offset[j - 1] + surface.destination_logical_plane_size[j - 1]) : 0;
-			}
+			surface.logical_destination_layout = driver_data->video_format->derive_layout(
+					driver_format->width, driver_format->height);
 		} else {
-			surface.destination_logical_planes_count = driver_format->num_planes;
-			for (unsigned j = 0; j < surface.destination_logical_planes_count; j += 1) {
-				surface.destination_logical_plane_index[j] = j;
-				surface.destination_logical_plane_size[j] = driver_format->plane_fmt[j].sizeimage;
-				surface.destination_logical_plane_pitch[j] = driver_format->plane_fmt[j].bytesperline;
-				surface.destination_logical_plane_offset[j] = (j > 0) ?
-					(surface.destination_logical_plane_offset[j - 1] + surface.destination_logical_plane_size[j - 1]) : 0;
+			for (unsigned j = 0; j < driver_format->num_planes; j += 1) {
+				surface.logical_destination_layout.push_back({
+					j,
+					driver_format->plane_fmt[j].sizeimage,
+					driver_format->plane_fmt[j].bytesperline,
+					(j > 0) ? (surface.logical_destination_layout[j - 1].offset +
+							surface.logical_destination_layout[j - 1].size) : 0,
+				});
 			}
 		}
 
@@ -399,12 +392,12 @@ VAStatus RequestExportSurfaceHandle(VADriverContextP context,
 	surface_descriptor->num_layers = 1;
 
 	surface_descriptor->layers[0].drm_format = driver_data->video_format->drm_format;
-	surface_descriptor->layers[0].num_planes = surface.destination_logical_planes_count;
+	surface_descriptor->layers[0].num_planes = surface.logical_destination_layout.size();
 
 	for (unsigned i = 0; i < surface_descriptor->layers[0].num_planes; i++) {
-		surface_descriptor->layers[0].object_index[i] = surface.destination_logical_plane_index[i];
-		surface_descriptor->layers[0].offset[i] = (i > 0 ) ? (surface_descriptor->layers[0].offset[i] + surface.destination_logical_plane_size[i]) : 0;
-		surface_descriptor->layers[0].pitch[i] = surface.destination_logical_plane_pitch[i];
+		surface_descriptor->layers[0].object_index[i] = surface.logical_destination_layout[i].physical_plane_index;
+		surface_descriptor->layers[0].pitch[i] = surface.logical_destination_layout[i].pitch;
+		surface_descriptor->layers[0].offset[i] = surface.logical_destination_layout[i].offset;
 	}
 
 	return VA_STATUS_SUCCESS;

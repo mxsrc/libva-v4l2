@@ -24,17 +24,27 @@
 
 #pragma once
 
+#include <vector>
+
 extern "C" {
 #include <stdint.h>
 #include <linux/videodev2.h>
 }
 
+struct LogicalPlane {
+	unsigned physical_plane_index;
+	unsigned size;
+	unsigned pitch;
+	unsigned offset;
+};
+using BufferLayout = std::vector<LogicalPlane>;
+
 struct video_format {
 	const char *description;
-	unsigned int v4l2_format;
-	unsigned int drm_format;
+	unsigned v4l2_format;
+	unsigned drm_format;
 	uint64_t drm_modifier;
-	void (*derive_layout)(unsigned, unsigned, unsigned[VIDEO_MAX_PLANES], unsigned[VIDEO_MAX_PLANES], unsigned*);
+	BufferLayout (*derive_layout)(unsigned, unsigned);
 };
 
 const struct video_format *video_format_find(unsigned int pixelformat);

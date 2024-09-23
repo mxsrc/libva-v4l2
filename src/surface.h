@@ -35,6 +35,8 @@ extern "C" {
 #include <va/va_backend.h>
 }
 
+#include "video.h"
+
 struct Surface {
 	VASurfaceStatus status;
 	unsigned width;
@@ -44,12 +46,7 @@ struct Surface {
 	unsigned int source_size_used;
 
 	unsigned int destination_index;
-
-	unsigned int destination_logical_plane_index[VIDEO_MAX_PLANES];
-	unsigned int destination_logical_plane_size[VIDEO_MAX_PLANES];
-	unsigned int destination_logical_plane_pitch[VIDEO_MAX_PLANES];
-	unsigned int destination_logical_plane_offset[VIDEO_MAX_PLANES];
-	unsigned int destination_logical_planes_count;
+	BufferLayout logical_destination_layout;
 
 	struct timeval timestamp;
 

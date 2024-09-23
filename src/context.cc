@@ -53,7 +53,6 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 {
 	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
 	decltype(driver_data->surfaces)::iterator surface;
-	unsigned int length;
 	VAStatus status;
 	unsigned int pixelformat;
 

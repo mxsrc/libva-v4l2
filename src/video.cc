@@ -34,14 +34,12 @@ extern "C" {
 #include <libdrm/drm_fourcc.h>
 }
 
-static void nv12_derive_layout(unsigned width, unsigned height, unsigned size[VIDEO_MAX_PLANES], unsigned pitch[VIDEO_MAX_PLANES], unsigned* planes_count) {
-	size[0] = width * height;
-	pitch[0] = width;
-
-	size[1] = size[0] / 2;
-	pitch[1] = width;  // Half the resolution but corresponds to two rows of pixels.
-
-	*planes_count = 2;
+static BufferLayout nv12_derive_layout(unsigned width, unsigned height) {
+	auto base_size = width * height;
+	return BufferLayout{
+		{0, base_size, width, 0},
+		{0, base_size / 2, width, base_size},
+	};
 }
 
 static const struct video_format formats[] = {

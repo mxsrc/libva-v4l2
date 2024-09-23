@@ -60,9 +60,14 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 
 	struct v4l2_pix_format_mplane* driver_format = &driver_data->device.capture_format.fmt.pix_mp;
 	if (driver_data->video_format->derive_layout) {
-		driver_data->video_format->derive_layout(
-				driver_format->width, driver_format->height,  // Have to use the driver format to get the actual height, which may differ due to block alignment.
-				destination_sizes, image->pitches, &image->num_planes);
+		// Have to use the driver format to get the actual height, which may differ due to block alignment.
+		const auto layout = driver_data->video_format->derive_layout(driver_format->width, driver_format->height);
+
+		image->num_planes = layout.size();
+		for (unsigned i = 0; i < image->num_planes; i += 1) {
+			destination_sizes[i] = layout[i].size;
+			image->pitches[i] = layout[i].pitch;
+		}
 	} else {
 		image->num_planes = driver_format->num_planes;
 		for (unsigned i = 0; i < image->num_planes; i += 1) {
@@ -126,12 +131,15 @@ static VAStatus copy_surface_to_image (RequestData *driver_data,
 	}
 	auto& buffer = driver_data->buffers.at(image->buf);
 
-	for (i = 0; i < surface.destination_logical_planes_count; i++) {
-		const auto& mapping = driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index).mapping();
+	
+	for (i = 0; i < surface.logical_destination_layout.size(); i++) {
+		const auto& mapping = driver_data->device
+			.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index)
+			.mapping();
 
 		memcpy(buffer.data.get() + image->offsets[i],
-		       mapping[surface.destination_logical_plane_index[i]].data() + surface.destination_logical_plane_offset[i],
-		       surface.destination_logical_plane_size[i]);
+		       mapping[surface.logical_destination_layout[i].physical_plane_index].data() +
+		       surface.logical_destination_layout[i].offset, surface.logical_destination_layout[i].size);
 	}
 
 	return VA_STATUS_SUCCESS;
