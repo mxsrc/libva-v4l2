@@ -225,7 +225,7 @@ unsigned V4L2M2MDevice::request_buffers(v4l2_buf_type type, unsigned count) {
 	return buffers.size();  // Actual amount may differ
 }
 
-bool V4L2M2MDevice::format_supported(v4l2_buf_type type, unsigned pixelformat) {
+bool V4L2M2MDevice::format_supported(v4l2_buf_type type, unsigned pixelformat) const {
 	for (
 			v4l2_fmtdesc fmtdesc = { .type = type };
 			ioctl(video_fd, VIDIOC_ENUM_FMT, &fmtdesc) >= 0;

@@ -240,3 +240,8 @@ int vp8_set_controls(RequestData *data, const Context& context, Surface& surface
 
 	return VA_STATUS_SUCCESS;
 }
+
+std::vector<VAProfile> vp8_supported_profiles(const V4L2M2MDevice& device) {
+	return (device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP8_FRAME)) ?
+		std::vector<VAProfile>({VAProfileVP8Version0_3}) : std::vector<VAProfile>();
+};

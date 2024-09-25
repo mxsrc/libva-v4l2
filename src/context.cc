@@ -30,6 +30,7 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
+#include <ranges>
 #include <system_error>
 
 extern "C" {
@@ -77,49 +78,16 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 		return VA_STATUS_ERROR_ALLOCATION_FAILED;
 	}
 
-
-	switch (config.profile) {
-	case VAProfileMPEG2Simple:
-	case VAProfileMPEG2Main:
-		pixelformat = V4L2_PIX_FMT_MPEG2_SLICE;
-		break;
-
-	case VAProfileH264Main:
-	case VAProfileH264High:
-	case VAProfileH264ConstrainedBaseline:
-	case VAProfileH264MultiviewHigh:
-	case VAProfileH264StereoHigh:
-		if (driver_data->device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_H264)) {
-			pixelformat = V4L2_PIX_FMT_H264;
-		} else if (driver_data->device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_H264_SLICE)) {
-			pixelformat = V4L2_PIX_FMT_H264_SLICE;
-		} else {
-			status = VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
-			goto error;
+	pixelformat = 0;
+	for (auto&& [format, profile_func] : supported_profile_funcs) {
+		const auto& supported_profiles = profile_func(driver_data->device);
+		if (std::ranges::find(supported_profiles, config.profile) != supported_profiles.end()) {
+			pixelformat = format;
+			break;
 		}
-		break;
-
-	case VAProfileVP8Version0_3:
-		pixelformat = V4L2_PIX_FMT_VP8_FRAME;
-		break;
-
-	case VAProfileVP9Profile0:
-	case VAProfileVP9Profile1:
-	case VAProfileVP9Profile2:
-	case VAProfileVP9Profile3:
-		if (driver_data->device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP9)) {
-			pixelformat = V4L2_PIX_FMT_VP9;
-		} else if (driver_data->device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP9_FRAME)) {
-			pixelformat = V4L2_PIX_FMT_VP9_FRAME;
-		} else {
-			status = VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
-			goto error;
-		}
-		break;
-
-	default:
-		status = VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
-		goto error;
+	}
+	if (pixelformat == 0) {
+		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 
 	try {

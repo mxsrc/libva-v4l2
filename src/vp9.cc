@@ -7,11 +7,15 @@
 #include <gst/codecparsers/gstvp9parser.h>
 #include <gst/codecs/gstvp9statefulparser.h>
 
-#include "request.h"
-#include "utils.h"
-#include "v4l2.h"
+extern "C" {
 #include <va/va_dec_vp8.h>
 #include <va/va_dec_vp9.h>
+}
+
+#include "request.h"
+#include "utils.h"
+#include "surface.h"
+#include "v4l2.h"
 
 /**
  * The structured data libVA passed doesn't contain all information we need, so we parse the headers ourselves (i.e. have gstreamer do it).
@@ -206,3 +210,10 @@ int vp9_set_controls(RequestData *data,
 
 	return VA_STATUS_SUCCESS;
 }
+
+std::vector<VAProfile> vp9_supported_profiles(const V4L2M2MDevice& device) {
+	// TODO: query `va_profile` control for more details
+	return (device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP9_FRAME)) ?
+		std::vector<VAProfile>({VAProfileVP9Profile0, VAProfileVP9Profile1, VAProfileVP9Profile2, VAProfileVP9Profile3}) :
+		std::vector<VAProfile>();
+};

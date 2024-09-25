@@ -29,6 +29,10 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
+#include <functional>
+#include <ranges>
+#include <span>
+#include <vector>
 
 extern "C" {
 #include <linux/videodev2.h>
@@ -37,9 +41,23 @@ extern "C" {
 #include <va/va.h>
 }
 
+#include "h264.h"
+#include "mpeg2.h"
 #include "request.h"
 #include "utils.h"
 #include "v4l2.h"
+#include "vp8.h"
+#include "vp9.h"
+
+static std::vector<VAProfile> supported_profiles(const V4L2M2MDevice& device) {
+	std::vector<VAProfile> result;
+	for (auto&& profile : supported_profile_funcs
+			| std::views::transform([&device](auto&& entry) { return entry.second(device); })
+			| std::views::join) {
+		result.push_back(profile);
+	}
+	return result;
+}
 
 VAStatus RequestCreateConfig(VADriverContextP context, VAProfile profile,
 			     VAEntrypoint entrypoint,
@@ -49,26 +67,12 @@ VAStatus RequestCreateConfig(VADriverContextP context, VAProfile profile,
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
 	int i, index;
 
- 	// TODO: Should check whether profile is actually supported by driver in use.
-	switch (profile) {
-	case VAProfileMPEG2Simple:
-	case VAProfileMPEG2Main:
-	case VAProfileH264Main:
-	case VAProfileH264High:
-	case VAProfileH264ConstrainedBaseline:
-	case VAProfileH264MultiviewHigh:
-	case VAProfileH264StereoHigh:
-	case VAProfileVP8Version0_3:
-	case VAProfileVP9Profile0:
-	case VAProfileVP9Profile1:
-	case VAProfileVP9Profile2:
-	case VAProfileVP9Profile3:
-		if (entrypoint != VAEntrypointVLD)
-			return VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
-		break;
-
-	default:
+	const auto& supported = supported_profiles(driver_data->device);
+	if (std::ranges::find(supported, profile) == supported.end()) {
 		return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
+	}
+	if (entrypoint != VAEntrypointVLD) {
+		return VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
 	}
 
 	if (static_cast<unsigned>(attributes_count) > Config::max_attributes) {
@@ -109,47 +113,16 @@ VAStatus RequestDestroyConfig(VADriverContextP context, VAConfigID config_id)
 }
 
 VAStatus RequestQueryConfigProfiles(VADriverContextP context,
-				    VAProfile *profiles, int *profiles_count)
+				    VAProfile* profiles_, int* profile_count)
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	unsigned int index = 0;
-	bool found;
 
-	found = driver_data->device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_MPEG2) ||
-		driver_data->device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_MPEG2_SLICE);
-	if (found && index < (Config::max_attributes - 2)) {
-		profiles[index++] = VAProfileMPEG2Simple;
-		profiles[index++] = VAProfileMPEG2Main;
-	}
+	std::span<VAProfile> profiles(profiles_, V4L2_REQUEST_MAX_PROFILES);
+	const auto& supported = supported_profiles(driver_data->device);
 
-	found = driver_data->device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_H264) ||
-		driver_data->device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_H264_SLICE);
-	if (found && index < (Config::max_attributes - 5)) {
-		// TODO: Query `h264_profile` to determine exact supported profile set
-		profiles[index++] = VAProfileH264Main;
-		profiles[index++] = VAProfileH264High;
-		profiles[index++] = VAProfileH264ConstrainedBaseline;
-		profiles[index++] = VAProfileH264MultiviewHigh;
-		profiles[index++] = VAProfileH264StereoHigh;
-	}
+	*profile_count = std::min(profiles.size(), supported.size());
 
-	found = driver_data->device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP8_FRAME);
-	if (found && index < (Config::max_attributes - 1)) {
-		profiles[index++] = VAProfileVP8Version0_3;
-	}
-
-	found = driver_data->device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP9) ||
-		driver_data->device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP9_FRAME);
-	if (found && index < (Config::max_attributes - 1)) {
-		// TODO: Query `vp9_profile` to determine exact supported profile set
-		profiles[index++] = VAProfileVP9Profile0;
-		profiles[index++] = VAProfileVP9Profile1;
-		profiles[index++] = VAProfileVP9Profile2;
-		profiles[index++] = VAProfileVP9Profile3;
-	}
-
-
-	*profiles_count = index;
+	std::ranges::copy_n(supported.begin(), *profile_count, profiles.begin());
 
 	return VA_STATUS_SUCCESS;
 }
@@ -159,26 +132,13 @@ VAStatus RequestQueryConfigEntrypoints(VADriverContextP context,
 				       VAEntrypoint *entrypoints,
 				       int *entrypoints_count)
 {
-	switch (profile) {
-	case VAProfileMPEG2Simple:
-	case VAProfileMPEG2Main:
-	case VAProfileH264Main:
-	case VAProfileH264High:
-	case VAProfileH264ConstrainedBaseline:
-	case VAProfileH264MultiviewHigh:
-	case VAProfileH264StereoHigh:
-	case VAProfileVP8Version0_3:
-	case VAProfileVP9Profile0:
-	case VAProfileVP9Profile1:
-	case VAProfileVP9Profile2:
-	case VAProfileVP9Profile3:
+	auto driver_data = static_cast<RequestData*>(context->pDriverData);
+	const auto& supported = supported_profiles(driver_data->device);
+	if (std::ranges::find(supported, profile) != supported.end()) {
 		entrypoints[0] = VAEntrypointVLD;
 		*entrypoints_count = 1;
-		break;
-
-	default:
+	} else {
 		*entrypoints_count = 0;
-		break;
 	}
 
 	return VA_STATUS_SUCCESS;

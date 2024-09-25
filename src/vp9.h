@@ -1,14 +1,16 @@
 #pragma once
 
+#include <vector>
+
 extern "C" {
 #include <va/va.h>
 }
 
-#include "buffer.h"
-#include "surface.h"
-
+struct Buffer;
 struct Context;
 struct RequestData;
+struct Surface;
+struct V4L2M2MDevice;
 
 VAStatus vp9_store_buffer(RequestData *driver_data,
 			  Surface& surface,
@@ -16,3 +18,4 @@ VAStatus vp9_store_buffer(RequestData *driver_data,
 int vp9_set_controls(RequestData *data,
 		     const Context& context,
 		     Surface& surface);
+std::vector<VAProfile> vp9_supported_profiles(const V4L2M2MDevice& device);

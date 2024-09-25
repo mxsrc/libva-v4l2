@@ -25,15 +25,17 @@
 
 #pragma once
 
+#include <vector>
+
 extern "C" {
 #include <va/va.h>
 }
 
-#include "buffer.h"
-#include "context.h"
-#include "surface.h"
-
+struct Buffer;
+struct Context;
 struct RequestData;
+struct Surface;
+struct V4L2M2MDevice;
 
 VAStatus mpeg2_store_buffer(RequestData *driver_data,
 				   Surface& surface,
@@ -41,3 +43,4 @@ VAStatus mpeg2_store_buffer(RequestData *driver_data,
 int mpeg2_set_controls(RequestData *driver_data,
 		       const Context& context,
 		       Surface& surface);
+std::vector<VAProfile> mpeg2_supported_profiles(const V4L2M2MDevice& device);

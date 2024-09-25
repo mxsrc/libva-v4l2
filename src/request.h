@@ -26,6 +26,7 @@
 
 #pragma once
 
+#include <functional>
 #include <map>
 #include <mutex>
 #include <string>
@@ -51,6 +52,9 @@ extern "C" {
 #define V4L2_REQUEST_MAX_IMAGE_FORMATS		10
 #define V4L2_REQUEST_MAX_SUBPIC_FORMATS		4
 #define V4L2_REQUEST_MAX_DISPLAY_ATTRIBUTES	4
+
+
+extern const std::map<fourcc, std::function<std::vector<VAProfile>(const V4L2M2MDevice&)>> supported_profile_funcs;
 
 struct RequestData {
 	RequestData(const std::string& video_path, const std::optional<std::string> media_path) :

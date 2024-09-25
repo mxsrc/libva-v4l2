@@ -177,3 +177,8 @@ int mpeg2_set_controls(RequestData *driver_data,
 
 	return 0;
 }
+
+std::vector<VAProfile> mpeg2_supported_profiles(const V4L2M2MDevice& device) {
+	return (device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_MPEG2_SLICE)) ?
+		std::vector<VAProfile>({VAProfileMPEG2Main, VAProfileMPEG2Simple}) : std::vector<VAProfile>();
+};

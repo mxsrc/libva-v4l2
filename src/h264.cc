@@ -596,3 +596,12 @@ int h264_set_controls(RequestData *driver_data,
 
 	return VA_STATUS_SUCCESS;
 }
+
+std::vector<VAProfile> h264_supported_profiles(const V4L2M2MDevice& device) {
+	// TODO: query `h264_profile` control for more details
+	return (device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_H264_SLICE)) ?
+		std::vector<VAProfile>({VAProfileH264Main, VAProfileH264High, VAProfileH264ConstrainedBaseline,
+				VAProfileH264MultiviewHigh, VAProfileH264StereoHigh}) :
+		std::vector<VAProfile>();
+	
+};

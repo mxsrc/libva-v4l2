@@ -26,6 +26,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <set>
 #include <string>
 #include <span>
 #include <vector>
@@ -35,6 +36,8 @@ extern "C" {
 }
 
 #define SOURCE_SIZE_MAX						(1024 * 1024)
+
+using fourcc = uint32_t;
 
 class V4L2M2MDevice {
 public:
@@ -62,7 +65,7 @@ public:
 	~V4L2M2MDevice();
 	void set_format(enum v4l2_buf_type type, unsigned int pixelformat, unsigned int width, unsigned int height);
 	unsigned request_buffers(enum v4l2_buf_type type, unsigned count);
-	bool format_supported(v4l2_buf_type type, unsigned pixelformat);
+	bool format_supported(v4l2_buf_type type, unsigned pixelformat) const;
 	const Buffer& buffer(v4l2_buf_type type, unsigned index);
 	void set_control(int request_fd, unsigned id, void* data, unsigned size);
 	void set_controls(int request_fd, std::span<v4l2_ext_control> controls);
@@ -70,8 +73,11 @@ public:
 
 	const int video_fd;
 	const int media_fd;
-	struct v4l2_format capture_format;
-	struct v4l2_format output_format;
+	v4l2_format capture_format;
+	v4l2_format output_format;
+	std::set<fourcc> supported_output_formats;
+	std::set<fourcc> supported_capture_formats;
+
 
 private:
 	std::vector<Buffer> capture_buffers;

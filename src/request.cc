@@ -44,12 +44,23 @@ extern "C" {
 
 #include "config.h"
 #include "context.h"
+#include "h264.h"
 #include "image.h"
+#include "mpeg2.h"
 #include "picture.h"
 #include "request.h"
 #include "subpicture.h"
 #include "surface.h"
 #include "v4l2.h"
+#include "vp8.h"
+#include "vp9.h"
+
+const std::map<fourcc, std::function<std::vector<VAProfile>(const V4L2M2MDevice&)>> supported_profile_funcs = {
+	{V4L2_PIX_FMT_MPEG2_SLICE, mpeg2_supported_profiles},
+	{V4L2_PIX_FMT_H264_SLICE, h264_supported_profiles},
+	{V4L2_PIX_FMT_VP8_FRAME, vp8_supported_profiles},
+	{V4L2_PIX_FMT_VP9_FRAME, vp9_supported_profiles},
+};
 
 /* Set default visibility for the init function only. */
 VAStatus __attribute__((visibility("default")))
