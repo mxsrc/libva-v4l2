@@ -160,7 +160,7 @@ VAStatus RequestRenderPicture(VADriverContextP va_context, VAContextID context_i
 
 	for (i = 0; i < buffers_count; i++) {
 		if (!driver_data->buffers.contains(buffers_ids[i])) {
-			return VA_STATUS_ERROR_INVALID_CONFIG;
+			return VA_STATUS_ERROR_INVALID_BUFFER;
 		}
 
 		rc = codec_store_buffer(driver_data, config.profile,
