@@ -28,6 +28,7 @@
 
 #include <cassert>
 #include <cstring>
+#include <functional>
 #include <system_error>
 
 extern "C" {
@@ -50,67 +51,21 @@ extern "C" {
 #include "vp8.h"
 #include "vp9.h"
 
-static VAStatus codec_store_buffer(RequestData *driver_data,
-				   VAProfile profile,
-				   Surface& surface,
-				   const Buffer& buffer)
-{
-	switch (profile) {
-	case VAProfileMPEG2Simple:
-	case VAProfileMPEG2Main:
-		return mpeg2_store_buffer(driver_data, surface, buffer);
+using fourcc = uint32_t;
 
-	case VAProfileH264Main:
-	case VAProfileH264High:
-	case VAProfileH264ConstrainedBaseline:
-	case VAProfileH264MultiviewHigh:
-	case VAProfileH264StereoHigh:
-		return h264_store_buffer(driver_data, surface, buffer);
+static const std::map<fourcc, std::function<VAStatus(RequestData*, Surface&, const Buffer&)>> store_buffer_funcs = {
+	{V4L2_PIX_FMT_MPEG2_SLICE, mpeg2_store_buffer},
+	{V4L2_PIX_FMT_H264_SLICE, h264_store_buffer},
+	{V4L2_PIX_FMT_VP8_FRAME, vp8_store_buffer},
+	{V4L2_PIX_FMT_VP9_FRAME, vp9_store_buffer},
+};
 
-	case VAProfileVP8Version0_3:
-		return vp8_store_buffer(driver_data, surface, buffer);
-
-	case VAProfileVP9Profile0:
-	case VAProfileVP9Profile1:
-	case VAProfileVP9Profile2:
-	case VAProfileVP9Profile3:
-		return vp9_store_buffer(driver_data, surface, buffer);
-
-	default:
-		return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
-	}
-}
-
-static VAStatus codec_set_controls(RequestData *driver_data,
-				   Context& context,
-				   VAProfile profile,
-				   Surface& surface)
-{
-	switch (profile) {
-	case VAProfileMPEG2Simple:
-	case VAProfileMPEG2Main:
-		return mpeg2_set_controls(driver_data, context, surface);
-
-	case VAProfileH264Main:
-	case VAProfileH264High:
-	case VAProfileH264ConstrainedBaseline:
-	case VAProfileH264MultiviewHigh:
-	case VAProfileH264StereoHigh:
-		return h264_set_controls(driver_data, context, surface);
-
-	case VAProfileVP8Version0_3:
-		return vp8_set_controls(driver_data, context, surface);
-
-	case VAProfileVP9Profile0:
-	case VAProfileVP9Profile1:
-	case VAProfileVP9Profile2:
-	case VAProfileVP9Profile3:
-		return vp9_set_controls(driver_data, context, surface);
-
-	default:
-		return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
-	}
-}
+static const std::map<fourcc, std::function<int(RequestData*, Context&, Surface&)>> set_control_funcs = {
+	{V4L2_PIX_FMT_MPEG2_SLICE, mpeg2_set_controls},
+	{V4L2_PIX_FMT_H264_SLICE, h264_set_controls},
+	{V4L2_PIX_FMT_VP8_FRAME, vp8_set_controls},
+	{V4L2_PIX_FMT_VP9_FRAME, vp9_set_controls},
+};
 
 VAStatus RequestBeginPicture(VADriverContextP va_context, VAContextID context_id,
 			     VASurfaceID surface_id)
@@ -148,11 +103,6 @@ VAStatus RequestRenderPicture(VADriverContextP va_context, VAContextID context_i
 	}
 	const auto& context = driver_data->contexts.at(context_id);
 
-	if (!driver_data->configs.contains(context.config_id)) {
-		return VA_STATUS_ERROR_INVALID_CONFIG;
-	}
-	const auto& config = driver_data->configs.at(context.config_id);
-
 	if (!driver_data->surfaces.contains(context.render_surface_id)) {
 		return VA_STATUS_ERROR_INVALID_SURFACE;
 	}
@@ -163,8 +113,8 @@ VAStatus RequestRenderPicture(VADriverContextP va_context, VAContextID context_i
 			return VA_STATUS_ERROR_INVALID_BUFFER;
 		}
 
-		rc = codec_store_buffer(driver_data, config.profile,
-					surface, driver_data->buffers.at(buffers_ids[i]));
+		rc = store_buffer_funcs.at(driver_data->device.output_format.fmt.pix_mp.pixelformat)
+			(driver_data, surface, driver_data->buffers.at(buffers_ids[i]));
 		if (rc != VA_STATUS_SUCCESS)
 			return rc;
 	}
@@ -177,7 +127,6 @@ VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id)
 	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
 	int request_fd;
 	VAStatus status;
-	int rc;
 
 	if (!driver_data->video_format)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
@@ -186,16 +135,8 @@ VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id)
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
 	}
 	auto& context = driver_data->contexts.at(context_id);
-
-	if (!driver_data->configs.contains(context.config_id)) {
-		return VA_STATUS_ERROR_INVALID_CONFIG;
-	}
-	const auto& config = driver_data->configs.at(context.config_id);
-
-	if (!driver_data->surfaces.contains(context.render_surface_id)) {
-		return VA_STATUS_ERROR_INVALID_SURFACE;
-	}
 	auto& surface = driver_data->surfaces.at(context.render_surface_id);
+
 
 	gettimeofday(&surface.timestamp, NULL);
 
@@ -209,10 +150,10 @@ VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id)
 			surface.request_fd = request_fd;
 		}
 
-		rc = codec_set_controls(driver_data, context,
-					config.profile, surface);
-		if (rc != VA_STATUS_SUCCESS)
-			return rc;
+		status = set_control_funcs.at(driver_data->device.output_format.fmt.pix_mp.pixelformat)
+			(driver_data, context, surface);
+		if (status != VA_STATUS_SUCCESS)
+			return status;
 	}
 
 	try {
