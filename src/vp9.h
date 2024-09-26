@@ -10,7 +10,7 @@ struct Buffer;
 struct Context;
 struct RequestData;
 struct Surface;
-struct V4L2M2MDevice;
+class V4L2M2MDevice;
 
 VAStatus vp9_store_buffer(RequestData *driver_data,
 			  Surface& surface,

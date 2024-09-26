@@ -38,7 +38,7 @@ extern "C" {
 struct Buffer;
 struct Context;
 struct RequestData;
-struct V4L2M2MDevice;
+class V4L2M2MDevice;
 
 #define H264_DPB_SIZE 16
 
