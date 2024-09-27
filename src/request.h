@@ -41,7 +41,6 @@ extern "C" {
 #include "buffer.h"
 #include "config.h"
 #include "context.h"
-#include "object_heap.h"
 #include "v4l2.h"
 #include "video.h"
 

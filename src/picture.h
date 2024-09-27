@@ -30,8 +30,6 @@ extern "C" {
 #include <va/va_backend.h>
 }
 
-#include "object_heap.h"
-
 VAStatus RequestBeginPicture(VADriverContextP va_context, VAContextID context_id,
 			     VASurfaceID surface_id);
 VAStatus RequestRenderPicture(VADriverContextP va_context, VAContextID context_id,

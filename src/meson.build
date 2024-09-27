@@ -22,7 +22,6 @@
 
 sources = [
 	'request.cc',
-	'object_heap.cc',
 	'config.cc',
 	'surface.cc',
 	'context.cc',
@@ -42,7 +41,6 @@ sources = [
 
 headers = [
 	'request.h',
-	'object_heap.h',
 	'config.h',
 	'surface.h',
 	'context.h',
