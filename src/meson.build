@@ -81,4 +81,5 @@ v4l2_request_drv_video = shared_module('v4l2_request_drv_video',
 		libdrm_dep,
 		libgstcodecparsers_dep,
 		libgstcodecs_dep,
+		libudev_dep,
 	])

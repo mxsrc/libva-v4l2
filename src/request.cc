@@ -51,6 +51,7 @@ extern "C" {
 #include "request.h"
 #include "subpicture.h"
 #include "surface.h"
+#include "utils.h"
 #include "v4l2.h"
 #include "vp8.h"
 #ifdef ENABLE_VP9
@@ -66,18 +67,34 @@ const std::map<fourcc, std::function<std::vector<VAProfile>(const V4L2M2MDevice&
 #endif
 };
 
+namespace {
+
+template <typename T>
+std::optional<T*> optional_ptr(T* ptr) {
+    return ptr ? std::optional<T*>(ptr) : std::optional<T*>();
+}
+
+} // namespace
+
 /* Set default visibility for the init function only. */
 VAStatus __attribute__((visibility("default")))
 VA_DRIVER_INIT_FUNC(VADriverContextP context);
 
-extern "C" VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
-{
+extern "C" VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context) {
+	auto devices = V4L2M2MDevice::enumerate_devices();
 
-	const char* video_path = getenv("LIBVA_V4L2_REQUEST_VIDEO_PATH");
-	if (!video_path) {
-		video_path = "/dev/video0";
+	std::optional<const char*> media_path_env = optional_ptr(getenv("LIBVA_V4L2_REQUEST_MEDIA_PATH"));
+	std::optional<const char*> video_path_env = optional_ptr(getenv("LIBVA_V4L2_REQUEST_VIDEO_PATH"));
+
+	auto media_path_lookup = (devices.size() > 0) ? devices[0].first.c_str() : nullptr;
+	auto video_path_lookup = (devices.size() > 0) ? devices[0].second.c_str() : nullptr;
+
+	const auto media_path = media_path_env.value_or(media_path_lookup);
+	const auto video_path = video_path_env.value_or(video_path_lookup);
+
+	if (!media_path_env && !video_path_env && devices.size() > 1) {
+		info_log(context, "Initializing using %s & %s.\n", video_path, media_path);
 	}
-	const char* media_path = getenv("LIBVA_V4L2_REQUEST_MEDIA_PATH");
 	auto driver_data = new RequestData(video_path, media_path);
 
 	struct VADriverVTable *vtable = context->vtable;

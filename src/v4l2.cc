@@ -24,25 +24,32 @@
 
 #include "v4l2.h"
 
+#include <algorithm>
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
+#include <memory>
+#include <ranges>
 #include <stdexcept>
 #include <system_error>
 
 extern "C" {
 #include <fcntl.h>
+#include <linux/media.h>
 #include <linux/videodev2.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/sysmacros.h>
 #include <unistd.h>
+
+#include <libudev.h>
 }
 
 #include "utils.h"
 
 namespace {
 
-unsigned query_capabilities(int video_fd) {
+uint32_t query_capabilities(int video_fd) {
 	v4l2_capability capability = {};
 	errno_wrapper(ioctl, video_fd, VIDIOC_QUERYCAP, &capability);
 
@@ -83,7 +90,84 @@ std::vector<std::span<uint8_t>> map_buffer(int video_fd, v4l2_buf_type type, uns
 	return result;
 }
 
+std::vector<std::string> enumerate_video_devices(udev* ctx, const std::string& media_device) {
+	int fd = errno_wrapper(open, media_device.c_str(), O_RDONLY);
+
+	media_device_info device_info = {};
+	errno_wrapper(ioctl, fd, MEDIA_IOC_DEVICE_INFO, &device_info);
+
+	media_v2_topology topology = {};
+	errno_wrapper(ioctl, fd, MEDIA_IOC_G_TOPOLOGY, &topology);
+
+	std::vector<media_v2_entity> entities(topology.num_entities);
+	std::vector<media_v2_interface> interfaces(topology.num_interfaces);
+	topology.ptr_entities = reinterpret_cast<uint64_t>(entities.data());
+	topology.ptr_interfaces = reinterpret_cast<uint64_t>(interfaces.data());
+
+	errno_wrapper(ioctl, fd, MEDIA_IOC_G_TOPOLOGY, &topology);
+	close(fd);
+
+	if (std::ranges::find_if(entities,
+			[](auto&& entity) { return entity.function == MEDIA_ENT_F_PROC_VIDEO_DECODER; }
+	) == entities.end()) {
+		return {};
+	}
+
+	std::vector<std::string> result;
+	for (auto&& interface : interfaces) {
+		auto devnum = makedev(interface.devnode.major, interface.devnode.minor);
+		std::unique_ptr<udev_device, decltype(&udev_device_unref)> device(
+				udev_device_new_from_devnum(ctx, 'c', devnum), &udev_device_unref);
+		if (device && interface.intf_type == MEDIA_INTF_T_V4L_VIDEO) {
+			result.push_back(udev_device_get_property_value(device.get(), "DEVNAME"));
+		}
+	}
+
+	return result;
+}
+
+std::vector<std::string> enumerate_media_devices(udev* ctx) {
+	std::unique_ptr<udev_enumerate, decltype(&udev_enumerate_unref)> enumerate(
+			udev_enumerate_new(ctx), &udev_enumerate_unref);
+
+	udev_enumerate_add_match_subsystem(enumerate.get(), "media");
+	udev_enumerate_scan_devices(enumerate.get());
+
+	std::vector<std::string> result;
+	for (
+			auto entry = udev_enumerate_get_list_entry(enumerate.get());
+			entry != nullptr;
+			entry = udev_list_entry_get_next(entry)) {
+		auto name = udev_list_entry_get_name(entry);
+
+		std::unique_ptr<udev_device, decltype(&udev_device_unref)> device(
+				udev_device_new_from_syspath(ctx, name), &udev_device_unref);
+
+		if (device) {
+			result.push_back(udev_device_get_property_value(device.get(), "DEVNAME"));
+		}
+	}
+
+	return result;
+}
+
 } // namespace
+
+std::vector<std::pair<std::string, std::string>> V4L2M2MDevice::enumerate_devices() {
+	std::vector<std::pair<std::string, std::string>> result;
+
+	std::unique_ptr<udev, decltype(&udev_unref)> ctx(udev_new(), &udev_unref);
+	for (auto&& media_device : enumerate_media_devices(ctx.get())) {
+		for (auto&& video_device : enumerate_video_devices(ctx.get(), media_device)) {
+			int fd = errno_wrapper(open, video_device.c_str(), O_RDONLY);
+			if (query_capabilities(fd) & V4L2_CAP_VIDEO_M2M_MPLANE) {
+				result.emplace_back(media_device, video_device);
+			}
+		}
+	}
+
+	return result;
+}
 
 V4L2M2MDevice::Buffer::Buffer(V4L2M2MDevice& owner, v4l2_buf_type type, unsigned index) :
 	owner_(owner), type_(type), index_(index), mapping_(map_buffer(owner.video_fd, type, index)) {}

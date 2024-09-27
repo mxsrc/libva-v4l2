@@ -38,6 +38,7 @@ libgstcodecs_dep = cc.find_library('gstcodecs-1.0',  # Present but not advertise
 	header_dependencies: libgstcodecparsers_dep,
         required: false,
 )
+libudev_dep = dependency('libudev', version : '>= 252')
 
 va_api_version_array = libva_dep.version().split('.')
 va_api_major_version = va_api_version_array[0]
