@@ -26,19 +26,25 @@
 
 #pragma once
 
+#include <span>
+
 extern "C" {
 #include <va/va_backend.h>
 }
 
 #include "h264.h"
+#include "v4l2.h"
 
 struct Context {
+	Context(RequestData* driver_data, VAConfigID config_id,
+			int picture_width, int picture_height,
+			std::span<VASurfaceID> surface_ids);
+
 	VAConfigID config_id;
 	VASurfaceID render_surface_id;
 
 	int picture_width;
 	int picture_height;
-	int flags;
 
 	union {
 		struct {

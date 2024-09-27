@@ -47,38 +47,15 @@ extern "C" {
 #include "utils.h"
 #include "v4l2.h"
 
-VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
-			      int picture_width, int picture_height, int flags,
-			      VASurfaceID *surfaces_ids, int surfaces_count,
-			      VAContextID *context_id)
-{
-	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
-	decltype(driver_data->surfaces)::iterator surface;
-	VAStatus status;
-	unsigned int pixelformat;
-
-	if (!driver_data->video_format)
-		return VA_STATUS_ERROR_OPERATION_FAILED;
-
-	if (!driver_data->configs.contains(config_id)) {
-		return VA_STATUS_ERROR_INVALID_CONFIG;
-	}
+Context::Context(RequestData* driver_data, VAConfigID config_id, int picture_width, int picture_height, std::span<VASurfaceID> surface_ids) :
+		config_id(config_id),
+		render_surface_id(VA_INVALID_ID),
+		picture_width(picture_width),
+		picture_height(picture_height),
+		codec_state({}) {
 	const auto& config = driver_data->configs.at(config_id);
 
-	std::lock_guard<std::mutex> guard(driver_data->mutex);
-	*context_id = smallest_free_key(driver_data->contexts);
-	auto [context, inserted] = driver_data->contexts.emplace(std::make_pair(*context_id, Context{
-		.config_id = config_id,
-		.render_surface_id = VA_INVALID_ID,
-		.picture_width = picture_width,
-		.picture_height = picture_height,
-		.flags = flags,
-	}));
-	if (!inserted) {
-		return VA_STATUS_ERROR_ALLOCATION_FAILED;
-	}
-
-	pixelformat = 0;
+	fourcc pixelformat = 0;
 	for (auto&& [format, profile_func] : supported_profile_funcs) {
 		const auto& supported_profiles = profile_func(driver_data->device);
 		if (std::ranges::find(supported_profiles, config.profile) != supported_profiles.end()) {
@@ -87,56 +64,60 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 		}
 	}
 	if (pixelformat == 0) {
-		return VA_STATUS_ERROR_OPERATION_FAILED;
+		throw std::runtime_error("Invalid profile");
 	}
 
-	try {
-		driver_data->device.set_format(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, pixelformat, picture_width, picture_height);
-	} catch (std::system_error& e) {
-		status = VA_STATUS_ERROR_OPERATION_FAILED;
-		goto error;
-	}
+	driver_data->device.set_format(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, pixelformat, picture_width, picture_height);
 
 	// Now that the output format is set, we can set the capture format and allocate the surfaces.
-	status = RequestCreateSurfacesReally(va_context, surfaces_ids, surfaces_count);
-	if (status != VA_STATUS_SUCCESS) {
-		goto error;
+	RequestCreateSurfacesDeferred(driver_data, surface_ids);
+
+	driver_data->device.request_buffers(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface_ids.size());
+
+	for (unsigned i = 0; i < surface_ids.size(); i++) {
+		driver_data->surfaces.at(i).source_index = i;
 	}
 
-	try {
-		driver_data->device.request_buffers(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surfaces_count);
-	} catch (std::system_error& e) {
-		status = VA_STATUS_ERROR_ALLOCATION_FAILED;
-		goto error;
+	driver_data->device.set_streaming(true);
+}
+
+VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
+			      int picture_width, int picture_height, int flags,
+			      VASurfaceID *surface_ids, int surfaces_count,
+			      VAContextID *context_id)
+{
+	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
+
+	if (!driver_data->configs.contains(config_id)) {
+		return VA_STATUS_ERROR_INVALID_CONFIG;
 	}
 
-	for (int i = 0; i < surfaces_count; i++) {
-		surface = driver_data->surfaces.find(surfaces_ids[i]);
-		if (surface == driver_data->surfaces.end()) {
-			status = VA_STATUS_ERROR_INVALID_SURFACE;
-			goto error;
+	auto surfaces = std::span(surface_ids, surfaces_count);
+	for (auto&& surface : surfaces) {
+		if (!driver_data->surfaces.contains(surface)) {
+			return VA_STATUS_ERROR_INVALID_SURFACE;
 		}
-
-		surface->second.source_index = i;
 	}
 
-	try {
-		driver_data->device.set_streaming(true);
-	} catch (std::system_error& e) {
-		error_log(va_context, "Unable to enable streaming: %s\n", e.what());
+	if (!driver_data->video_format) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 
-	status = VA_STATUS_SUCCESS;
-	goto complete;
-
-error:
-	if (inserted) {
-		driver_data->contexts.erase(*context_id);
+	std::lock_guard<std::mutex> guard(driver_data->mutex);
+	*context_id = smallest_free_key(driver_data->contexts);
+	try {
+		auto [context, inserted] = driver_data->contexts.emplace(std::make_pair(*context_id, Context(
+			driver_data, config_id, picture_width, picture_height, surfaces)));
+		if (!inserted) {
+			error_log(va_context, "Failed to create context\n");
+			return VA_STATUS_ERROR_ALLOCATION_FAILED;
+		}
+	} catch (std::exception& e) {
+		error_log(va_context, "Failed to create context: %s\n", e.what());
+		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 
-complete:
-	return status;
+	return VA_STATUS_SUCCESS;
 }
 
 VAStatus RequestDestroyContext(VADriverContextP va_context, VAContextID context_id)

@@ -41,6 +41,34 @@ extern "C" {
 #include "v4l2.h"
 #include "video.h"
 
+namespace {
+
+VAStatus copy_surface_to_image (RequestData *driver_data,
+				       const Surface& surface,
+				       VAImage *image) {
+	unsigned int i;
+
+	if (!driver_data->buffers.contains(image->buf)) {
+		return VA_STATUS_ERROR_INVALID_CONFIG;
+	}
+	auto& buffer = driver_data->buffers.at(image->buf);
+
+	
+	for (i = 0; i < surface.logical_destination_layout.size(); i++) {
+		const auto& mapping = driver_data->device
+			.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index)
+			.mapping();
+
+		memcpy(buffer.data.get() + image->offsets[i],
+		       mapping[surface.logical_destination_layout[i].physical_plane_index].data() +
+		       surface.logical_destination_layout[i].offset, surface.logical_destination_layout[i].size);
+	}
+
+	return VA_STATUS_SUCCESS;
+}
+
+} // namespace
+
 VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat *format,
 			    int width, int height, VAImage *image)
 {
@@ -115,31 +143,6 @@ VAStatus RequestDestroyImage(VADriverContextP context, VAImageID image_id)
 	std::lock_guard<std::mutex> guard(driver_data->mutex);
 	if (!driver_data->images.erase(image_id)) {
 		return VA_STATUS_ERROR_INVALID_IMAGE;
-	}
-
-	return VA_STATUS_SUCCESS;
-}
-
-static VAStatus copy_surface_to_image (RequestData *driver_data,
-				       const Surface& surface,
-				       VAImage *image)
-{
-	unsigned int i;
-
-	if (!driver_data->buffers.contains(image->buf)) {
-		return VA_STATUS_ERROR_INVALID_CONFIG;
-	}
-	auto& buffer = driver_data->buffers.at(image->buf);
-
-	
-	for (i = 0; i < surface.logical_destination_layout.size(); i++) {
-		const auto& mapping = driver_data->device
-			.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index)
-			.mapping();
-
-		memcpy(buffer.data.get() + image->offsets[i],
-		       mapping[surface.logical_destination_layout[i].physical_plane_index].data() +
-		       surface.logical_destination_layout[i].offset, surface.logical_destination_layout[i].size);
 	}
 
 	return VA_STATUS_SUCCESS;

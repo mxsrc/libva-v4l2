@@ -40,18 +40,10 @@ extern "C" {
 
 #include "utils.h"
 
-template<typename F, typename... Args>
-std::invoke_result_t<F, Args...>
-errno_wrapper(F f, Args... args) {
-	std::invoke_result_t<F, Args...> result = f(std::forward<Args>(args)...);
-	if (result < 0) {
-		throw std::system_error(errno, std::generic_category());
-	}
-	return result;
-}
+namespace {
 
-static unsigned query_capabilities(int video_fd) {
-	struct v4l2_capability capability = {};
+unsigned query_capabilities(int video_fd) {
+	v4l2_capability capability = {};
 	errno_wrapper(ioctl, video_fd, VIDIOC_QUERYCAP, &capability);
 
 	if ((capability.capabilities & V4L2_CAP_DEVICE_CAPS) != 0) {
@@ -61,15 +53,15 @@ static unsigned query_capabilities(int video_fd) {
 	}
 }
 
-static v4l2_format get_format(int video_fd, v4l2_buf_type type) {
+v4l2_format get_format(int video_fd, v4l2_buf_type type) {
 	v4l2_format result = { .type = type };
 	errno_wrapper(ioctl, video_fd, VIDIOC_G_FMT, &result);
 	return result;
 }
 
-static std::vector<std::span<uint8_t>> map_buffer(int video_fd, v4l2_buf_type type, unsigned index) {
-	struct v4l2_plane planes[VIDEO_MAX_PLANES] = {};
-	struct v4l2_buffer buffer = {
+std::vector<std::span<uint8_t>> map_buffer(int video_fd, v4l2_buf_type type, unsigned index) {
+	v4l2_plane planes[VIDEO_MAX_PLANES] = {};
+	v4l2_buffer buffer = {
 		.index = index,
 		.type = type,
 		.m = { .planes = planes },
@@ -90,6 +82,8 @@ static std::vector<std::span<uint8_t>> map_buffer(int video_fd, v4l2_buf_type ty
 	}
 	return result;
 }
+
+} // namespace
 
 V4L2M2MDevice::Buffer::Buffer(V4L2M2MDevice& owner, v4l2_buf_type type, unsigned index) :
 	owner_(owner), type_(type), index_(index), mapping_(map_buffer(owner.video_fd, type, index)) {}

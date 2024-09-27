@@ -49,7 +49,9 @@ extern "C" {
 #include "vp8.h"
 #include "vp9.h"
 
-static std::vector<VAProfile> supported_profiles(const V4L2M2MDevice& device) {
+namespace {
+
+std::vector<VAProfile> supported_profiles(const V4L2M2MDevice& device) {
 	std::vector<VAProfile> result;
 	for (auto&& profile : supported_profile_funcs
 			| std::views::transform([&device](auto&& entry) { return entry.second(device); })
@@ -58,6 +60,8 @@ static std::vector<VAProfile> supported_profiles(const V4L2M2MDevice& device) {
 	}
 	return result;
 }
+
+} // namespace
 
 VAStatus RequestCreateConfig(VADriverContextP context, VAProfile profile,
 			     VAEntrypoint entrypoint,

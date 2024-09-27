@@ -37,6 +37,8 @@ extern "C" {
 
 #include "video.h"
 
+struct RequestData;
+
 struct Surface {
 	VASurfaceStatus status;
 	unsigned width;
@@ -48,7 +50,7 @@ struct Surface {
 	unsigned int destination_index;
 	BufferLayout logical_destination_layout;
 
-	struct timeval timestamp;
+	timeval timestamp;
 
 	union {
 		struct {
@@ -76,7 +78,7 @@ struct Surface {
 	int request_fd;
 };
 
-VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surfaces_ids, unsigned int surfaces_count);
+void RequestCreateSurfacesDeferred(RequestData* driver_data, std::span<VASurfaceID> surface_ids);
 VAStatus RequestCreateSurfaces2(VADriverContextP context, unsigned int format,
 				unsigned int width, unsigned int height,
 				VASurfaceID *surfaces_ids,

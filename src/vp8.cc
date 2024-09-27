@@ -28,8 +28,10 @@ enum {
 	VP8_INTERFRAME = 1,
 };
 
-static struct v4l2_vp8_segment segment(VAPictureParameterBufferVP8* picture) {
-	struct v4l2_vp8_segment result = {
+namespace {
+
+v4l2_vp8_segment segment(VAPictureParameterBufferVP8* picture) {
+	v4l2_vp8_segment result = {
 		.quant_update = {},  // FIXME
 		.lf_update = {},  // FIXME: picture->loop_filter_level? Already used those...
 		.flags = 
@@ -45,8 +47,8 @@ static struct v4l2_vp8_segment segment(VAPictureParameterBufferVP8* picture) {
 }
 
 
-static struct v4l2_vp8_loop_filter lf(VAPictureParameterBufferVP8* picture) {
-	struct v4l2_vp8_loop_filter result = {
+v4l2_vp8_loop_filter lf(VAPictureParameterBufferVP8* picture) {
+	v4l2_vp8_loop_filter result = {
 		.ref_frm_delta = {},
 		.mb_mode_delta = {},
 		.sharpness_level = static_cast<uint8_t>(picture->pic_fields.bits.sharpness_level),
@@ -64,9 +66,9 @@ static struct v4l2_vp8_loop_filter lf(VAPictureParameterBufferVP8* picture) {
 }
 
 
-static struct v4l2_vp8_quantization quant(VAIQMatrixBufferVP8* iqmatrix) {
+v4l2_vp8_quantization quant(VAIQMatrixBufferVP8* iqmatrix) {
 	// FIXME adding the remaining values skews the colors in the output. Why?
-	struct v4l2_vp8_quantization result = {
+	v4l2_vp8_quantization result = {
 		.y_ac_qi = static_cast<uint8_t>(iqmatrix->quantization_index[0][0]),
 		//.y_dc_delta = iqmatrix->quantization_index[0][1],
 		//.y2_dc_delta = iqmatrix->quantization_index[0][2],
@@ -77,8 +79,8 @@ static struct v4l2_vp8_quantization quant(VAIQMatrixBufferVP8* iqmatrix) {
 	return result;
 }
 
-static struct v4l2_vp8_entropy entropy(VAPictureParameterBufferVP8* picture, VAProbabilityDataBufferVP8 *probabilities) {
-	struct v4l2_vp8_entropy result = { };
+v4l2_vp8_entropy entropy(VAPictureParameterBufferVP8* picture, VAProbabilityDataBufferVP8 *probabilities) {
+	v4l2_vp8_entropy result = { };
 
 	memcpy(result.coeff_probs, probabilities->dct_coeff_probs, sizeof(probabilities->dct_coeff_probs));
 	memcpy(result.y_mode_probs, picture->y_mode_probs, sizeof(picture->y_mode_probs));
@@ -88,8 +90,8 @@ static struct v4l2_vp8_entropy entropy(VAPictureParameterBufferVP8* picture, VAP
 	return result;
 }
 
-static struct v4l2_vp8_entropy_coder_state coder_state(VABoolCoderContextVPX* bool_coder_context) {
-	struct v4l2_vp8_entropy_coder_state result = {
+v4l2_vp8_entropy_coder_state coder_state(VABoolCoderContextVPX* bool_coder_context) {
+	v4l2_vp8_entropy_coder_state result = {
 		.range = bool_coder_context->range,
 		.value = bool_coder_context->value,
 		.bit_count = bool_coder_context->count,
@@ -98,7 +100,7 @@ static struct v4l2_vp8_entropy_coder_state coder_state(VABoolCoderContextVPX* bo
 }
 
 
-static struct v4l2_ctrl_vp8_frame va_to_v4l2_frame(RequestData *data, VAPictureParameterBufferVP8 *picture, VASliceParameterBufferVP8 *slice, VAIQMatrixBufferVP8 *iqmatrix, VAProbabilityDataBufferVP8 *probabilities) {
+v4l2_ctrl_vp8_frame va_to_v4l2_frame(RequestData *data, VAPictureParameterBufferVP8 *picture, VASliceParameterBufferVP8 *slice, VAIQMatrixBufferVP8 *iqmatrix, VAProbabilityDataBufferVP8 *probabilities) {
 	const auto last_ref = data->surfaces.find(picture->last_ref_frame);
 	const auto golden_ref = data->surfaces.find(picture->golden_ref_frame);
 	const auto alt_ref = data->surfaces.find(picture->alt_ref_frame);
@@ -106,7 +108,7 @@ static struct v4l2_ctrl_vp8_frame va_to_v4l2_frame(RequestData *data, VAPictureP
 	// FIXME
 	// - resolve confusion around segments
 	// - determine remaining values
-	struct v4l2_ctrl_vp8_frame result = {
+	v4l2_ctrl_vp8_frame result = {
 		.segment = segment(picture),
 		.lf = lf(picture),
 		.quant = quant(iqmatrix),
@@ -147,7 +149,7 @@ static struct v4l2_ctrl_vp8_frame va_to_v4l2_frame(RequestData *data, VAPictureP
  * This is stripped from the data by libva, since it's (mostly) represented by the provided parsed buffers.
  * V4L2 expects it to be present though, so we reconstruct it here.
  */
-static size_t prefix_data(uint8_t* data, const VAPictureParameterBufferVP8* picture, const VASliceParameterBufferVP8* slice) {
+size_t prefix_data(uint8_t* data, const VAPictureParameterBufferVP8* picture, const VASliceParameterBufferVP8* slice) {
 	const uint32_t first_part_size = slice->slice_data_size - slice->partition_size[1];  // FIXME: Needs to be sum of all partitions
 
 	data[0] =
@@ -173,6 +175,7 @@ static size_t prefix_data(uint8_t* data, const VAPictureParameterBufferVP8* pict
 	return 10;
 }
 
+} // namespace
 
 VAStatus vp8_store_buffer(RequestData *driver_data,
 			  Surface& surface,
@@ -224,7 +227,7 @@ VAStatus vp8_store_buffer(RequestData *driver_data,
 }
 
 int vp8_set_controls(RequestData *data, const Context& context, Surface& surface) {
-	struct v4l2_ctrl_vp8_frame frame = va_to_v4l2_frame(
+	v4l2_ctrl_vp8_frame frame = va_to_v4l2_frame(
 		data,
 		surface.params.vp8.picture,
 		surface.params.vp8.slice,

@@ -17,42 +17,40 @@ extern "C" {
 #include "surface.h"
 #include "v4l2.h"
 
+namespace {
+
 /**
  * The structured data libVA passed doesn't contain all information we need, so we parse the headers ourselves (i.e. have gstreamer do it).
  */
-static int parse_frame_header(std::span<uint8_t> data, GstVp9FrameHeader* header) {
-	int ret = 0;
-	GstVp9StatefulParser* parser = gst_vp9_stateful_parser_new();
+int parse_frame_header(std::span<uint8_t> data, GstVp9FrameHeader* header) {
+	std::unique_ptr<GstVp9StatefulParser, decltype(&gst_vp9_stateful_parser_free)> parser(
+			gst_vp9_stateful_parser_new(), &gst_vp9_stateful_parser_free);
+
 	if (!parser) {
-		ret = -1;
-		goto exit;
+		return -1;
 	}
 
 	if (gst_vp9_stateful_parser_parse_uncompressed_frame_header(
-			parser, header,
+			parser.get(), header,
 			data.data(), data.size()
 	) != GST_VP9_PARSER_OK) {
-		goto exit_parser_allocated;
+		return -1;
 	}
 	if (gst_vp9_stateful_parser_parse_compressed_frame_header(
-			parser, header,
+			parser.get(), header,
 			data.data() + header->frame_header_length_in_bytes, data.size()
 	) != GST_VP9_PARSER_OK) {
-		goto exit_parser_allocated;
+		return -1;
 	}
-
-exit_parser_allocated:
-	gst_vp9_stateful_parser_free(parser);
-exit:
-	return ret;
+	return 0;
 }
 
-static struct v4l2_ctrl_vp9_frame va_to_v4l2_frame(RequestData *data, VADecPictureParameterBufferVP9 *picture, VASliceParameterBufferVP9 *slice, GstVp9FrameHeader* header) {
+v4l2_ctrl_vp9_frame va_to_v4l2_frame(RequestData *data, VADecPictureParameterBufferVP9 *picture, VASliceParameterBufferVP9 *slice, GstVp9FrameHeader* header) {
 	const auto last_ref_frame = data->surfaces.find(picture->reference_frames[picture->pic_fields.bits.last_ref_frame]);
 	const auto golden_ref_frame = data->surfaces.find(picture->reference_frames[picture->pic_fields.bits.golden_ref_frame]);
 	const auto alt_ref_frame = data->surfaces.find(picture->reference_frames[picture->pic_fields.bits.alt_ref_frame]);
 
-	struct v4l2_ctrl_vp9_frame result = {
+	v4l2_ctrl_vp9_frame result = {
 		.lf = {
 			//.ref_deltas = {10, 0, 0, 0},
 			//.mode_deltas = {10, 0},
@@ -119,8 +117,10 @@ static struct v4l2_ctrl_vp9_frame va_to_v4l2_frame(RequestData *data, VADecPictu
 	return result;
 }
 
-struct v4l2_ctrl_vp9_compressed_hdr gst_to_v4l2_compressed_header(GstVp9FrameHeader* header) {
-	struct v4l2_ctrl_vp9_compressed_hdr result = {
+} // namespace
+
+v4l2_ctrl_vp9_compressed_hdr gst_to_v4l2_compressed_header(GstVp9FrameHeader* header) {
+	v4l2_ctrl_vp9_compressed_hdr result = {
 		.tx_mode = static_cast<uint8_t>(header->tx_mode),
 	};
 
@@ -138,8 +138,8 @@ struct v4l2_ctrl_vp9_compressed_hdr gst_to_v4l2_compressed_header(GstVp9FrameHea
 	memcpy(result.y_mode, header->delta_probabilities.y_mode, GST_VP9_BLOCK_SIZE_GROUPS * (GST_VP9_INTRA_MODES - 1));
 	memcpy(result.partition, header->delta_probabilities.partition, GST_VP9_PARTITION_CONTEXTS * (GST_VP9_PARTITION_TYPES - 1));
 
-	assert(sizeof(struct v4l2_vp9_mv_probs) == sizeof(GstVp9MvDeltaProbs));
-	memcpy(&result.mv, &header->delta_probabilities.mv, sizeof(struct v4l2_vp9_mv_probs));
+	assert(sizeof(v4l2_vp9_mv_probs) == sizeof(GstVp9MvDeltaProbs));
+	memcpy(&result.mv, &header->delta_probabilities.mv, sizeof(v4l2_vp9_mv_probs));
 
 	return result;
 }
@@ -187,19 +187,19 @@ int vp9_set_controls(RequestData *data,
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 
-	struct v4l2_ctrl_vp9_frame frame = va_to_v4l2_frame(data, surface.params.vp9.picture, surface.params.vp9.slice, &header);
-	struct v4l2_ctrl_vp9_compressed_hdr hdr = gst_to_v4l2_compressed_header(&header);
+	v4l2_ctrl_vp9_frame frame = va_to_v4l2_frame(data, surface.params.vp9.picture, surface.params.vp9.slice, &header);
+	v4l2_ctrl_vp9_compressed_hdr hdr = gst_to_v4l2_compressed_header(&header);
 
-	struct v4l2_ext_control controls[2] = {};
-	controls[0] = (struct v4l2_ext_control){
-		.id = V4L2_CID_STATELESS_VP9_FRAME,
-		.size = sizeof(frame),
-		.ptr = &frame,
-	};
-	controls[1] = (struct v4l2_ext_control){
-		.id = V4L2_CID_STATELESS_VP9_COMPRESSED_HDR,
-		.size = sizeof(hdr),
-		.ptr = &hdr,
+	v4l2_ext_control controls[2] = {
+		{
+			.id = V4L2_CID_STATELESS_VP9_FRAME,
+			.size = sizeof(frame),
+			.ptr = &frame,
+		}, {
+			.id = V4L2_CID_STATELESS_VP9_COMPRESSED_HDR,
+			.size = sizeof(hdr),
+			.ptr = &hdr,
+		}
 	};
 
 	try {
@@ -216,4 +216,4 @@ std::vector<VAProfile> vp9_supported_profiles(const V4L2M2MDevice& device) {
 	return (device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP9_FRAME)) ?
 		std::vector<VAProfile>({VAProfileVP9Profile0, VAProfileVP9Profile1, VAProfileVP9Profile2, VAProfileVP9Profile3}) :
 		std::vector<VAProfile>();
-};
+}

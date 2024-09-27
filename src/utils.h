@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2016 Florent Revest <florent.revest@free-electrons.com>
  * Copyright (C) 2018 Paul Kocialkowski <paul.kocialkowski@bootlin.com>
+ * Copyright (C) 2023 Max Schettler <max.schettler@posteo.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -26,9 +27,21 @@
 #pragma once
 
 #include <map>
+#include <stdexcept>
+#include <system_error>
 
 extern "C" {
 #include <va/va_backend.h>
+}
+
+template<typename F, typename... Args>
+std::invoke_result_t<F, Args...>
+errno_wrapper(F f, Args... args) {
+	std::invoke_result_t<F, Args...> result = f(std::forward<Args>(args)...);
+	if (result < 0) {
+		throw std::system_error(errno, std::generic_category());
+	}
+	return result;
 }
 
 /**

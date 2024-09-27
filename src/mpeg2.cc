@@ -42,9 +42,10 @@ extern "C" {
 #include "surface.h"
 #include "v4l2.h"
 
+namespace {
 
-static const uint8_t default_non_intra_quantisation_matrix_value = 16;
-static const uint8_t default_intra_quantisation_matrix[] = {
+const uint8_t default_non_intra_quantisation_matrix_value = 16;
+const uint8_t default_intra_quantisation_matrix[] = {
 	 8, 16, 19, 22, 26, 27, 29, 34,
 	16, 16, 22, 24, 27, 29, 34, 37,
 	19, 22, 26, 27, 29, 34, 34, 38,
@@ -54,6 +55,8 @@ static const uint8_t default_intra_quantisation_matrix[] = {
 	26, 27, 29, 34, 38, 46, 56, 69,
 	27, 29, 35, 38, 46, 56, 69, 83,
 };
+
+}
 
 
 VAStatus mpeg2_store_buffer(RequestData *driver_data,
@@ -105,9 +108,9 @@ int mpeg2_set_controls(RequestData *driver_data,
 {
 	VAPictureParameterBufferMPEG2 *va_picture = surface.params.mpeg2.picture;
 	VAIQMatrixBufferMPEG2 *iqmatrix = surface.params.mpeg2.iqmatrix;
-	struct v4l2_ctrl_mpeg2_picture picture = {};
-	struct v4l2_ctrl_mpeg2_sequence sequence = {};
-	struct v4l2_ctrl_mpeg2_quantisation quantisation = {};
+	v4l2_ctrl_mpeg2_picture picture = {};
+	v4l2_ctrl_mpeg2_sequence sequence = {};
+	v4l2_ctrl_mpeg2_quantisation quantisation = {};
 	unsigned int i;
 
 	sequence.horizontal_size = va_picture->horizontal_size;

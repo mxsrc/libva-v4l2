@@ -51,7 +51,7 @@ struct h264_dpb_entry {
 };
 
 struct h264_dpb {
-	struct h264_dpb_entry entries[H264_DPB_SIZE];
+	h264_dpb_entry entries[H264_DPB_SIZE];
 	unsigned int age;
 };
 

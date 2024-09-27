@@ -94,40 +94,21 @@ VAStatus RequestCreateSurfaces2(VADriverContextP context, unsigned int format,
 	return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surfaces_ids,
-				unsigned surfaces_count) {
-	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-
-	if (surfaces_count < 1) {
-		return VA_STATUS_ERROR_OPERATION_FAILED;
+void RequestCreateSurfacesDeferred(RequestData* driver_data, std::span<VASurfaceID> surface_ids) {
+	if (surface_ids.size() < 1) {
+		throw std::invalid_argument("No surfaces to be created");
 	}
+	const auto& surface = driver_data->surfaces.at(surface_ids[0]);
 
-	if (!driver_data->surfaces.contains(surfaces_ids[0])) {
-		return VA_STATUS_ERROR_INVALID_SURFACE;
-	}
-	const auto& surface = driver_data->surfaces.at(surfaces_ids[0]);
+	driver_data->device.set_format(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
+		    driver_data->video_format->v4l2_format, surface.width, surface.height);
 
-	try {
-		driver_data->device.set_format(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-			    driver_data->video_format->v4l2_format, surface.width, surface.height);
-	} catch(std::system_error& e) {
-		return VA_STATUS_ERROR_OPERATION_FAILED;
-	}
+	v4l2_pix_format_mplane* driver_format = &driver_data->device.capture_format.fmt.pix_mp;
 
-	struct v4l2_pix_format_mplane* driver_format = &driver_data->device.capture_format.fmt.pix_mp;
+	driver_data->device.request_buffers(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface_ids.size());
 
-	try {
-		driver_data->device.request_buffers(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surfaces_count);
-	} catch(std::system_error& e) {
-		return VA_STATUS_ERROR_ALLOCATION_FAILED;
-	}
-
-	for (unsigned i = 0; i < surfaces_count; i++) {
-		if (!driver_data->surfaces.contains(surfaces_ids[i])) {
-			return VA_STATUS_ERROR_INVALID_SURFACE;
-		}
-		auto& surface = driver_data->surfaces.at(surfaces_ids[i]);
-
+	for (unsigned i = 0; i < surface_ids.size(); i++) {
+		auto& surface = driver_data->surfaces.at(surface_ids[i]);
 		if (driver_data->video_format->derive_layout) {  // (logical) single plane
 			surface.logical_destination_layout = driver_data->video_format->derive_layout(
 					driver_format->width, driver_format->height);
@@ -145,8 +126,6 @@ VAStatus RequestCreateSurfacesReally(VADriverContextP context, VASurfaceID *surf
 
 		surface.destination_index = i;
 	}
-
-	return VA_STATUS_SUCCESS;
 }
 
 VAStatus RequestCreateSurfaces(VADriverContextP context, int width, int height,
@@ -182,8 +161,6 @@ VAStatus RequestDestroySurfaces(VADriverContextP context,
 VAStatus RequestSyncSurface(VADriverContextP context, VASurfaceID surface_id)
 {
 	auto driver_data = static_cast<RequestData*>(context->pDriverData);
-	VAStatus status;
-	int rc;
 
 	if (!driver_data->video_format) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
@@ -195,27 +172,19 @@ VAStatus RequestSyncSurface(VADriverContextP context, VASurfaceID surface_id)
 	auto& surface = driver_data->surfaces.at(surface_id);
 
 	if (surface.status != VASurfaceRendering) {
-		status = VA_STATUS_SUCCESS;
-		goto complete;
+		return VA_STATUS_SUCCESS;
 	}
 
 	if (surface.request_fd >= 0) {
-		rc = media_request_queue(surface.request_fd);
-		if (rc < 0) {
-			status = VA_STATUS_ERROR_OPERATION_FAILED;
-			goto error;
-		}
-
-		rc = media_request_wait_completion(surface.request_fd);
-		if (rc < 0) {
-			status = VA_STATUS_ERROR_OPERATION_FAILED;
-			goto error;
-		}
-
-		rc = media_request_reinit(surface.request_fd);
-		if (rc < 0) {
-			status = VA_STATUS_ERROR_OPERATION_FAILED;
-			goto error;
+		try {
+			errno_wrapper(media_request_queue, surface.request_fd);
+			errno_wrapper(media_request_wait_completion, surface.request_fd);
+			errno_wrapper(media_request_reinit, surface.request_fd);
+		} catch (std::runtime_error& e) {
+			close(surface.request_fd);
+			surface.request_fd = -1;
+			error_log(context, "Failed to process request: %s\n", e.what());
+			return VA_STATUS_ERROR_OPERATION_FAILED;
 		}
 	}
 
@@ -224,23 +193,12 @@ VAStatus RequestSyncSurface(VADriverContextP context, VASurfaceID surface_id)
 		driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index).dequeue();
 	} catch (std::runtime_error& e) {
 		error_log(context, "Failed to dequeue buffer: %s\n", e.what());
-		status = VA_STATUS_ERROR_OPERATION_FAILED;
-		goto error;
+		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 
 	surface.status = VASurfaceDisplaying;
 
-	status = VA_STATUS_SUCCESS;
-	goto complete;
-
-error:
-	if (surface.request_fd >= 0) {
-		close(surface.request_fd);
-		surface.request_fd = -1;
-	}
-
-complete:
-	return status;
+	return VA_STATUS_SUCCESS;
 }
 
 VAStatus RequestQuerySurfaceAttributes(VADriverContextP context,

@@ -81,7 +81,7 @@ int media_request_queue(int request_fd)
 
 int media_request_wait_completion(int request_fd)
 {
-	struct timeval tv = { 0, 300000 };
+	timeval tv = { 0, 300000 };
 	fd_set except_fds;
 	int rc;
 

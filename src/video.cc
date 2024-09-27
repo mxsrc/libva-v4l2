@@ -34,7 +34,9 @@ extern "C" {
 #include <libdrm/drm_fourcc.h>
 }
 
-static BufferLayout nv12_derive_layout(unsigned width, unsigned height) {
+namespace {
+
+BufferLayout nv12_derive_layout(unsigned width, unsigned height) {
 	auto base_size = width * height;
 	return BufferLayout{
 		{0, base_size, width, 0},
@@ -42,7 +44,7 @@ static BufferLayout nv12_derive_layout(unsigned width, unsigned height) {
 	};
 }
 
-static const struct video_format formats[] = {
+const video_format formats[] = {
 	{
 		.description		= "NV12 YUV",
 		.v4l2_format		= V4L2_PIX_FMT_NV12,
@@ -58,9 +60,11 @@ static const struct video_format formats[] = {
 	},
 };
 
-static const unsigned int formats_count = sizeof(formats) / sizeof(formats[0]);
+const unsigned int formats_count = sizeof(formats) / sizeof(formats[0]);
 
-const struct video_format *video_format_find(unsigned int pixelformat)
+} // namespace
+
+const video_format *video_format_find(unsigned int pixelformat)
 {
 	unsigned int i;
 

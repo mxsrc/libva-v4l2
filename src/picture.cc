@@ -53,19 +53,23 @@ extern "C" {
 
 using fourcc = uint32_t;
 
-static const std::map<fourcc, std::function<VAStatus(RequestData*, Surface&, const Buffer&)>> store_buffer_funcs = {
+namespace {
+
+const std::map<fourcc, std::function<VAStatus(RequestData*, Surface&, const Buffer&)>> store_buffer_funcs = {
 	{V4L2_PIX_FMT_MPEG2_SLICE, mpeg2_store_buffer},
 	{V4L2_PIX_FMT_H264_SLICE, h264_store_buffer},
 	{V4L2_PIX_FMT_VP8_FRAME, vp8_store_buffer},
 	{V4L2_PIX_FMT_VP9_FRAME, vp9_store_buffer},
 };
 
-static const std::map<fourcc, std::function<int(RequestData*, Context&, Surface&)>> set_control_funcs = {
+const std::map<fourcc, std::function<int(RequestData*, Context&, Surface&)>> set_control_funcs = {
 	{V4L2_PIX_FMT_MPEG2_SLICE, mpeg2_set_controls},
 	{V4L2_PIX_FMT_H264_SLICE, h264_set_controls},
 	{V4L2_PIX_FMT_VP8_FRAME, vp8_set_controls},
 	{V4L2_PIX_FMT_VP9_FRAME, vp9_set_controls},
 };
+
+} // namespace
 
 VAStatus RequestBeginPicture(VADriverContextP va_context, VAContextID context_id,
 			     VASurfaceID surface_id)
