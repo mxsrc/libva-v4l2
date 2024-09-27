@@ -36,7 +36,6 @@ sources = [
 	'mpeg2.cc',
 	'h264.cc',
 	'vp8.cc',
-	'vp9.cc',
 ]
 
 headers = [
@@ -55,21 +54,27 @@ headers = [
 	'mpeg2.h',
 	'h264.h',
 	'vp8.h',
-	'vp9.h',
 ]
+cpp_args = [
+	'-Wall',
+	'-fvisibility=hidden',
+	'-DVA_DRIVER_INIT_FUNC=' + va_driver_init_func,
+	'-D__STDC_WANT_LIB_EXT2__',
+	'-DGST_USE_UNSTABLE_API',
+	'-std=c++20',
+]
+
+if libgstcodecparsers_dep.found() and libgstcodecs_dep.found()
+	sources += 'vp9.cc'
+	headers += 'vp9.h'
+	cpp_args += '-DENABLE_VP9'
+endif
 
 v4l2_request_drv_video = shared_module('v4l2_request_drv_video',
 	name_prefix: '',
 	install: true,
 	install_dir: join_paths(get_option('libdir'), 'dri'),
-	cpp_args: [
-		'-Wall',
-		'-fvisibility=hidden',
-		'-DVA_DRIVER_INIT_FUNC=' + va_driver_init_func,
-		'-D__STDC_WANT_LIB_EXT2__',
-		'-DGST_USE_UNSTABLE_API',
-		'-std=c++20',
-	],
+	cpp_args: cpp_args,
 	sources: [ sources, headers ],
 	dependencies: [
 		libva_dep,

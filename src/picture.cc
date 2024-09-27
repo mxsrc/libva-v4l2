@@ -49,7 +49,9 @@ extern "C" {
 #include "utils.h"
 #include "v4l2.h"
 #include "vp8.h"
+#ifdef ENABLE_VP9
 #include "vp9.h"
+#endif
 
 using fourcc = uint32_t;
 
@@ -59,14 +61,18 @@ const std::map<fourcc, std::function<VAStatus(RequestData*, Surface&, const Buff
 	{V4L2_PIX_FMT_MPEG2_SLICE, mpeg2_store_buffer},
 	{V4L2_PIX_FMT_H264_SLICE, h264_store_buffer},
 	{V4L2_PIX_FMT_VP8_FRAME, vp8_store_buffer},
+#ifdef ENABLE_VP9
 	{V4L2_PIX_FMT_VP9_FRAME, vp9_store_buffer},
+#endif
 };
 
 const std::map<fourcc, std::function<int(RequestData*, Context&, Surface&)>> set_control_funcs = {
 	{V4L2_PIX_FMT_MPEG2_SLICE, mpeg2_set_controls},
 	{V4L2_PIX_FMT_H264_SLICE, h264_set_controls},
 	{V4L2_PIX_FMT_VP8_FRAME, vp8_set_controls},
+#ifdef ENABLE_VP9
 	{V4L2_PIX_FMT_VP9_FRAME, vp9_set_controls},
+#endif
 };
 
 } // namespace

@@ -41,13 +41,9 @@ extern "C" {
 #include <va/va.h>
 }
 
-#include "h264.h"
-#include "mpeg2.h"
 #include "request.h"
 #include "utils.h"
 #include "v4l2.h"
-#include "vp8.h"
-#include "vp9.h"
 
 namespace {
 
