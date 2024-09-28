@@ -55,28 +55,6 @@ extern "C" {
 
 using fourcc = uint32_t;
 
-namespace {
-
-const std::map<fourcc, std::function<VAStatus(RequestData*, Surface&, const Buffer&)>> store_buffer_funcs = {
-	{V4L2_PIX_FMT_MPEG2_SLICE, mpeg2_store_buffer},
-	{V4L2_PIX_FMT_H264_SLICE, h264_store_buffer},
-	{V4L2_PIX_FMT_VP8_FRAME, vp8_store_buffer},
-#ifdef ENABLE_VP9
-	{V4L2_PIX_FMT_VP9_FRAME, vp9_store_buffer},
-#endif
-};
-
-const std::map<fourcc, std::function<int(RequestData*, Context&, Surface&)>> set_control_funcs = {
-	{V4L2_PIX_FMT_MPEG2_SLICE, mpeg2_set_controls},
-	{V4L2_PIX_FMT_H264_SLICE, h264_set_controls},
-	{V4L2_PIX_FMT_VP8_FRAME, vp8_set_controls},
-#ifdef ENABLE_VP9
-	{V4L2_PIX_FMT_VP9_FRAME, vp9_set_controls},
-#endif
-};
-
-} // namespace
-
 VAStatus RequestBeginPicture(VADriverContextP va_context, VAContextID context_id,
 			     VASurfaceID surface_id)
 {
@@ -85,7 +63,7 @@ VAStatus RequestBeginPicture(VADriverContextP va_context, VAContextID context_id
 	if (!driver_data->contexts.contains(context_id)) {
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
 	}
-	auto& context = driver_data->contexts.at(context_id);
+	auto& context = *driver_data->contexts.at(context_id);
 
 	if (!driver_data->surfaces.contains(surface_id)) {
 		return VA_STATUS_ERROR_INVALID_SURFACE;
@@ -111,20 +89,17 @@ VAStatus RequestRenderPicture(VADriverContextP va_context, VAContextID context_i
 	if (!driver_data->contexts.contains(context_id)) {
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
 	}
-	const auto& context = driver_data->contexts.at(context_id);
+	const auto& context = *driver_data->contexts.at(context_id);
 
 	if (!driver_data->surfaces.contains(context.render_surface_id)) {
 		return VA_STATUS_ERROR_INVALID_SURFACE;
 	}
-	auto& surface = driver_data->surfaces.at(context.render_surface_id);
-
 	for (i = 0; i < buffers_count; i++) {
 		if (!driver_data->buffers.contains(buffers_ids[i])) {
 			return VA_STATUS_ERROR_INVALID_BUFFER;
 		}
 
-		rc = store_buffer_funcs.at(driver_data->device.output_format.fmt.pix_mp.pixelformat)
-			(driver_data, surface, driver_data->buffers.at(buffers_ids[i]));
+		rc = context.store_buffer(driver_data->buffers.at(buffers_ids[i]));
 		if (rc != VA_STATUS_SUCCESS)
 			return rc;
 	}
@@ -144,9 +119,8 @@ VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id)
 	if (!driver_data->contexts.contains(context_id)) {
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
 	}
-	auto& context = driver_data->contexts.at(context_id);
+	auto& context = *driver_data->contexts.at(context_id);
 	auto& surface = driver_data->surfaces.at(context.render_surface_id);
-
 
 	gettimeofday(&surface.timestamp, NULL);
 
@@ -160,8 +134,7 @@ VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id)
 			surface.request_fd = request_fd;
 		}
 
-		status = set_control_funcs.at(driver_data->device.output_format.fmt.pix_mp.pixelformat)
-			(driver_data, context, surface);
+		status = context.set_controls();
 		if (status != VA_STATUS_SUCCESS)
 			return status;
 	}

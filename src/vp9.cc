@@ -144,9 +144,9 @@ v4l2_ctrl_vp9_compressed_hdr gst_to_v4l2_compressed_header(GstVp9FrameHeader* he
 	return result;
 }
 
-VAStatus vp9_store_buffer(RequestData *driver_data,
-			  Surface& surface,
-			  const Buffer& buffer) {
+VAStatus VP9Context::store_buffer(const Buffer& buffer) const {
+	auto& surface = driver_data->surfaces.at(render_surface_id);
+
 	const auto source_data = driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.destination_index).mapping()[0];
 
 	switch (buffer.type) {
@@ -178,16 +178,16 @@ VAStatus vp9_store_buffer(RequestData *driver_data,
 	}
 }
 
-int vp9_set_controls(RequestData *data,
-		     const Context& context,
-		     Surface& surface) {
+int VP9Context::set_controls() {
+	auto& surface = driver_data->surfaces.at(render_surface_id);
+
 	GstVp9FrameHeader header = {};
 
-	if (parse_frame_header(data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.source_index).mapping()[0], &header)) {
+	if (parse_frame_header(driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.source_index).mapping()[0], &header)) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 
-	v4l2_ctrl_vp9_frame frame = va_to_v4l2_frame(data, surface.params.vp9.picture, surface.params.vp9.slice, &header);
+	v4l2_ctrl_vp9_frame frame = va_to_v4l2_frame(driver_data, surface.params.vp9.picture, surface.params.vp9.slice, &header);
 	v4l2_ctrl_vp9_compressed_hdr hdr = gst_to_v4l2_compressed_header(&header);
 
 	v4l2_ext_control controls[2] = {
@@ -203,7 +203,7 @@ int vp9_set_controls(RequestData *data,
 	};
 
 	try {
-	data->device.set_controls(surface.request_fd, std::span(controls, 2));
+		driver_data->device.set_controls(surface.request_fd, std::span(controls, 2));
 	} catch(std::runtime_error& e) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
@@ -211,7 +211,7 @@ int vp9_set_controls(RequestData *data,
 	return VA_STATUS_SUCCESS;
 }
 
-std::vector<VAProfile> vp9_supported_profiles(const V4L2M2MDevice& device) {
+std::vector<VAProfile> VP9Context::supported_profiles(const V4L2M2MDevice& device) {
 	// TODO: query `va_profile` control for more details
 	return (device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP9_FRAME)) ?
 		std::vector<VAProfile>({VAProfileVP9Profile0, VAProfileVP9Profile1, VAProfileVP9Profile2, VAProfileVP9Profile3}) :

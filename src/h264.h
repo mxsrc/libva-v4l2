@@ -33,10 +33,10 @@ extern "C" {
 #include <va/va.h>
 }
 
+#include "context.h"
 #include "surface.h"
 
 struct Buffer;
-struct Context;
 struct RequestData;
 class V4L2M2MDevice;
 
@@ -55,10 +55,17 @@ struct h264_dpb {
 	unsigned int age;
 };
 
-VAStatus h264_store_buffer(RequestData *driver_data,
-				   Surface& surface,
-				   const Buffer& buffer);
-int h264_set_controls(RequestData *data,
-		      Context& context,
-		      Surface& surface);
-std::vector<VAProfile> h264_supported_profiles(const V4L2M2MDevice& device);
+class H264Context : public Context {
+public:
+	static std::vector<VAProfile> supported_profiles(const V4L2M2MDevice& device);
+
+	H264Context(RequestData* driver_data, VAConfigID config_id,
+			int picture_width, int picture_height,
+			std::span<VASurfaceID> surface_ids) :
+		Context(driver_data, config_id, picture_width, picture_height, surface_ids) {};
+
+	VAStatus store_buffer(const Buffer& buffer) const override;
+	int set_controls() override;
+
+	struct h264_dpb dpb;
+};

@@ -59,10 +59,9 @@ const uint8_t default_intra_quantisation_matrix[] = {
 }
 
 
-VAStatus mpeg2_store_buffer(RequestData *driver_data,
-				   Surface& surface,
-				   const Buffer& buffer)
-{
+VAStatus MPEG2Context::store_buffer(const Buffer& buffer) const {
+	auto& surface = driver_data->surfaces.at(render_surface_id);
+
 	const auto source_data = driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.destination_index).mapping()[0];
 
 	switch (buffer.type) {
@@ -102,10 +101,9 @@ VAStatus mpeg2_store_buffer(RequestData *driver_data,
 }
 
 
-int mpeg2_set_controls(RequestData *driver_data,
-		       const Context& context,
-		       Surface& surface)
-{
+int MPEG2Context::set_controls() {
+	auto& surface = driver_data->surfaces.at(render_surface_id);
+
 	VAPictureParameterBufferMPEG2 *va_picture = surface.params.mpeg2.picture;
 	VAIQMatrixBufferMPEG2 *iqmatrix = surface.params.mpeg2.iqmatrix;
 	v4l2_ctrl_mpeg2_picture picture = {};
@@ -181,7 +179,7 @@ int mpeg2_set_controls(RequestData *driver_data,
 	return 0;
 }
 
-std::vector<VAProfile> mpeg2_supported_profiles(const V4L2M2MDevice& device) {
+std::vector<VAProfile> MPEG2Context::supported_profiles(const V4L2M2MDevice& device) {
 	return (device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_MPEG2_SLICE)) ?
 		std::vector<VAProfile>({VAProfileMPEG2Main, VAProfileMPEG2Simple}) : std::vector<VAProfile>();
 };

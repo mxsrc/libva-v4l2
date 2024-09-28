@@ -177,10 +177,9 @@ size_t prefix_data(uint8_t* data, const VAPictureParameterBufferVP8* picture, co
 
 } // namespace
 
-VAStatus vp8_store_buffer(RequestData *driver_data,
-			  Surface& surface,
-			  const Buffer& buffer)
-{
+VAStatus VP8Context::store_buffer(const Buffer& buffer) const {
+	auto& surface = driver_data->surfaces.at(render_surface_id);
+
 	const auto source_data = driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.destination_index).mapping()[0];
 	switch (buffer.type) {
 	case VASliceDataBufferType:
@@ -226,9 +225,11 @@ VAStatus vp8_store_buffer(RequestData *driver_data,
 	return VA_STATUS_SUCCESS;
 }
 
-int vp8_set_controls(RequestData *data, const Context& context, Surface& surface) {
+int VP8Context::set_controls() {
+	auto& surface = driver_data->surfaces.at(render_surface_id);
+
 	v4l2_ctrl_vp8_frame frame = va_to_v4l2_frame(
-		data,
+		driver_data,
 		surface.params.vp8.picture,
 		surface.params.vp8.slice,
 		surface.params.vp8.iqmatrix,
@@ -236,7 +237,7 @@ int vp8_set_controls(RequestData *data, const Context& context, Surface& surface
 	);
 
 	try {
-		data->device.set_control(surface.request_fd, V4L2_CID_STATELESS_VP8_FRAME, &frame, sizeof(frame));
+		driver_data->device.set_control(surface.request_fd, V4L2_CID_STATELESS_VP8_FRAME, &frame, sizeof(frame));
 	} catch(std::runtime_error& e) {
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
@@ -244,7 +245,7 @@ int vp8_set_controls(RequestData *data, const Context& context, Surface& surface
 	return VA_STATUS_SUCCESS;
 }
 
-std::vector<VAProfile> vp8_supported_profiles(const V4L2M2MDevice& device) {
+std::vector<VAProfile> VP8Context::supported_profiles(const V4L2M2MDevice& device) {
 	return (device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP8_FRAME)) ?
 		std::vector<VAProfile>({VAProfileVP8Version0_3}) : std::vector<VAProfile>();
 };

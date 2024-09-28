@@ -31,16 +31,21 @@ extern "C" {
 #include <va/va.h>
 }
 
+#include "context.h"
+
 struct Buffer;
-struct Context;
 struct RequestData;
 struct Surface;
 class V4L2M2MDevice;
 
-VAStatus mpeg2_store_buffer(RequestData *driver_data,
-				   Surface& surface,
-				   const Buffer& buffer);
-int mpeg2_set_controls(RequestData *driver_data,
-		       const Context& context,
-		       Surface& surface);
-std::vector<VAProfile> mpeg2_supported_profiles(const V4L2M2MDevice& device);
+class MPEG2Context : public Context {
+public:
+	static std::vector<VAProfile> supported_profiles(const V4L2M2MDevice& device);
+
+	MPEG2Context(RequestData* driver_data, VAConfigID config_id,
+			int picture_width, int picture_height,
+			std::span<VASurfaceID> surface_ids) :
+		Context(driver_data, config_id, picture_width, picture_height, surface_ids) {};
+	VAStatus store_buffer(const Buffer& buffer) const override;
+	int set_controls() override;
+};

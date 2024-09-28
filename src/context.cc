@@ -42,17 +42,44 @@ extern "C" {
 }
 
 #include "config.h"
+#include "h264.h"
+#include "mpeg2.h"
 #include "request.h"
 #include "surface.h"
 #include "utils.h"
 #include "v4l2.h"
+#include "vp8.h"
+#ifdef ENABLE_VP9
+#include "vp9.h"
+#endif
 
 Context::Context(RequestData* driver_data, VAConfigID config_id, int picture_width, int picture_height, std::span<VASurfaceID> surface_ids) :
 		config_id(config_id),
 		render_surface_id(VA_INVALID_ID),
 		picture_width(picture_width),
 		picture_height(picture_height),
-		codec_state({}) {
+		driver_data(driver_data) {
+	// Now that the output format is set, we can set the capture format and allocate the surfaces.
+	RequestCreateSurfacesDeferred(driver_data, surface_ids);
+
+	driver_data->device.request_buffers(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface_ids.size());
+
+	for (unsigned i = 0; i < surface_ids.size(); i++) {
+		driver_data->surfaces.at(i).source_index = i;
+	}
+
+	driver_data->device.set_streaming(true);
+}
+
+VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
+			      int picture_width, int picture_height, int flags,
+			      VASurfaceID *surface_ids, int surfaces_count,
+			      VAContextID *context_id) {
+	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
+
+	if (!driver_data->configs.contains(config_id)) {
+		return VA_STATUS_ERROR_INVALID_CONFIG;
+	}
 	const auto& config = driver_data->configs.at(config_id);
 
 	fourcc pixelformat = 0;
@@ -69,29 +96,6 @@ Context::Context(RequestData* driver_data, VAConfigID config_id, int picture_wid
 
 	driver_data->device.set_format(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, pixelformat, picture_width, picture_height);
 
-	// Now that the output format is set, we can set the capture format and allocate the surfaces.
-	RequestCreateSurfacesDeferred(driver_data, surface_ids);
-
-	driver_data->device.request_buffers(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface_ids.size());
-
-	for (unsigned i = 0; i < surface_ids.size(); i++) {
-		driver_data->surfaces.at(i).source_index = i;
-	}
-
-	driver_data->device.set_streaming(true);
-}
-
-VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
-			      int picture_width, int picture_height, int flags,
-			      VASurfaceID *surface_ids, int surfaces_count,
-			      VAContextID *context_id)
-{
-	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
-
-	if (!driver_data->configs.contains(config_id)) {
-		return VA_STATUS_ERROR_INVALID_CONFIG;
-	}
-
 	auto surfaces = std::span(surface_ids, surfaces_count);
 	for (auto&& surface : surfaces) {
 		if (!driver_data->surfaces.contains(surface)) {
@@ -106,9 +110,28 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
 	std::lock_guard<std::mutex> guard(driver_data->mutex);
 	*context_id = smallest_free_key(driver_data->contexts);
 	try {
-		auto [context, inserted] = driver_data->contexts.emplace(std::make_pair(*context_id, Context(
-			driver_data, config_id, picture_width, picture_height, surfaces)));
-		if (!inserted) {
+		std::pair<decltype(driver_data->contexts)::iterator, bool> insert_result = {driver_data->contexts.end(), false};
+		switch (pixelformat) {
+			case V4L2_PIX_FMT_MPEG2_SLICE:
+				insert_result = driver_data->contexts.emplace(std::make_pair(*context_id, new MPEG2Context(
+					driver_data, config_id, picture_width, picture_height, surfaces)));
+				break;
+			case V4L2_PIX_FMT_H264_SLICE:
+				insert_result = driver_data->contexts.emplace(std::make_pair(*context_id, new H264Context(
+					driver_data, config_id, picture_width, picture_height, surfaces)));
+				break;
+			case V4L2_PIX_FMT_VP8_FRAME:
+				insert_result = driver_data->contexts.emplace(std::make_pair(*context_id, new VP8Context(
+					driver_data, config_id, picture_width, picture_height, surfaces)));
+				break;
+#ifdef ENABLE_VP9
+			case V4L2_PIX_FMT_VP9_FRAME:
+				insert_result = driver_data->contexts.emplace(std::make_pair(*context_id, new VP9Context(
+					driver_data, config_id, picture_width, picture_height, surfaces)));
+				break;
+#endif
+		}
+		if (!insert_result.second) {
 			error_log(va_context, "Failed to create context\n");
 			return VA_STATUS_ERROR_ALLOCATION_FAILED;
 		}

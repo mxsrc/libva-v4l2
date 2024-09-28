@@ -32,25 +32,25 @@ extern "C" {
 #include <va/va_backend.h>
 }
 
-#include "h264.h"
+#include "buffer.h"
 #include "v4l2.h"
 
-struct Context {
+struct RequestData;
+
+class Context {
+public:
 	Context(RequestData* driver_data, VAConfigID config_id,
 			int picture_width, int picture_height,
 			std::span<VASurfaceID> surface_ids);
 
+	virtual VAStatus store_buffer(const Buffer& buffer) const = 0;
+	virtual int set_controls() = 0;
+
 	VAConfigID config_id;
 	VASurfaceID render_surface_id;
-
 	int picture_width;
 	int picture_height;
-
-	union {
-		struct {
-			struct h264_dpb dpb;
-		} h264;
-	} codec_state;
+	RequestData *driver_data;
 };
 
 VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,

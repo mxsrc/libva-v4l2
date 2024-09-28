@@ -28,6 +28,7 @@
 
 #include <functional>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <optional>
@@ -41,8 +42,11 @@ extern "C" {
 #include "buffer.h"
 #include "config.h"
 #include "context.h"
+#include "surface.h"
 #include "v4l2.h"
 #include "video.h"
+
+class Context;
 
 #define V4L2_REQUEST_STR_VENDOR			"v4l2-request"
 
@@ -60,7 +64,7 @@ struct RequestData {
 		device(video_path, media_path) {}
 
 	std::map<VAConfigID, Config> configs;
-	std::map<VAContextID, Context> contexts;
+	std::map<VAContextID, std::unique_ptr<Context>> contexts;
 	std::map<VASurfaceID, Surface> surfaces;
 	std::map<VABufferID, Buffer> buffers;
 	std::map<VAImageID, VAImage> images;

@@ -59,11 +59,11 @@ extern "C" {
 #endif
 
 const std::map<fourcc, std::function<std::vector<VAProfile>(const V4L2M2MDevice&)>> supported_profile_funcs = {
-	{V4L2_PIX_FMT_MPEG2_SLICE, mpeg2_supported_profiles},
-	{V4L2_PIX_FMT_H264_SLICE, h264_supported_profiles},
-	{V4L2_PIX_FMT_VP8_FRAME, vp8_supported_profiles},
+	{V4L2_PIX_FMT_MPEG2_SLICE, MPEG2Context::supported_profiles},
+	{V4L2_PIX_FMT_H264_SLICE, H264Context::supported_profiles},
+	{V4L2_PIX_FMT_VP8_FRAME, VP8Context::supported_profiles},
 #ifdef ENABLE_VP9
-	{V4L2_PIX_FMT_VP9_FRAME, vp9_supported_profiles},
+	{V4L2_PIX_FMT_VP9_FRAME, VP9Context::supported_profiles},
 #endif
 };
 

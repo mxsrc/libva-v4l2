@@ -98,12 +98,12 @@ bool is_picture_null(VAPictureH264 *pic) {
 	return pic->picture_id == VA_INVALID_SURFACE;
 }
 
-h264_dpb_entry* dpb_find_invalid_entry(Context& context)
+h264_dpb_entry* dpb_find_invalid_entry(H264Context& context)
 {
 	unsigned int i;
 
 	for (i = 0; i < H264_DPB_SIZE; i++) {
-		h264_dpb_entry *entry = &context.codec_state.h264.dpb.entries[i];
+		h264_dpb_entry *entry = &context.dpb.entries[i];
 
 		if (!entry->valid && !entry->reserved)
 			return entry;
@@ -112,14 +112,14 @@ h264_dpb_entry* dpb_find_invalid_entry(Context& context)
 	return NULL;
 }
 
-h264_dpb_entry* dpb_find_oldest_unused_entry(Context& context)
+h264_dpb_entry* dpb_find_oldest_unused_entry(H264Context& context)
 {
 	unsigned int min_age = UINT_MAX;
 	unsigned int i;
 	h264_dpb_entry *match = NULL;
 
 	for (i = 0; i < H264_DPB_SIZE; i++) {
-		h264_dpb_entry *entry = &context.codec_state.h264.dpb.entries[i];
+		h264_dpb_entry *entry = &context.dpb.entries[i];
 
 		if (!entry->used && (entry->age < min_age)) {
 			min_age = entry->age;
@@ -130,7 +130,7 @@ h264_dpb_entry* dpb_find_oldest_unused_entry(Context& context)
 	return match;
 }
 
-h264_dpb_entry* dpb_find_entry(Context& context)
+h264_dpb_entry* dpb_find_entry(H264Context& context)
 {
 	h264_dpb_entry *entry;
 
@@ -141,13 +141,13 @@ h264_dpb_entry* dpb_find_entry(Context& context)
 	return entry;
 }
 
-h264_dpb_entry *dpb_lookup(Context& context,
+h264_dpb_entry *dpb_lookup(H264Context& context,
 					 VAPictureH264 *pic, v4l2_h264_reference *ref)
 {
 	unsigned int i;
 
 	for (i = 0; i < H264_DPB_SIZE; i++) {
-		h264_dpb_entry *entry = &context.codec_state.h264.dpb.entries[i];
+		h264_dpb_entry *entry = &context.dpb.entries[i];
 
 		if (!entry->valid)
 			continue;
@@ -178,7 +178,7 @@ void dpb_clear_entry(h264_dpb_entry *entry, bool reserved)
 		entry->reserved = true;
 }
 
-void dpb_insert(Context& context, VAPictureH264 *pic, h264_dpb_entry *entry)
+void dpb_insert(H264Context& context, VAPictureH264 *pic, h264_dpb_entry *entry)
 {
 	if (is_picture_null(pic))
 		return;
@@ -190,7 +190,7 @@ void dpb_insert(Context& context, VAPictureH264 *pic, h264_dpb_entry *entry)
 		entry = dpb_find_entry(context);
 
 	memcpy(&entry->pic, pic, sizeof(entry->pic));
-	entry->age = context.codec_state.h264.dpb.age;
+	entry->age = context.dpb.age;
 	entry->valid = true;
 	entry->reserved = false;
 
@@ -198,15 +198,14 @@ void dpb_insert(Context& context, VAPictureH264 *pic, h264_dpb_entry *entry)
 		entry->used = true;
 }
 
-void dpb_update(Context& context,
+void dpb_update(H264Context& context,
 		       VAPictureParameterBufferH264 *parameters)
 {
 	unsigned int i;
-
-	context.codec_state.h264.dpb.age++;
+	context.dpb.age++;
 
 	for (i = 0; i < H264_DPB_SIZE; i++) {
-		h264_dpb_entry *entry = &context.codec_state.h264.dpb.entries[i];
+		h264_dpb_entry *entry = &context.dpb.entries[i];
 
 		entry->used = false;
 	}
@@ -220,7 +219,7 @@ void dpb_update(Context& context,
 
 		entry = dpb_lookup(context, pic, NULL);
 		if (entry) {
-			entry->age = context.codec_state.h264.dpb.age;
+			entry->age = context.dpb.age;
 			entry->used = true;
 		} else {
 			dpb_insert(context, pic, NULL);
@@ -228,14 +227,14 @@ void dpb_update(Context& context,
 	}
 }
 
-void h264_fill_dpb(RequestData *data, Context& context,
+void h264_fill_dpb(RequestData *data, H264Context& context,
 			v4l2_ctrl_h264_decode_params *decode)
 {
 	int i;
 
 	for (i = 0; i < H264_DPB_SIZE; i++) {
 		v4l2_h264_dpb_entry *dpb = &decode->dpb[i];
-		h264_dpb_entry *entry = &context.codec_state.h264.dpb.entries[i];
+		h264_dpb_entry *entry = &context.dpb.entries[i];
 
 		const auto& surface = data->surfaces.find(entry->pic.picture_id);
 
@@ -264,7 +263,7 @@ void h264_fill_dpb(RequestData *data, Context& context,
 }
 
 void h264_va_picture_to_v4l2(RequestData *driver_data,
-				    Context& context,
+				    H264Context& context,
 				    VAPictureParameterBufferH264 *VAPicture,
 				    v4l2_ctrl_h264_decode_params *decode,
 				    v4l2_ctrl_h264_pps *pps,
@@ -336,7 +335,7 @@ void h264_va_picture_to_v4l2(RequestData *driver_data,
 }
 
 void h264_va_matrix_to_v4l2(RequestData *driver_data,
-				   const Context& context,
+				   const H264Context& context,
 				   VAIQMatrixBufferH264 *VAMatrix,
 				   v4l2_ctrl_h264_scaling_matrix *v4l2_matrix)
 {
@@ -377,7 +376,7 @@ void h264_copy_pred_table(v4l2_h264_weight_factors *factors,
 }
 
 void h264_va_slice_to_v4l2(RequestData *driver_data,
-				  Context& context,
+				  H264Context& context,
 				  VASliceParameterBufferH264 *VASlice,
 				  VAPictureParameterBufferH264 *VAPicture,
 				  v4l2_ctrl_h264_slice_params *slice)
@@ -461,10 +460,9 @@ void h264_va_slice_to_predicted_weights(
 
 } // namespace
 
-VAStatus h264_store_buffer(RequestData *driver_data,
-				   Surface& surface,
-				   const Buffer& buffer)
-{
+VAStatus H264Context::store_buffer(const Buffer& buffer) const {
+	auto& surface = driver_data->surfaces.at(render_surface_id);
+
 	const auto source_data = driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.destination_index).mapping()[0];
 	switch (buffer.type) {
 	case VASliceDataBufferType:
@@ -503,14 +501,13 @@ VAStatus h264_store_buffer(RequestData *driver_data,
 }
 
 
-int h264_set_controls(RequestData *driver_data,
-		      Context& context,
-		      Surface& surface)
-{
-	if (!driver_data->configs.contains(context.config_id)) {
+int H264Context::set_controls() {
+	auto& surface = driver_data->surfaces.at(render_surface_id);
+
+	if (!driver_data->configs.contains(config_id)) {
 		return VA_STATUS_ERROR_INVALID_CONFIG;
 	}
-	auto& config = driver_data->configs.at(context.config_id);
+	auto& config = driver_data->configs.at(config_id);
 
 	v4l2_ctrl_h264_scaling_matrix matrix = {};
 	v4l2_ctrl_h264_decode_params decode = {};
@@ -521,21 +518,21 @@ int h264_set_controls(RequestData *driver_data,
 	v4l2_ext_control controls[8] = {};
 	int i = 0;
 
-	output = dpb_lookup(context, &surface.params.h264.picture->CurrPic,
+	output = dpb_lookup(*this, &surface.params.h264.picture->CurrPic,
 			    NULL);
 	if (!output)
-		output = dpb_find_entry(context);
+		output = dpb_find_entry(*this);
 
 	dpb_clear_entry(output, true);
 
-	dpb_update(context, surface.params.h264.picture);
+	dpb_update(*this, surface.params.h264.picture);
 
-	h264_va_picture_to_v4l2(driver_data, context,
+	h264_va_picture_to_v4l2(driver_data, *this,
 				surface.params.h264.picture,
 				&decode, &pps, &sps);
-	h264_va_matrix_to_v4l2(driver_data, context,
+	h264_va_matrix_to_v4l2(driver_data, *this,
 			       surface.params.h264.matrix, &matrix);
-	h264_va_slice_to_v4l2(driver_data, context,
+	h264_va_slice_to_v4l2(driver_data, *this,
 			      surface.params.h264.slice,
 			      surface.params.h264.picture, &slice);
 
@@ -590,12 +587,12 @@ int h264_set_controls(RequestData *driver_data,
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 
-	dpb_insert(context, &surface.params.h264.picture->CurrPic, output);
+	dpb_insert(*this, &surface.params.h264.picture->CurrPic, output);
 
 	return VA_STATUS_SUCCESS;
 }
 
-std::vector<VAProfile> h264_supported_profiles(const V4L2M2MDevice& device) {
+std::vector<VAProfile> H264Context::supported_profiles(const V4L2M2MDevice& device) {
 	// TODO: query `h264_profile` control for more details
 	return (device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_H264_SLICE)) ?
 		std::vector<VAProfile>({VAProfileH264Main, VAProfileH264High, VAProfileH264ConstrainedBaseline,
