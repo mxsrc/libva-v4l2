@@ -47,4 +47,3 @@ va_api_minor_version = va_api_version_array[1]
 va_driver_init_func = '__vaDriverInit_@0@_@1@'.format(va_api_major_version, va_api_minor_version)
 
 subdir('src')
-subdir('test')

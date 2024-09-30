@@ -1,7 +1,6 @@
 # Testing
-Ensure `git` and `git-lfs` are present.
-Clone [https://github.com/intel/vaapi-fits]().
-Setup venv with the requirements `vaapi-fits` requirements.
+Set up [vaapi-fits](https://github.com/intel/vaapi-fits), e.g. in the local directory.
+Setup venv with the local `requirements.txt` as well as those of `vaapi-fits`.
 In addition to environment variables described on project level, set `VAAPI_FITS_CAPS=.` to use the custom V4L2 capabilities.
 Run tests:
 ```
