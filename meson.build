@@ -1,4 +1,5 @@
 # Copyright (C) 2019 Bootlin
+# Copyright (C) 2023 Max Schettler
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the
