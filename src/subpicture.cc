@@ -25,70 +25,52 @@
 
 #include "subpicture.h"
 
-VAStatus RequestCreateSubpicture(VADriverContextP context, VAImageID image_id,
-				 VASubpictureID *subpicture_id)
+VAStatus RequestCreateSubpicture(VADriverContextP context, VAImageID image_id, VASubpictureID* subpicture_id)
 {
-	return VA_STATUS_ERROR_UNIMPLEMENTED;
+    return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
-VAStatus RequestDestroySubpicture(VADriverContextP context,
-				  VASubpictureID subpicture_id)
+VAStatus RequestDestroySubpicture(VADriverContextP context, VASubpictureID subpicture_id)
 {
-	return VA_STATUS_ERROR_UNIMPLEMENTED;
+    return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
-VAStatus RequestQuerySubpictureFormats(VADriverContextP context,
-				       VAImageFormat *formats,
-				       unsigned int *flags,
-				       unsigned int *formats_count)
+VAStatus RequestQuerySubpictureFormats(
+    VADriverContextP context, VAImageFormat* formats, unsigned int* flags, unsigned int* formats_count)
 {
-	return VA_STATUS_ERROR_UNIMPLEMENTED;
+    return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
-VAStatus RequestSetSubpictureImage(VADriverContextP context,
-				   VASubpictureID subpicture_id,
-				   VAImageID image_id)
+VAStatus RequestSetSubpictureImage(VADriverContextP context, VASubpictureID subpicture_id, VAImageID image_id)
 {
-	return VA_STATUS_ERROR_UNIMPLEMENTED;
+    return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
-VAStatus RequestSetSubpicturePalette(VADriverContextP context,
-				     VASubpictureID subpicture_id,
-				     unsigned char *palette)
+VAStatus RequestSetSubpicturePalette(VADriverContextP context, VASubpictureID subpicture_id, unsigned char* palette)
 {
-	return VA_STATUS_ERROR_UNIMPLEMENTED;
+    return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
-VAStatus RequestSetSubpictureChromakey(VADriverContextP context,
-				       VASubpictureID subpicture_id,
-				       unsigned int chromakey_min,
-				       unsigned int chromakey_max,
-				       unsigned int chromakey_mask)
+VAStatus RequestSetSubpictureChromakey(VADriverContextP context, VASubpictureID subpicture_id,
+    unsigned int chromakey_min, unsigned int chromakey_max, unsigned int chromakey_mask)
 {
-	return VA_STATUS_ERROR_UNIMPLEMENTED;
+    return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
-VAStatus RequestSetSubpictureGlobalAlpha(VADriverContextP context,
-					 VASubpictureID subpicture_id,
-					 float global_alpha)
+VAStatus RequestSetSubpictureGlobalAlpha(VADriverContextP context, VASubpictureID subpicture_id, float global_alpha)
 {
-	return VA_STATUS_ERROR_UNIMPLEMENTED;
+    return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
-VAStatus RequestAssociateSubpicture(
-	VADriverContextP context, VASubpictureID subpicture_id,
-	VASurfaceID *surfaces_ids, int surfaces_count, short src_x, short src_y,
-	unsigned short src_width, unsigned short src_height, short dst_x,
-	short dst_y, unsigned short dst_width, unsigned short dst_height,
-	unsigned int flags)
+VAStatus RequestAssociateSubpicture(VADriverContextP context, VASubpictureID subpicture_id, VASurfaceID* surfaces_ids,
+    int surfaces_count, short src_x, short src_y, unsigned short src_width, unsigned short src_height, short dst_x,
+    short dst_y, unsigned short dst_width, unsigned short dst_height, unsigned int flags)
 {
-	return VA_STATUS_ERROR_UNIMPLEMENTED;
+    return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
-VAStatus RequestDeassociateSubpicture(VADriverContextP context,
-				      VASubpictureID subpicture_id,
-				      VASurfaceID *surfaces_ids,
-				      int surfaces_count)
+VAStatus RequestDeassociateSubpicture(
+    VADriverContextP context, VASubpictureID subpicture_id, VASurfaceID* surfaces_ids, int surfaces_count)
 {
-	return VA_STATUS_ERROR_UNIMPLEMENTED;
+    return VA_STATUS_ERROR_UNIMPLEMENTED;
 }

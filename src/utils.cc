@@ -31,26 +31,28 @@
 
 #include "request.h"
 
-void request_log(const char *format, ...)
+void request_log(const char* format, ...)
 {
-	va_list arguments;
+    va_list arguments;
 
-	fprintf(stderr, "%s: ", V4L2_REQUEST_STR_VENDOR);
+    fprintf(stderr, "%s: ", V4L2_REQUEST_STR_VENDOR);
 
-	va_start(arguments, format);
-	vfprintf(stderr, format, arguments);
-	va_end(arguments);
+    va_start(arguments, format);
+    vfprintf(stderr, format, arguments);
+    va_end(arguments);
 }
 
-void info_log(VADriverContextP ctx, const char *format, ...) {
+void info_log(VADriverContextP ctx, const char* format, ...)
+{
     char* string;
     va_list args;
 
     va_start(args, format);
-    if(0 > vasprintf(&string, format, args)) string = NULL;    //this is for logging, so failed allocation is not fatal
+    if (0 > vasprintf(&string, format, args))
+        string = NULL; // this is for logging, so failed allocation is not fatal
     va_end(args);
 
-    if(string) {
+    if (string) {
         ctx->info_callback(ctx, string);
         free(string);
     } else {
@@ -58,15 +60,17 @@ void info_log(VADriverContextP ctx, const char *format, ...) {
     }
 }
 
-void error_log(VADriverContextP ctx, const char *format, ...) {
+void error_log(VADriverContextP ctx, const char* format, ...)
+{
     char* string;
     va_list args;
 
     va_start(args, format);
-    if(0 > vasprintf(&string, format, args)) string = NULL;    //this is for logging, so failed allocation is not fatal
+    if (0 > vasprintf(&string, format, args))
+        string = NULL; // this is for logging, so failed allocation is not fatal
     va_end(args);
 
-    if(string) {
+    if (string) {
         ctx->error_callback(ctx, string);
         free(string);
     } else {

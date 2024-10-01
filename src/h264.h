@@ -43,29 +43,28 @@ class V4L2M2MDevice;
 #define H264_DPB_SIZE 16
 
 struct h264_dpb_entry {
-	VAPictureH264 pic;
-	unsigned int age;
-	bool used;
-	bool valid;
-	bool reserved;
+    VAPictureH264 pic;
+    unsigned int age;
+    bool used;
+    bool valid;
+    bool reserved;
 };
 
 struct h264_dpb {
-	h264_dpb_entry entries[H264_DPB_SIZE];
-	unsigned int age;
+    h264_dpb_entry entries[H264_DPB_SIZE];
+    unsigned int age;
 };
 
 class H264Context : public Context {
 public:
-	static std::vector<VAProfile> supported_profiles(const V4L2M2MDevice& device);
+    static std::vector<VAProfile> supported_profiles(const V4L2M2MDevice& device);
 
-	H264Context(RequestData* driver_data, VAConfigID config_id,
-			int picture_width, int picture_height,
-			std::span<VASurfaceID> surface_ids) :
-		Context(driver_data, config_id, picture_width, picture_height, surface_ids) {};
+    H264Context(RequestData* driver_data, VAConfigID config_id, int picture_width, int picture_height,
+        std::span<VASurfaceID> surface_ids)
+        : Context(driver_data, config_id, picture_width, picture_height, surface_ids) {};
 
-	VAStatus store_buffer(const Buffer& buffer) const override;
-	int set_controls() override;
+    VAStatus store_buffer(const Buffer& buffer) const override;
+    int set_controls() override;
 
-	struct h264_dpb dpb;
+    struct h264_dpb dpb;
 };

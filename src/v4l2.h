@@ -27,61 +27,60 @@
 #include <cstdint>
 #include <optional>
 #include <set>
-#include <string>
 #include <span>
+#include <string>
 #include <vector>
 
 extern "C" {
 #include <linux/videodev2.h>
 }
 
-#define SOURCE_SIZE_MAX						(1024 * 1024)
+#define SOURCE_SIZE_MAX (1024 * 1024)
 
 using fourcc = uint32_t;
 
 class V4L2M2MDevice {
 public:
-	class Buffer {
-	public:
-		void queue(int request_fd=-1, timeval* timestamp=nullptr, unsigned size=0) const;
-		void dequeue() const;
-		std::vector<int> export_(unsigned flags) const;
-		std::vector<std::span<uint8_t>> mapping() const { return mapping_; }
+    class Buffer {
+    public:
+        void queue(int request_fd = -1, timeval* timestamp = nullptr, unsigned size = 0) const;
+        void dequeue() const;
+        std::vector<int> export_(unsigned flags) const;
+        std::vector<std::span<uint8_t>> mapping() const { return mapping_; }
 
-		Buffer(V4L2M2MDevice& owner, v4l2_buf_type type, unsigned index);
-		Buffer(Buffer&& other);
-		Buffer& operator=(Buffer&& other);
-		~Buffer();
+        Buffer(V4L2M2MDevice& owner, v4l2_buf_type type, unsigned index);
+        Buffer(Buffer&& other);
+        Buffer& operator=(Buffer&& other);
+        ~Buffer();
 
-		V4L2M2MDevice& owner_;
-		v4l2_buf_type type_;
-		unsigned index_;
-		std::vector<std::span<uint8_t>> mapping_;
+        V4L2M2MDevice& owner_;
+        v4l2_buf_type type_;
+        unsigned index_;
+        std::vector<std::span<uint8_t>> mapping_;
 
-		friend class V4L2M2MDevice;
-	};
+        friend class V4L2M2MDevice;
+    };
 
-	static std::vector<std::pair<std::string, std::string>> enumerate_devices();
+    static std::vector<std::pair<std::string, std::string>> enumerate_devices();
 
-	V4L2M2MDevice(const std::string& video_path, const std::optional<std::string> media_path);
-	~V4L2M2MDevice();
-	void set_format(enum v4l2_buf_type type, unsigned int pixelformat, unsigned int width, unsigned int height);
-	unsigned request_buffers(enum v4l2_buf_type type, unsigned count);
-	bool format_supported(v4l2_buf_type type, unsigned pixelformat) const;
-	const Buffer& buffer(v4l2_buf_type type, unsigned index);
-	void set_control(int request_fd, unsigned id, void* data, unsigned size);
-	void set_controls(int request_fd, std::span<v4l2_ext_control> controls);
-	void set_streaming(bool enable);
+    V4L2M2MDevice(const std::string& video_path, const std::optional<std::string> media_path);
+    ~V4L2M2MDevice();
+    void set_format(enum v4l2_buf_type type, unsigned int pixelformat, unsigned int width, unsigned int height);
+    unsigned request_buffers(enum v4l2_buf_type type, unsigned count);
+    bool format_supported(v4l2_buf_type type, unsigned pixelformat) const;
+    const Buffer& buffer(v4l2_buf_type type, unsigned index);
+    void set_control(int request_fd, unsigned id, void* data, unsigned size);
+    void set_controls(int request_fd, std::span<v4l2_ext_control> controls);
+    void set_streaming(bool enable);
 
-	const int video_fd;
-	const int media_fd;
-	v4l2_format capture_format;
-	v4l2_format output_format;
-	std::set<fourcc> supported_output_formats;
-	std::set<fourcc> supported_capture_formats;
-
+    const int video_fd;
+    const int media_fd;
+    v4l2_format capture_format;
+    v4l2_format output_format;
+    std::set<fourcc> supported_output_formats;
+    std::set<fourcc> supported_capture_formats;
 
 private:
-	std::vector<Buffer> capture_buffers;
-	std::vector<Buffer> output_buffers;
+    std::vector<Buffer> capture_buffers;
+    std::vector<Buffer> output_buffers;
 };

@@ -39,23 +39,19 @@ struct RequestData;
 
 class Context {
 public:
-	Context(RequestData* driver_data, VAConfigID config_id,
-			int picture_width, int picture_height,
-			std::span<VASurfaceID> surface_ids);
+    Context(RequestData* driver_data, VAConfigID config_id, int picture_width, int picture_height,
+        std::span<VASurfaceID> surface_ids);
 
-	virtual VAStatus store_buffer(const Buffer& buffer) const = 0;
-	virtual int set_controls() = 0;
+    virtual VAStatus store_buffer(const Buffer& buffer) const = 0;
+    virtual int set_controls() = 0;
 
-	VAConfigID config_id;
-	VASurfaceID render_surface_id;
-	int picture_width;
-	int picture_height;
-	RequestData *driver_data;
+    VAConfigID config_id;
+    VASurfaceID render_surface_id;
+    int picture_width;
+    int picture_height;
+    RequestData* driver_data;
 };
 
-VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
-			      int picture_width, int picture_height, int flags,
-			      VASurfaceID *surfaces_ids, int surfaces_count,
-			      VAContextID *context_id);
-VAStatus RequestDestroyContext(VADriverContextP va_context,
-			       VAContextID context_id);
+VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id, int picture_width, int picture_height,
+    int flags, VASurfaceID* surfaces_ids, int surfaces_count, VAContextID* context_id);
+VAStatus RequestDestroyContext(VADriverContextP va_context, VAContextID context_id);

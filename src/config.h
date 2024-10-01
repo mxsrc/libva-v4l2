@@ -31,40 +31,24 @@ extern "C" {
 }
 
 struct Config {
-	static constexpr unsigned max_attributes = 10;
+    static constexpr unsigned max_attributes = 10;
 
-	VAProfile profile;
-	VAEntrypoint entrypoint;
-	VAConfigAttrib attributes[max_attributes];
-	int attributes_count;
+    VAProfile profile;
+    VAEntrypoint entrypoint;
+    VAConfigAttrib attributes[max_attributes];
+    int attributes_count;
 };
 
-VAStatus RequestCreateConfig(VADriverContextP context, VAProfile profile,
-			     VAEntrypoint entrypoint,
-			     VAConfigAttrib *attributes, int attributes_count,
-			     VAConfigID *config_id);
+VAStatus RequestCreateConfig(VADriverContextP context, VAProfile profile, VAEntrypoint entrypoint,
+    VAConfigAttrib* attributes, int attributes_count, VAConfigID* config_id);
 VAStatus RequestDestroyConfig(VADriverContextP context, VAConfigID config_id);
-VAStatus RequestQueryConfigProfiles(VADriverContextP context,
-				    VAProfile *profiles, int *profiles_count);
-VAStatus RequestQueryConfigEntrypoints(VADriverContextP context,
-				       VAProfile profile,
-				       VAEntrypoint *entrypoints,
-				       int *entrypoints_count);
-VAStatus RequestQueryConfigAttributes(VADriverContextP context,
-				      VAConfigID config_id, VAProfile *profile,
-				      VAEntrypoint *entrypoint,
-				      VAConfigAttrib *attributes,
-				      int *attributes_count);
-VAStatus RequestGetConfigAttributes(VADriverContextP context, VAProfile profile,
-				    VAEntrypoint entrypoint,
-				    VAConfigAttrib *attributes,
-				    int attributes_count);
-VAStatus RequestQueryDisplayAttributes(VADriverContextP context,
-				       VADisplayAttribute *attributes,
-				       int *attributes_count);
-VAStatus RequestGetDisplayAttributes(VADriverContextP context,
-				     VADisplayAttribute *attributes,
-				     int attributes_count);
-VAStatus RequestSetDisplayAttributes(VADriverContextP context,
-				     VADisplayAttribute *attributes,
-				     int attributes_count);
+VAStatus RequestQueryConfigProfiles(VADriverContextP context, VAProfile* profiles, int* profiles_count);
+VAStatus RequestQueryConfigEntrypoints(
+    VADriverContextP context, VAProfile profile, VAEntrypoint* entrypoints, int* entrypoints_count);
+VAStatus RequestQueryConfigAttributes(VADriverContextP context, VAConfigID config_id, VAProfile* profile,
+    VAEntrypoint* entrypoint, VAConfigAttrib* attributes, int* attributes_count);
+VAStatus RequestGetConfigAttributes(VADriverContextP context, VAProfile profile, VAEntrypoint entrypoint,
+    VAConfigAttrib* attributes, int attributes_count);
+VAStatus RequestQueryDisplayAttributes(VADriverContextP context, VADisplayAttribute* attributes, int* attributes_count);
+VAStatus RequestGetDisplayAttributes(VADriverContextP context, VADisplayAttribute* attributes, int attributes_count);
+VAStatus RequestSetDisplayAttributes(VADriverContextP context, VADisplayAttribute* attributes, int attributes_count);

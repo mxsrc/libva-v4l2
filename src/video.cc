@@ -36,41 +36,42 @@ extern "C" {
 
 namespace {
 
-BufferLayout nv12_derive_layout(unsigned width, unsigned height) {
-	auto base_size = width * height;
-	return BufferLayout{
-		{0, base_size, width, 0},
-		{0, base_size / 2, width, base_size},
-	};
+BufferLayout nv12_derive_layout(unsigned width, unsigned height)
+{
+    auto base_size = width * height;
+    return BufferLayout {
+        { 0, base_size, width, 0 },
+        { 0, base_size / 2, width, base_size },
+    };
 }
 
 const video_format formats[] = {
-	{
-		.description		= "NV12 YUV",
-		.v4l2_format		= V4L2_PIX_FMT_NV12,
-		.drm_format		= DRM_FORMAT_NV12,
-		.drm_modifier		= DRM_FORMAT_MOD_NONE,
-		.derive_layout		= &nv12_derive_layout,
-	},
-	{
-		.description		= "NV12 YUV non contiguous",
-		.v4l2_format		= V4L2_PIX_FMT_NV12M,
-		.drm_format		= DRM_FORMAT_NV12,
-		.drm_modifier		= DRM_FORMAT_MOD_NONE,
-	},
+    {
+        .description = "NV12 YUV",
+        .v4l2_format = V4L2_PIX_FMT_NV12,
+        .drm_format = DRM_FORMAT_NV12,
+        .drm_modifier = DRM_FORMAT_MOD_NONE,
+        .derive_layout = &nv12_derive_layout,
+    },
+    {
+        .description = "NV12 YUV non contiguous",
+        .v4l2_format = V4L2_PIX_FMT_NV12M,
+        .drm_format = DRM_FORMAT_NV12,
+        .drm_modifier = DRM_FORMAT_MOD_NONE,
+    },
 };
 
 const unsigned int formats_count = sizeof(formats) / sizeof(formats[0]);
 
 } // namespace
 
-const video_format *video_format_find(unsigned int pixelformat)
+const video_format* video_format_find(unsigned int pixelformat)
 {
-	unsigned int i;
+    unsigned int i;
 
-	for (i = 0; i < formats_count; i++)
-		if (formats[i].v4l2_format == pixelformat)
-			return &formats[i];
+    for (i = 0; i < formats_count; i++)
+        if (formats[i].v4l2_format == pixelformat)
+            return &formats[i];
 
-	return NULL;
+    return NULL;
 }

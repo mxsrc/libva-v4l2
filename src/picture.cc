@@ -55,106 +55,106 @@ extern "C" {
 
 using fourcc = uint32_t;
 
-VAStatus RequestBeginPicture(VADriverContextP va_context, VAContextID context_id,
-			     VASurfaceID surface_id)
+VAStatus RequestBeginPicture(VADriverContextP va_context, VAContextID context_id, VASurfaceID surface_id)
 {
-	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
+    auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
 
-	if (!driver_data->contexts.contains(context_id)) {
-		return VA_STATUS_ERROR_INVALID_CONTEXT;
-	}
-	auto& context = *driver_data->contexts.at(context_id);
+    if (!driver_data->contexts.contains(context_id)) {
+        return VA_STATUS_ERROR_INVALID_CONTEXT;
+    }
+    auto& context = *driver_data->contexts.at(context_id);
 
-	if (!driver_data->surfaces.contains(surface_id)) {
-		return VA_STATUS_ERROR_INVALID_SURFACE;
-	}
-	auto& surface = driver_data->surfaces.at(surface_id);
+    if (!driver_data->surfaces.contains(surface_id)) {
+        return VA_STATUS_ERROR_INVALID_SURFACE;
+    }
+    auto& surface = driver_data->surfaces.at(surface_id);
 
-	if (surface.status == VASurfaceRendering)
-		RequestSyncSurface(va_context, surface_id);
+    if (surface.status == VASurfaceRendering)
+        RequestSyncSurface(va_context, surface_id);
 
-	surface.status = VASurfaceRendering;
-	context.render_surface_id = surface_id;
+    surface.status = VASurfaceRendering;
+    context.render_surface_id = surface_id;
 
-	return VA_STATUS_SUCCESS;
+    return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestRenderPicture(VADriverContextP va_context, VAContextID context_id,
-			      VABufferID *buffers_ids, int buffers_count)
+VAStatus RequestRenderPicture(
+    VADriverContextP va_context, VAContextID context_id, VABufferID* buffers_ids, int buffers_count)
 {
-	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
-	int rc;
-	int i;
+    auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
+    int rc;
+    int i;
 
-	if (!driver_data->contexts.contains(context_id)) {
-		return VA_STATUS_ERROR_INVALID_CONTEXT;
-	}
-	const auto& context = *driver_data->contexts.at(context_id);
+    if (!driver_data->contexts.contains(context_id)) {
+        return VA_STATUS_ERROR_INVALID_CONTEXT;
+    }
+    const auto& context = *driver_data->contexts.at(context_id);
 
-	if (!driver_data->surfaces.contains(context.render_surface_id)) {
-		return VA_STATUS_ERROR_INVALID_SURFACE;
-	}
-	for (i = 0; i < buffers_count; i++) {
-		if (!driver_data->buffers.contains(buffers_ids[i])) {
-			return VA_STATUS_ERROR_INVALID_BUFFER;
-		}
+    if (!driver_data->surfaces.contains(context.render_surface_id)) {
+        return VA_STATUS_ERROR_INVALID_SURFACE;
+    }
+    for (i = 0; i < buffers_count; i++) {
+        if (!driver_data->buffers.contains(buffers_ids[i])) {
+            return VA_STATUS_ERROR_INVALID_BUFFER;
+        }
 
-		rc = context.store_buffer(driver_data->buffers.at(buffers_ids[i]));
-		if (rc != VA_STATUS_SUCCESS)
-			return rc;
-	}
+        rc = context.store_buffer(driver_data->buffers.at(buffers_ids[i]));
+        if (rc != VA_STATUS_SUCCESS)
+            return rc;
+    }
 
-	return VA_STATUS_SUCCESS;
+    return VA_STATUS_SUCCESS;
 }
 
 VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id)
 {
-	auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
-	int request_fd;
-	VAStatus status;
+    auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
+    int request_fd;
+    VAStatus status;
 
-	if (!driver_data->video_format)
-		return VA_STATUS_ERROR_OPERATION_FAILED;
+    if (!driver_data->video_format)
+        return VA_STATUS_ERROR_OPERATION_FAILED;
 
-	if (!driver_data->contexts.contains(context_id)) {
-		return VA_STATUS_ERROR_INVALID_CONTEXT;
-	}
-	auto& context = *driver_data->contexts.at(context_id);
-	auto& surface = driver_data->surfaces.at(context.render_surface_id);
+    if (!driver_data->contexts.contains(context_id)) {
+        return VA_STATUS_ERROR_INVALID_CONTEXT;
+    }
+    auto& context = *driver_data->contexts.at(context_id);
+    auto& surface = driver_data->surfaces.at(context.render_surface_id);
 
-	gettimeofday(&surface.timestamp, NULL);
+    gettimeofday(&surface.timestamp, NULL);
 
-	request_fd = surface.request_fd;
-	if (driver_data->device.media_fd >= 0) {
-		if (request_fd < 0) {
-			request_fd = media_request_alloc(driver_data->device.media_fd);
-			if (request_fd < 0)
-				return VA_STATUS_ERROR_OPERATION_FAILED;
+    request_fd = surface.request_fd;
+    if (driver_data->device.media_fd >= 0) {
+        if (request_fd < 0) {
+            request_fd = media_request_alloc(driver_data->device.media_fd);
+            if (request_fd < 0)
+                return VA_STATUS_ERROR_OPERATION_FAILED;
 
-			surface.request_fd = request_fd;
-		}
+            surface.request_fd = request_fd;
+        }
 
-		status = context.set_controls();
-		if (status != VA_STATUS_SUCCESS)
-			return status;
-	}
+        status = context.set_controls();
+        if (status != VA_STATUS_SUCCESS)
+            return status;
+    }
 
-	try {
-		driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index).queue();
-		driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.source_index).queue(request_fd, &surface.timestamp, surface.source_size_used);
-	} catch (std::system_error& e) {
-		error_log(va_context, "Unable to queue buffer: %s\n", e.what());
-		return VA_STATUS_ERROR_OPERATION_FAILED;
-	}
+    try {
+        driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index).queue();
+        driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.source_index)
+            .queue(request_fd, &surface.timestamp, surface.source_size_used);
+    } catch (std::system_error& e) {
+        error_log(va_context, "Unable to queue buffer: %s\n", e.what());
+        return VA_STATUS_ERROR_OPERATION_FAILED;
+    }
 
-	surface.source_size_used = 0;
+    surface.source_size_used = 0;
 
-	status = RequestSyncSurface(va_context, context.render_surface_id);
-	if (status != VA_STATUS_SUCCESS)
-		return status;
+    status = RequestSyncSurface(va_context, context.render_surface_id);
+    if (status != VA_STATUS_SUCCESS)
+        return status;
 
-	context.render_surface_id = VA_INVALID_ID;
-	memset(&surface.params, 0, sizeof(surface.params));
+    context.render_surface_id = VA_INVALID_ID;
+    memset(&surface.params, 0, sizeof(surface.params));
 
-	return VA_STATUS_SUCCESS;
+    return VA_STATUS_SUCCESS;
 }

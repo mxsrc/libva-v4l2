@@ -35,32 +35,24 @@ extern "C" {
 }
 
 struct Buffer {
-	Buffer(VABufferType type, unsigned count, unsigned size, VASurfaceID derived_surface_id);
+    Buffer(VABufferType type, unsigned count, unsigned size, VASurfaceID derived_surface_id);
 
-	VABufferType type;
-	unsigned initial_count;
-	unsigned count;
-	std::unique_ptr<uint8_t> data;
-	unsigned int size;
-	VASurfaceID derived_surface_id;
-	VABufferInfo info;
+    VABufferType type;
+    unsigned initial_count;
+    unsigned count;
+    std::unique_ptr<uint8_t> data;
+    unsigned int size;
+    VASurfaceID derived_surface_id;
+    VABufferInfo info;
 };
 
-VAStatus RequestCreateBuffer(VADriverContextP context, VAContextID context_id,
-			     VABufferType type, unsigned int size,
-			     unsigned int count, void *data,
-			     VABufferID *buffer_id);
+VAStatus RequestCreateBuffer(VADriverContextP context, VAContextID context_id, VABufferType type, unsigned int size,
+    unsigned int count, void* data, VABufferID* buffer_id);
 VAStatus RequestDestroyBuffer(VADriverContextP context, VABufferID buffer_id);
-VAStatus RequestMapBuffer(VADriverContextP context, VABufferID buffer_id,
-			  void **data_map);
+VAStatus RequestMapBuffer(VADriverContextP context, VABufferID buffer_id, void** data_map);
 VAStatus RequestUnmapBuffer(VADriverContextP context, VABufferID buffer_id);
-VAStatus RequestBufferSetNumElements(VADriverContextP context,
-				     VABufferID buffer_id, unsigned int count);
-VAStatus RequestBufferInfo(VADriverContextP context, VABufferID buffer_id,
-			   VABufferType *type, unsigned int *size,
-			   unsigned int *count);
-VAStatus RequestAcquireBufferHandle(VADriverContextP context,
-				    VABufferID buffer_id,
-				    VABufferInfo *buffer_info);
-VAStatus RequestReleaseBufferHandle(VADriverContextP context,
-	VABufferID buffer_id);
+VAStatus RequestBufferSetNumElements(VADriverContextP context, VABufferID buffer_id, unsigned int count);
+VAStatus RequestBufferInfo(
+    VADriverContextP context, VABufferID buffer_id, VABufferType* type, unsigned int* size, unsigned int* count);
+VAStatus RequestAcquireBufferHandle(VADriverContextP context, VABufferID buffer_id, VABufferInfo* buffer_info);
+VAStatus RequestReleaseBufferHandle(VADriverContextP context, VABufferID buffer_id);

@@ -27,24 +27,24 @@
 #include <vector>
 
 extern "C" {
-#include <stdint.h>
 #include <linux/videodev2.h>
+#include <stdint.h>
 }
 
 struct LogicalPlane {
-	unsigned physical_plane_index;
-	unsigned size;
-	unsigned pitch;
-	unsigned offset;
+    unsigned physical_plane_index;
+    unsigned size;
+    unsigned pitch;
+    unsigned offset;
 };
 using BufferLayout = std::vector<LogicalPlane>;
 
 struct video_format {
-	const char *description;
-	unsigned v4l2_format;
-	unsigned drm_format;
-	uint64_t drm_modifier;
-	BufferLayout (*derive_layout)(unsigned, unsigned);
+    const char* description;
+    unsigned v4l2_format;
+    unsigned drm_format;
+    uint64_t drm_modifier;
+    BufferLayout (*derive_layout)(unsigned, unsigned);
 };
 
-const struct video_format *video_format_find(unsigned int pixelformat);
+const struct video_format* video_format_find(unsigned int pixelformat);
