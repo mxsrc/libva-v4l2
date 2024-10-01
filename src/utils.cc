@@ -32,17 +32,6 @@
 
 #include "request.h"
 
-void request_log(const char* format, ...)
-{
-    va_list arguments;
-
-    fprintf(stderr, "%s: ", V4L2_REQUEST_STR_VENDOR);
-
-    va_start(arguments, format);
-    vfprintf(stderr, format, arguments);
-    va_end(arguments);
-}
-
 void info_log(VADriverContextP ctx, const char* format, ...)
 {
     char* string;

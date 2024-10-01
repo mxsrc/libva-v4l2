@@ -40,60 +40,24 @@ extern "C" {
 int media_request_alloc(int media_fd)
 {
     int fd;
-    int rc;
-
-    rc = ioctl(media_fd, MEDIA_IOC_REQUEST_ALLOC, &fd);
-    if (rc < 0) {
-        request_log("Unable to allocate media request: %s\n", strerror(errno));
-        return -1;
-    }
-
+    errno_wrapper(ioctl, media_fd, MEDIA_IOC_REQUEST_ALLOC, &fd);
     return fd;
 }
 
-int media_request_reinit(int request_fd)
-{
-    int rc;
+void media_request_reinit(int request_fd) { errno_wrapper(ioctl, request_fd, MEDIA_REQUEST_IOC_REINIT, NULL); }
 
-    rc = ioctl(request_fd, MEDIA_REQUEST_IOC_REINIT, NULL);
-    if (rc < 0) {
-        request_log("Unable to reinit media request: %s\n", strerror(errno));
-        return -1;
-    }
+void media_request_queue(int request_fd) { errno_wrapper(ioctl, request_fd, MEDIA_REQUEST_IOC_QUEUE, NULL); }
 
-    return 0;
-}
-
-int media_request_queue(int request_fd)
-{
-    int rc;
-
-    rc = ioctl(request_fd, MEDIA_REQUEST_IOC_QUEUE, NULL);
-    if (rc < 0) {
-        request_log("Unable to queue media request: %s\n", strerror(errno));
-        return -1;
-    }
-
-    return 0;
-}
-
-int media_request_wait_completion(int request_fd)
+void media_request_wait_completion(int request_fd)
 {
     timeval tv = { 0, 300000 };
     fd_set except_fds;
-    int rc;
 
     FD_ZERO(&except_fds);
     FD_SET(request_fd, &except_fds);
 
-    rc = select(request_fd + 1, NULL, NULL, &except_fds, &tv);
+    int rc = errno_wrapper(select, request_fd + 1, nullptr, nullptr, &except_fds, &tv);
     if (rc == 0) {
-        request_log("Timeout when waiting for media request\n");
-        return -1;
-    } else if (rc < 0) {
-        request_log("Unable to select media request: %s\n", strerror(errno));
-        return -1;
+        throw std::runtime_error("Timeout when waiting for media request\n");
     }
-
-    return 0;
 }

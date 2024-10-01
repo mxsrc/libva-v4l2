@@ -194,7 +194,6 @@ VAStatus VP9Context::store_buffer(const Buffer& buffer) const
         return VA_STATUS_SUCCESS;
 
     default:
-        request_log("Unsupported buffer type: %d\n", buffer.type);
         return VA_STATUS_ERROR_UNSUPPORTED_BUFFERTYPE;
     }
 }

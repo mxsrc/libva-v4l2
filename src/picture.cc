@@ -110,7 +110,6 @@ VAStatus RequestRenderPicture(
 VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id)
 {
     auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
-    int request_fd;
     VAStatus status;
 
     if (!driver_data->video_format)
@@ -124,14 +123,9 @@ VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id)
 
     gettimeofday(&surface.timestamp, NULL);
 
-    request_fd = surface.request_fd;
     if (driver_data->device.media_fd >= 0) {
-        if (request_fd < 0) {
-            request_fd = media_request_alloc(driver_data->device.media_fd);
-            if (request_fd < 0)
-                return VA_STATUS_ERROR_OPERATION_FAILED;
-
-            surface.request_fd = request_fd;
+        if (surface.request_fd < 0) {
+            surface.request_fd = media_request_alloc(driver_data->device.media_fd);
         }
 
         status = context.set_controls();
@@ -142,7 +136,7 @@ VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id)
     try {
         driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index).queue();
         driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.source_index)
-            .queue(request_fd, &surface.timestamp, surface.source_size_used);
+            .queue(surface.request_fd, &surface.timestamp, surface.source_size_used);
     } catch (std::system_error& e) {
         error_log(va_context, "Unable to queue buffer: %s\n", e.what());
         return VA_STATUS_ERROR_OPERATION_FAILED;

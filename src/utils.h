@@ -44,11 +44,6 @@ template <typename F, typename... Args> std::invoke_result_t<F, Args...> errno_w
 }
 
 /**
- * libVA-independent error log.
- */
-void request_log(const char* format, ...);
-
-/**
  * Utility function to access the libVA info callback.
  */
 void info_log(VADriverContextP ctx, const char* format, ...) __attribute__((format(printf, 2, 3)));
