@@ -1,32 +1,38 @@
-# v4l2 libVA Backend
+# V4L2 libVA Backend
+This libVA backend is designed to work with the [Video for Linux Memory-To-Memory API](https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/dev-mem2mem.html) that is used by a number of video codecs drivers, in particular SoCs found on SBCs.
+After an initial implementation by Bootlin, development on this backend ceased before the Stateless V4L2-M2M API it uses became stable.
+Development has since been picked up again, see [#Status] for details.
 
-## About
+## Building
+The project is built using meson:
+```
+meson setup build
+meson compile -Cbuild
+```
 
-This libVA backend is designed to work with the Linux Video4Linux2 Request API that is used by a number of video codecs drivers, including the Video Engine found in most Allwinner SoCs.
+## Usage
+Applications using the backend can be launched by adding the build directory to the libVA driver path, and, optionally, setting the driver name to load:
+```
+LIBVA_DRIVERS_PATH=<project dir>/build/src LIBVA_DRIVER_NAME=v4l2 vainfo
+```
+
+Alternatively, the library can be installed to the default driver path:
+```
+meson install -Cbuild
+```
+
+The driver probes the system for appropriate V4L2 devices, chosing the first one if multiple are present.
+This can be overriden by explicitly setting the devices to use:
+```
+export LIBVA_V4L2_VIDEO_PATH=/dev/videoX LIBVA_V4L2_MEDIA_PATH=/dev/mediaY
+```
+
+Note that some applications need further configuration to load the library.
+In particular, gstreamer based applications have a whitelist for supported drivers, that can be disabled manually (`GST_VAAPI_ALL_DRIVERS=1`).
 
 ## Status
-
-The v4l2 libVA backend  currently is not in a usable state.
-Development has ceased in 2019, before the V4L2-m2m interface has been stable.
-Work on reviving the project is in progress. 
-
-## Instructions
-
-### V4L2
-Your system's V4L2 capabilities can be interrogated with `v4l2-ctl`:
-```
-v4l2-ctl -d $LIBVA_V4L2_VIDEO_PATH {-l,--list-formats{,-out}}
-```
-In particular, your device needs to offer the "Video Memory-to-Memory Multiplanar", "Streaming", and "Device" capabilities.
-
-### Environment Variables
-Specify which V4L2 device is to be used:
-- `LIBVA_V4L2_VIDEO_PATH=/dev/videoX`
-- `LIBVA_V4L2_MEDIA_PATH=/dev/mediaY`
-
-libVA can be instructed to load drivers from additional paths, and to fix the used driver if multiple are present:
-- `LIBVA_DRIVERS_PATH=<project dir>/build/src`
-- `LIBVA_DRIVER_NAME=v4l2`
-
-When using gstreamer, opt-in to non-whitelisted drivers to be used:
-- `GST_VAAPI_ALL_DRIVERS=1`
+The project currently supports these codecs: MPEG2, H264, VP8, (and VP9).
+VP9 support depends on a part of gstreamer that is not likely to be present in the version shipped by your distribution.
+The implementation has been tested using Intel's [vaapi-fits](https://github.com/intel/vaapi-fits) on an RK3399, which is supported by the `hantro` and `rockchip` drivers.
+Feedback on results for other platforms are very welcome, do not expect the library to simply work smoothly though.
+Future development on this project aims to improve stability, add supported codecs, and support the stateful V4L2-M2M API.
