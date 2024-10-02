@@ -47,13 +47,13 @@ struct Buffer {
     VABufferInfo info;
 };
 
-VAStatus RequestCreateBuffer(VADriverContextP context, VAContextID context_id, VABufferType type, unsigned int size,
+VAStatus createBuffer(VADriverContextP context, VAContextID context_id, VABufferType type, unsigned int size,
     unsigned int count, void* data, VABufferID* buffer_id);
-VAStatus RequestDestroyBuffer(VADriverContextP context, VABufferID buffer_id);
-VAStatus RequestMapBuffer(VADriverContextP context, VABufferID buffer_id, void** data_map);
-VAStatus RequestUnmapBuffer(VADriverContextP context, VABufferID buffer_id);
-VAStatus RequestBufferSetNumElements(VADriverContextP context, VABufferID buffer_id, unsigned int count);
-VAStatus RequestBufferInfo(
+VAStatus destroyBuffer(VADriverContextP context, VABufferID buffer_id);
+VAStatus mapBuffer(VADriverContextP context, VABufferID buffer_id, void** data_map);
+VAStatus unmapBuffer(VADriverContextP context, VABufferID buffer_id);
+VAStatus bufferSetNumElements(VADriverContextP context, VABufferID buffer_id, unsigned int count);
+VAStatus bufferInfo(
     VADriverContextP context, VABufferID buffer_id, VABufferType* type, unsigned int* size, unsigned int* count);
-VAStatus RequestAcquireBufferHandle(VADriverContextP context, VABufferID buffer_id, VABufferInfo* buffer_info);
-VAStatus RequestReleaseBufferHandle(VADriverContextP context, VABufferID buffer_id);
+VAStatus acquireBufferHandle(VADriverContextP context, VABufferID buffer_id, VABufferInfo* buffer_info);
+VAStatus releaseBufferHandle(VADriverContextP context, VABufferID buffer_id);

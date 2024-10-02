@@ -30,7 +30,7 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "request.h"
+#include "driver.h"
 
 void info_log(VADriverContextP ctx, const char* format, ...)
 {

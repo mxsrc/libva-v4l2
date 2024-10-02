@@ -31,13 +31,13 @@ extern "C" {
 #include <va/va_backend.h>
 }
 
-VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat* format, int width, int height, VAImage* image);
-VAStatus RequestDestroyImage(VADriverContextP context, VAImageID image_id);
-VAStatus RequestDeriveImage(VADriverContextP context, VASurfaceID surface_id, VAImage* image);
-VAStatus RequestQueryImageFormats(VADriverContextP context, VAImageFormat* formats, int* formats_count);
-VAStatus RequestSetImagePalette(VADriverContextP context, VAImageID image_id, unsigned char* palette);
-VAStatus RequestGetImage(VADriverContextP context, VASurfaceID surface_id, int x, int y, unsigned int width,
+VAStatus createImage(VADriverContextP context, VAImageFormat* format, int width, int height, VAImage* image);
+VAStatus destroyImage(VADriverContextP context, VAImageID image_id);
+VAStatus deriveImage(VADriverContextP context, VASurfaceID surface_id, VAImage* image);
+VAStatus queryImageFormats(VADriverContextP context, VAImageFormat* formats, int* formats_count);
+VAStatus setImagePalette(VADriverContextP context, VAImageID image_id, unsigned char* palette);
+VAStatus getImage(VADriverContextP context, VASurfaceID surface_id, int x, int y, unsigned int width,
     unsigned int height, VAImageID image_id);
-VAStatus RequestPutImage(VADriverContextP context, VASurfaceID surface_id, VAImageID image, int src_x, int src_y,
+VAStatus putImage(VADriverContextP context, VASurfaceID surface_id, VAImageID image, int src_x, int src_y,
     unsigned int src_width, unsigned int src_height, int dst_x, int dst_y, unsigned int dst_width,
     unsigned int dst_height);

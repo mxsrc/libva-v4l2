@@ -21,7 +21,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 sources = [
-	'request.cc',
+	'driver.cc',
 	'config.cc',
 	'surface.cc',
 	'context.cc',
@@ -39,7 +39,7 @@ sources = [
 ]
 
 headers = [
-	'request.h',
+	'driver.h',
 	'config.h',
 	'surface.h',
 	'context.h',
@@ -70,7 +70,7 @@ if libgstcodecparsers_dep.found() and libgstcodecs_dep.found()
 	cpp_args += '-DENABLE_VP9'
 endif
 
-v4l2_request_drv_video = shared_module('v4l2_request_drv_video',
+v4l2_drv_video = shared_module('v4l2_drv_video',
 	name_prefix: '',
 	install: true,
 	install_dir: join_paths(get_option('libdir'), 'dri'),

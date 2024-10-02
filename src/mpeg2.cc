@@ -39,7 +39,7 @@ extern "C" {
 
 #include "buffer.h"
 #include "context.h"
-#include "request.h"
+#include "driver.h"
 #include "surface.h"
 #include "v4l2.h"
 

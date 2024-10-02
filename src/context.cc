@@ -43,9 +43,9 @@ extern "C" {
 }
 
 #include "config.h"
+#include "driver.h"
 #include "h264.h"
 #include "mpeg2.h"
-#include "request.h"
 #include "surface.h"
 #include "utils.h"
 #include "v4l2.h"
@@ -54,7 +54,7 @@ extern "C" {
 #include "vp9.h"
 #endif
 
-Context::Context(RequestData* driver_data, VAConfigID config_id, int picture_width, int picture_height,
+Context::Context(DriverData* driver_data, VAConfigID config_id, int picture_width, int picture_height,
     std::span<VASurfaceID> surface_ids)
     : config_id(config_id)
     , render_surface_id(VA_INVALID_ID)
@@ -63,7 +63,7 @@ Context::Context(RequestData* driver_data, VAConfigID config_id, int picture_wid
     , driver_data(driver_data)
 {
     // Now that the output format is set, we can set the capture format and allocate the surfaces.
-    RequestCreateSurfacesDeferred(driver_data, surface_ids);
+    createSurfacesDeferred(driver_data, surface_ids);
 
     driver_data->device.request_buffers(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface_ids.size());
 
@@ -74,10 +74,10 @@ Context::Context(RequestData* driver_data, VAConfigID config_id, int picture_wid
     driver_data->device.set_streaming(true);
 }
 
-VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id, int picture_width, int picture_height,
+VAStatus createContext(VADriverContextP va_context, VAConfigID config_id, int picture_width, int picture_height,
     int flags, VASurfaceID* surface_ids, int surfaces_count, VAContextID* context_id)
 {
-    auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
+    auto driver_data = static_cast<DriverData*>(va_context->pDriverData);
 
     if (!driver_data->configs.contains(config_id)) {
         return VA_STATUS_ERROR_INVALID_CONFIG;
@@ -146,9 +146,9 @@ VAStatus RequestCreateContext(VADriverContextP va_context, VAConfigID config_id,
     return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestDestroyContext(VADriverContextP va_context, VAContextID context_id)
+VAStatus destroyContext(VADriverContextP va_context, VAContextID context_id)
 {
-    auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
+    auto driver_data = static_cast<DriverData*>(va_context->pDriverData);
 
     if (!driver_data->video_format) {
         return VA_STATUS_ERROR_OPERATION_FAILED;

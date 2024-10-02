@@ -42,10 +42,10 @@ extern "C" {
 #include "buffer.h"
 #include "config.h"
 #include "context.h"
+#include "driver.h"
 #include "h264.h"
 #include "media.h"
 #include "mpeg2.h"
-#include "request.h"
 #include "surface.h"
 #include "utils.h"
 #include "v4l2.h"
@@ -56,9 +56,9 @@ extern "C" {
 
 using fourcc = uint32_t;
 
-VAStatus RequestBeginPicture(VADriverContextP va_context, VAContextID context_id, VASurfaceID surface_id)
+VAStatus beginPicture(VADriverContextP va_context, VAContextID context_id, VASurfaceID surface_id)
 {
-    auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
+    auto driver_data = static_cast<DriverData*>(va_context->pDriverData);
 
     if (!driver_data->contexts.contains(context_id)) {
         return VA_STATUS_ERROR_INVALID_CONTEXT;
@@ -71,7 +71,7 @@ VAStatus RequestBeginPicture(VADriverContextP va_context, VAContextID context_id
     auto& surface = driver_data->surfaces.at(surface_id);
 
     if (surface.status == VASurfaceRendering)
-        RequestSyncSurface(va_context, surface_id);
+        syncSurface(va_context, surface_id);
 
     surface.status = VASurfaceRendering;
     context.render_surface_id = surface_id;
@@ -79,10 +79,9 @@ VAStatus RequestBeginPicture(VADriverContextP va_context, VAContextID context_id
     return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestRenderPicture(
-    VADriverContextP va_context, VAContextID context_id, VABufferID* buffers_ids, int buffers_count)
+VAStatus renderPicture(VADriverContextP va_context, VAContextID context_id, VABufferID* buffers_ids, int buffers_count)
 {
-    auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
+    auto driver_data = static_cast<DriverData*>(va_context->pDriverData);
     int rc;
     int i;
 
@@ -107,9 +106,9 @@ VAStatus RequestRenderPicture(
     return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id)
+VAStatus endPicture(VADriverContextP va_context, VAContextID context_id)
 {
-    auto driver_data = static_cast<RequestData*>(va_context->pDriverData);
+    auto driver_data = static_cast<DriverData*>(va_context->pDriverData);
     VAStatus status;
 
     if (!driver_data->video_format)
@@ -144,7 +143,7 @@ VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id)
 
     surface.source_size_used = 0;
 
-    status = RequestSyncSurface(va_context, context.render_surface_id);
+    status = syncSurface(va_context, context.render_surface_id);
     if (status != VA_STATUS_SUCCESS)
         return status;
 

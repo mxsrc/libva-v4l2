@@ -36,7 +36,7 @@ extern "C" {
 }
 
 #include "buffer.h"
-#include "request.h"
+#include "driver.h"
 #include "surface.h"
 #include "utils.h"
 #include "v4l2.h"
@@ -44,7 +44,7 @@ extern "C" {
 
 namespace {
 
-VAStatus copy_surface_to_image(RequestData* driver_data, const Surface& surface, VAImage* image)
+VAStatus copy_surface_to_image(DriverData* driver_data, const Surface& surface, VAImage* image)
 {
     unsigned int i;
 
@@ -68,9 +68,9 @@ VAStatus copy_surface_to_image(RequestData* driver_data, const Surface& surface,
 
 } // namespace
 
-VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat* format, int width, int height, VAImage* image)
+VAStatus createImage(VADriverContextP context, VAImageFormat* format, int width, int height, VAImage* image)
 {
-    auto driver_data = static_cast<RequestData*>(context->pDriverData);
+    auto driver_data = static_cast<DriverData*>(context->pDriverData);
     unsigned int destination_sizes[VIDEO_MAX_PLANES];
     VABufferID buffer_id;
     VAStatus status;
@@ -107,7 +107,7 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat* format, int
         image->offsets[i] = i > 0 ? destination_sizes[i - 1] : 0;
     }
 
-    status = RequestCreateBuffer(context, 0, VAImageBufferType, image->data_size, 1, NULL, &buffer_id);
+    status = createBuffer(context, 0, VAImageBufferType, image->data_size, 1, NULL, &buffer_id);
     if (status != VA_STATUS_SUCCESS) {
         return status;
     }
@@ -123,16 +123,16 @@ VAStatus RequestCreateImage(VADriverContextP context, VAImageFormat* format, int
     return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestDestroyImage(VADriverContextP context, VAImageID image_id)
+VAStatus destroyImage(VADriverContextP context, VAImageID image_id)
 {
-    auto driver_data = static_cast<RequestData*>(context->pDriverData);
+    auto driver_data = static_cast<DriverData*>(context->pDriverData);
 
     if (!driver_data->images.contains(image_id)) {
         return VA_STATUS_ERROR_INVALID_IMAGE;
     }
     auto& image = driver_data->images.at(image_id);
 
-    VAStatus status = RequestDestroyBuffer(context, image.buf);
+    VAStatus status = destroyBuffer(context, image.buf);
     if (status != VA_STATUS_SUCCESS) {
         return status;
     }
@@ -145,9 +145,9 @@ VAStatus RequestDestroyImage(VADriverContextP context, VAImageID image_id)
     return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestDeriveImage(VADriverContextP context, VASurfaceID surface_id, VAImage* image)
+VAStatus deriveImage(VADriverContextP context, VASurfaceID surface_id, VAImage* image)
 {
-    auto driver_data = static_cast<RequestData*>(context->pDriverData);
+    auto driver_data = static_cast<DriverData*>(context->pDriverData);
     VAImageFormat format;
     VAStatus status;
 
@@ -157,14 +157,14 @@ VAStatus RequestDeriveImage(VADriverContextP context, VASurfaceID surface_id, VA
     auto& surface = driver_data->surfaces.at(surface_id);
 
     if (surface.status == VASurfaceRendering) {
-        status = RequestSyncSurface(context, surface_id);
+        status = syncSurface(context, surface_id);
         if (status != VA_STATUS_SUCCESS)
             return status;
     }
 
     format.fourcc = VA_FOURCC_NV12;
 
-    status = RequestCreateImage(context, &format, surface.width, surface.height, image);
+    status = createImage(context, &format, surface.width, surface.height, image);
     if (status != VA_STATUS_SUCCESS)
         return status;
 
@@ -182,7 +182,7 @@ VAStatus RequestDeriveImage(VADriverContextP context, VASurfaceID surface_id, VA
     return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestQueryImageFormats(VADriverContextP context, VAImageFormat* formats, int* formats_count)
+VAStatus queryImageFormats(VADriverContextP context, VAImageFormat* formats, int* formats_count)
 {
     formats[0].fourcc = VA_FOURCC_NV12;
     *formats_count = 1;
@@ -190,15 +190,15 @@ VAStatus RequestQueryImageFormats(VADriverContextP context, VAImageFormat* forma
     return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestSetImagePalette(VADriverContextP context, VAImageID image_id, unsigned char* palette)
+VAStatus setImagePalette(VADriverContextP context, VAImageID image_id, unsigned char* palette)
 {
     return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
-VAStatus RequestGetImage(VADriverContextP context, VASurfaceID surface_id, int x, int y, unsigned int width,
+VAStatus getImage(VADriverContextP context, VASurfaceID surface_id, int x, int y, unsigned int width,
     unsigned int height, VAImageID image_id)
 {
-    auto driver_data = static_cast<RequestData*>(context->pDriverData);
+    auto driver_data = static_cast<DriverData*>(context->pDriverData);
 
     if (!driver_data->surfaces.contains(surface_id)) {
         return VA_STATUS_ERROR_INVALID_SURFACE;
@@ -215,7 +215,7 @@ VAStatus RequestGetImage(VADriverContextP context, VASurfaceID surface_id, int x
     return copy_surface_to_image(driver_data, driver_data->surfaces.at(surface_id), &image);
 }
 
-VAStatus RequestPutImage(VADriverContextP context, VASurfaceID surface_id, VAImageID image, int src_x, int src_y,
+VAStatus putImage(VADriverContextP context, VASurfaceID surface_id, VAImageID image, int src_x, int src_y,
     unsigned int src_width, unsigned int src_height, int dst_x, int dst_y, unsigned int dst_width,
     unsigned int dst_height)
 {

@@ -35,7 +35,7 @@ def codec_maxsize(description):
 
 
 def decodable():
-    device = os.getenv('LIBVA_V4L2_REQUEST_VIDEO_PATH')
+    device = os.getenv('LIBVA_V4L2_VIDEO_PATH')
     cmd = f'v4l2-ctl -d {device} --list-formats-out-ext'
     result = subprocess.check_output(cmd.split(' '), text=True)
     max_resolutions = [

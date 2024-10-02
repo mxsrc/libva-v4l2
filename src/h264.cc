@@ -43,7 +43,7 @@ extern "C" {
 
 #include "buffer.h"
 #include "config.h"
-#include "request.h"
+#include "driver.h"
 #include "surface.h"
 #include "v4l2.h"
 
@@ -226,7 +226,7 @@ void dpb_update(H264Context& context, VAPictureParameterBufferH264* parameters)
     }
 }
 
-void h264_fill_dpb(RequestData* data, H264Context& context, v4l2_ctrl_h264_decode_params* decode)
+void h264_fill_dpb(DriverData* data, H264Context& context, v4l2_ctrl_h264_decode_params* decode)
 {
     int i;
 
@@ -260,7 +260,7 @@ void h264_fill_dpb(RequestData* data, H264Context& context, v4l2_ctrl_h264_decod
     }
 }
 
-void h264_va_picture_to_v4l2(RequestData* driver_data, H264Context& context, VAPictureParameterBufferH264* VAPicture,
+void h264_va_picture_to_v4l2(DriverData* driver_data, H264Context& context, VAPictureParameterBufferH264* VAPicture,
     v4l2_ctrl_h264_decode_params* decode, v4l2_ctrl_h264_pps* pps, v4l2_ctrl_h264_sps* sps)
 {
     h264_fill_dpb(driver_data, context, decode);
@@ -319,7 +319,7 @@ void h264_va_picture_to_v4l2(RequestData* driver_data, H264Context& context, VAP
         sps->flags |= V4L2_H264_SPS_FLAG_DELTA_PIC_ORDER_ALWAYS_ZERO;
 }
 
-void h264_va_matrix_to_v4l2(RequestData* driver_data, const H264Context& context, VAIQMatrixBufferH264* VAMatrix,
+void h264_va_matrix_to_v4l2(DriverData* driver_data, const H264Context& context, VAIQMatrixBufferH264* VAMatrix,
     v4l2_ctrl_h264_scaling_matrix* v4l2_matrix)
 {
     memcpy(v4l2_matrix->scaling_list_4x4, &VAMatrix->ScalingList4x4, sizeof(VAMatrix->ScalingList4x4));
@@ -351,7 +351,7 @@ void h264_copy_pred_table(v4l2_h264_weight_factors* factors, unsigned int num_re
     }
 }
 
-void h264_va_slice_to_v4l2(RequestData* driver_data, H264Context& context, VASliceParameterBufferH264* VASlice,
+void h264_va_slice_to_v4l2(DriverData* driver_data, H264Context& context, VASliceParameterBufferH264* VASlice,
     VAPictureParameterBufferH264* VAPicture, v4l2_ctrl_h264_slice_params* slice)
 {
     slice->header_bit_size = VASlice->slice_data_bit_offset;

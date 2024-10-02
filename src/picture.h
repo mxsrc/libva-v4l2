@@ -31,7 +31,6 @@ extern "C" {
 #include <va/va_backend.h>
 }
 
-VAStatus RequestBeginPicture(VADriverContextP va_context, VAContextID context_id, VASurfaceID surface_id);
-VAStatus RequestRenderPicture(
-    VADriverContextP va_context, VAContextID context_id, VABufferID* buffers, int buffers_count);
-VAStatus RequestEndPicture(VADriverContextP va_context, VAContextID context_id);
+VAStatus beginPicture(VADriverContextP va_context, VAContextID context_id, VASurfaceID surface_id);
+VAStatus renderPicture(VADriverContextP va_context, VAContextID context_id, VABufferID* buffers, int buffers_count);
+VAStatus endPicture(VADriverContextP va_context, VAContextID context_id);

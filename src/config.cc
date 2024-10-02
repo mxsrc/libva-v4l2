@@ -42,7 +42,7 @@ extern "C" {
 #include <va/va.h>
 }
 
-#include "request.h"
+#include "driver.h"
 #include "utils.h"
 #include "v4l2.h"
 
@@ -60,10 +60,10 @@ std::vector<VAProfile> supported_profiles(const V4L2M2MDevice& device)
 
 } // namespace
 
-VAStatus RequestCreateConfig(VADriverContextP context, VAProfile profile, VAEntrypoint entrypoint,
-    VAConfigAttrib* attributes, int attributes_count, VAConfigID* config_id)
+VAStatus createConfig(VADriverContextP context, VAProfile profile, VAEntrypoint entrypoint, VAConfigAttrib* attributes,
+    int attributes_count, VAConfigID* config_id)
 {
-    auto driver_data = static_cast<RequestData*>(context->pDriverData);
+    auto driver_data = static_cast<DriverData*>(context->pDriverData);
     int i, index;
 
     const auto& supported = supported_profiles(driver_data->device);
@@ -100,9 +100,9 @@ VAStatus RequestCreateConfig(VADriverContextP context, VAProfile profile, VAEntr
     return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestDestroyConfig(VADriverContextP context, VAConfigID config_id)
+VAStatus destroyConfig(VADriverContextP context, VAConfigID config_id)
 {
-    auto driver_data = static_cast<RequestData*>(context->pDriverData);
+    auto driver_data = static_cast<DriverData*>(context->pDriverData);
 
     std::lock_guard<std::mutex> guard(driver_data->mutex);
     if (!driver_data->configs.erase(config_id)) {
@@ -112,11 +112,11 @@ VAStatus RequestDestroyConfig(VADriverContextP context, VAConfigID config_id)
     return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestQueryConfigProfiles(VADriverContextP context, VAProfile* profiles_, int* profile_count)
+VAStatus queryConfigProfiles(VADriverContextP context, VAProfile* profiles_, int* profile_count)
 {
-    auto driver_data = static_cast<RequestData*>(context->pDriverData);
+    auto driver_data = static_cast<DriverData*>(context->pDriverData);
 
-    std::span<VAProfile> profiles(profiles_, V4L2_REQUEST_MAX_PROFILES);
+    std::span<VAProfile> profiles(profiles_, V4L2_MAX_PROFILES);
     const auto& supported = supported_profiles(driver_data->device);
 
     *profile_count = std::min(profiles.size(), supported.size());
@@ -126,10 +126,10 @@ VAStatus RequestQueryConfigProfiles(VADriverContextP context, VAProfile* profile
     return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestQueryConfigEntrypoints(
+VAStatus queryConfigEntrypoints(
     VADriverContextP context, VAProfile profile, VAEntrypoint* entrypoints, int* entrypoints_count)
 {
-    auto driver_data = static_cast<RequestData*>(context->pDriverData);
+    auto driver_data = static_cast<DriverData*>(context->pDriverData);
     const auto& supported = supported_profiles(driver_data->device);
     if (std::ranges::find(supported, profile) != supported.end()) {
         entrypoints[0] = VAEntrypointVLD;
@@ -141,10 +141,10 @@ VAStatus RequestQueryConfigEntrypoints(
     return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestQueryConfigAttributes(VADriverContextP context, VAConfigID config_id, VAProfile* profile,
+VAStatus queryConfigAttributes(VADriverContextP context, VAConfigID config_id, VAProfile* profile,
     VAEntrypoint* entrypoint, VAConfigAttrib* attributes, int* attributes_count)
 {
-    auto driver_data = static_cast<RequestData*>(context->pDriverData);
+    auto driver_data = static_cast<DriverData*>(context->pDriverData);
 
     if (!driver_data->configs.contains(config_id)) {
         return VA_STATUS_ERROR_INVALID_CONFIG;
@@ -169,7 +169,7 @@ VAStatus RequestQueryConfigAttributes(VADriverContextP context, VAConfigID confi
     return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestGetConfigAttributes(VADriverContextP context, VAProfile profile, VAEntrypoint entrypoint,
+VAStatus getConfigAttributes(VADriverContextP context, VAProfile profile, VAEntrypoint entrypoint,
     VAConfigAttrib* attributes, int attributes_count)
 {
     for (int i = 0; i < attributes_count; i++) {
@@ -186,17 +186,17 @@ VAStatus RequestGetConfigAttributes(VADriverContextP context, VAProfile profile,
     return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestQueryDisplayAttributes(VADriverContextP context, VADisplayAttribute* attributes, int* attributes_count)
+VAStatus queryDisplayAttributes(VADriverContextP context, VADisplayAttribute* attributes, int* attributes_count)
 {
     return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
-VAStatus RequestGetDisplayAttributes(VADriverContextP context, VADisplayAttribute* attributes, int attributes_count)
+VAStatus getDisplayAttributes(VADriverContextP context, VADisplayAttribute* attributes, int attributes_count)
 {
     return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
-VAStatus RequestSetDisplayAttributes(VADriverContextP context, VADisplayAttribute* attributes, int attributes_count)
+VAStatus setDisplayAttributes(VADriverContextP context, VADisplayAttribute* attributes, int attributes_count)
 {
     return VA_STATUS_ERROR_UNIMPLEMENTED;
 }

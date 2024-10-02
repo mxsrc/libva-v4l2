@@ -36,7 +36,7 @@ extern "C" {
 
 #include "buffer.h"
 #include "context.h"
-#include "request.h"
+#include "driver.h"
 #include "surface.h"
 #include "v4l2.h"
 
@@ -124,7 +124,7 @@ v4l2_vp8_entropy_coder_state coder_state(VABoolCoderContextVPX* bool_coder_conte
     return result;
 }
 
-v4l2_ctrl_vp8_frame va_to_v4l2_frame(RequestData* data, VAPictureParameterBufferVP8* picture,
+v4l2_ctrl_vp8_frame va_to_v4l2_frame(DriverData* data, VAPictureParameterBufferVP8* picture,
     VASliceParameterBufferVP8* slice, VAIQMatrixBufferVP8* iqmatrix, VAProbabilityDataBufferVP8* probabilities)
 {
     const auto last_ref = data->surfaces.find(picture->last_ref_frame);

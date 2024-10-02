@@ -36,7 +36,7 @@ extern "C" {
 #include <va/va_dec_vp9.h>
 }
 
-#include "request.h"
+#include "driver.h"
 #include "surface.h"
 #include "utils.h"
 #include "v4l2.h"
@@ -68,7 +68,7 @@ int parse_frame_header(std::span<uint8_t> data, GstVp9FrameHeader* header)
     return 0;
 }
 
-v4l2_ctrl_vp9_frame va_to_v4l2_frame(RequestData* data, VADecPictureParameterBufferVP9* picture,
+v4l2_ctrl_vp9_frame va_to_v4l2_frame(DriverData* data, VADecPictureParameterBufferVP9* picture,
     VASliceParameterBufferVP9* slice, GstVp9FrameHeader* header)
 {
     const auto last_ref_frame = data->surfaces.find(picture->reference_frames[picture->pic_fields.bits.last_ref_frame]);

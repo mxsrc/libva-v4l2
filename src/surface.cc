@@ -46,19 +46,19 @@ extern "C" {
 #include <va/va_drmcommon.h>
 }
 
+#include "driver.h"
 #include "media.h"
-#include "request.h"
 #include "utils.h"
 #include "v4l2.h"
 #include "video.h"
 
-VAStatus RequestCreateSurfaces2(VADriverContextP context, unsigned int format, unsigned int width, unsigned int height,
+VAStatus createSurfaces2(VADriverContextP context, unsigned int format, unsigned int width, unsigned int height,
     VASurfaceID* surfaces_ids, unsigned int surfaces_count, VASurfaceAttrib* attributes, unsigned int attributes_count)
 {
     // TODO inspect attributes
     // TODO ensure dimensions match previous surfaces
 
-    auto driver_data = static_cast<RequestData*>(context->pDriverData);
+    auto driver_data = static_cast<DriverData*>(context->pDriverData);
 
     if (format != VA_RT_FORMAT_YUV420)
         return VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT;
@@ -86,7 +86,7 @@ VAStatus RequestCreateSurfaces2(VADriverContextP context, unsigned int format, u
     return VA_STATUS_SUCCESS;
 }
 
-void RequestCreateSurfacesDeferred(RequestData* driver_data, std::span<VASurfaceID> surface_ids)
+void createSurfacesDeferred(DriverData* driver_data, std::span<VASurfaceID> surface_ids)
 {
     if (surface_ids.size() < 1) {
         throw std::invalid_argument("No surfaces to be created");
@@ -122,15 +122,15 @@ void RequestCreateSurfacesDeferred(RequestData* driver_data, std::span<VASurface
     }
 }
 
-VAStatus RequestCreateSurfaces(
+VAStatus createSurfaces(
     VADriverContextP context, int width, int height, int format, int surfaces_count, VASurfaceID* surfaces_ids)
 {
-    return RequestCreateSurfaces2(context, format, width, height, surfaces_ids, surfaces_count, NULL, 0);
+    return createSurfaces2(context, format, width, height, surfaces_ids, surfaces_count, NULL, 0);
 }
 
-VAStatus RequestDestroySurfaces(VADriverContextP context, VASurfaceID* surfaces_ids, int surfaces_count)
+VAStatus destroySurfaces(VADriverContextP context, VASurfaceID* surfaces_ids, int surfaces_count)
 {
-    auto driver_data = static_cast<RequestData*>(context->pDriverData);
+    auto driver_data = static_cast<DriverData*>(context->pDriverData);
 
     std::lock_guard<std::mutex> guard(driver_data->mutex);
     for (int i = 0; i < surfaces_count; i++) {
@@ -148,9 +148,9 @@ VAStatus RequestDestroySurfaces(VADriverContextP context, VASurfaceID* surfaces_
     return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestSyncSurface(VADriverContextP context, VASurfaceID surface_id)
+VAStatus syncSurface(VADriverContextP context, VASurfaceID surface_id)
 {
-    auto driver_data = static_cast<RequestData*>(context->pDriverData);
+    auto driver_data = static_cast<DriverData*>(context->pDriverData);
 
     if (!driver_data->video_format) {
         return VA_STATUS_ERROR_OPERATION_FAILED;
@@ -191,7 +191,7 @@ VAStatus RequestSyncSurface(VADriverContextP context, VASurfaceID surface_id)
     return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestQuerySurfaceAttributes(
+VAStatus querySurfaceAttributes(
     VADriverContextP context, VAConfigID config, VASurfaceAttrib* attributes, unsigned int* attributes_count)
 {
     VASurfaceAttrib* attributes_list;
@@ -253,9 +253,9 @@ VAStatus RequestQuerySurfaceAttributes(
     return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestQuerySurfaceStatus(VADriverContextP context, VASurfaceID surface_id, VASurfaceStatus* status)
+VAStatus querySurfaceStatus(VADriverContextP context, VASurfaceID surface_id, VASurfaceStatus* status)
 {
-    auto driver_data = static_cast<RequestData*>(context->pDriverData);
+    auto driver_data = static_cast<DriverData*>(context->pDriverData);
 
     if (!driver_data->surfaces.contains(surface_id)) {
         return VA_STATUS_ERROR_INVALID_SURFACE;
@@ -265,29 +265,26 @@ VAStatus RequestQuerySurfaceStatus(VADriverContextP context, VASurfaceID surface
     return VA_STATUS_SUCCESS;
 }
 
-VAStatus RequestPutSurface(VADriverContextP context, VASurfaceID surface_id, void* draw, short src_x, short src_y,
+VAStatus putSurface(VADriverContextP context, VASurfaceID surface_id, void* draw, short src_x, short src_y,
     unsigned short src_width, unsigned short src_height, short dst_x, short dst_y, unsigned short dst_width,
     unsigned short dst_height, VARectangle* cliprects, unsigned int cliprects_count, unsigned int flags)
 {
     return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
-VAStatus RequestLockSurface(VADriverContextP context, VASurfaceID surface_id, unsigned int* fourcc,
-    unsigned int* luma_stride, unsigned int* chroma_u_stride, unsigned int* chroma_v_stride, unsigned int* luma_offset,
+VAStatus lockSurface(VADriverContextP context, VASurfaceID surface_id, unsigned int* fourcc, unsigned int* luma_stride,
+    unsigned int* chroma_u_stride, unsigned int* chroma_v_stride, unsigned int* luma_offset,
     unsigned int* chroma_u_offset, unsigned int* chroma_v_offset, unsigned int* buffer_name, void** buffer)
 {
     return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
-VAStatus RequestUnlockSurface(VADriverContextP context, VASurfaceID surface_id)
-{
-    return VA_STATUS_ERROR_UNIMPLEMENTED;
-}
+VAStatus unlockSurface(VADriverContextP context, VASurfaceID surface_id) { return VA_STATUS_ERROR_UNIMPLEMENTED; }
 
-VAStatus RequestExportSurfaceHandle(
+VAStatus exportSurfaceHandle(
     VADriverContextP context, VASurfaceID surface_id, uint32_t mem_type, uint32_t flags, void* descriptor)
 {
-    auto driver_data = static_cast<RequestData*>(context->pDriverData);
+    auto driver_data = static_cast<DriverData*>(context->pDriverData);
     auto surface_descriptor = static_cast<VADRMPRIMESurfaceDescriptor*>(descriptor);
 
     if (!driver_data->video_format)

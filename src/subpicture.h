@@ -30,17 +30,17 @@ extern "C" {
 #include <va/va_backend.h>
 }
 
-VAStatus RequestCreateSubpicture(VADriverContextP context, VAImageID image_id, VASubpictureID* subpicture_id);
-VAStatus RequestDestroySubpicture(VADriverContextP context, VASubpictureID subpicture_id);
-VAStatus RequestQuerySubpictureFormats(
+VAStatus createSubpicture(VADriverContextP context, VAImageID image_id, VASubpictureID* subpicture_id);
+VAStatus destroySubpicture(VADriverContextP context, VASubpictureID subpicture_id);
+VAStatus querySubpictureFormats(
     VADriverContextP context, VAImageFormat* formats, unsigned int* flags, unsigned int* formats_count);
-VAStatus RequestSetSubpictureImage(VADriverContextP context, VASubpictureID subpicture_id, VAImageID image_id);
-VAStatus RequestSetSubpicturePalette(VADriverContextP context, VASubpictureID subpicture_id, unsigned char* palette);
-VAStatus RequestSetSubpictureChromakey(VADriverContextP context, VASubpictureID subpicture_id,
-    unsigned int chromakey_min, unsigned int chromakey_max, unsigned int chromakey_mask);
-VAStatus RequestSetSubpictureGlobalAlpha(VADriverContextP context, VASubpictureID subpicture_id, float global_alpha);
-VAStatus RequestAssociateSubpicture(VADriverContextP context, VASubpictureID subpicture_id, VASurfaceID* surfaces_ids,
+VAStatus setSubpictureImage(VADriverContextP context, VASubpictureID subpicture_id, VAImageID image_id);
+VAStatus setSubpicturePalette(VADriverContextP context, VASubpictureID subpicture_id, unsigned char* palette);
+VAStatus setSubpictureChromakey(VADriverContextP context, VASubpictureID subpicture_id, unsigned int chromakey_min,
+    unsigned int chromakey_max, unsigned int chromakey_mask);
+VAStatus setSubpictureGlobalAlpha(VADriverContextP context, VASubpictureID subpicture_id, float global_alpha);
+VAStatus associateSubpicture(VADriverContextP context, VASubpictureID subpicture_id, VASurfaceID* surfaces_ids,
     int surfaces_count, short src_x, short src_y, unsigned short src_width, unsigned short src_height, short dst_x,
     short dst_y, unsigned short dst_width, unsigned short dst_height, unsigned int flags);
-VAStatus RequestDeassociateSubpicture(
+VAStatus deassociateSubpicture(
     VADriverContextP context, VASubpictureID subpicture_id, VASurfaceID* surfaces_ids, int surfaces_count);

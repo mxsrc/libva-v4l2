@@ -38,7 +38,7 @@ extern "C" {
 
 #include "video.h"
 
-struct RequestData;
+struct DriverData;
 
 struct Surface {
     VASurfaceStatus status;
@@ -79,22 +79,22 @@ struct Surface {
     int request_fd;
 };
 
-void RequestCreateSurfacesDeferred(RequestData* driver_data, std::span<VASurfaceID> surface_ids);
-VAStatus RequestCreateSurfaces2(VADriverContextP context, unsigned int format, unsigned int width, unsigned int height,
+void createSurfacesDeferred(DriverData* driver_data, std::span<VASurfaceID> surface_ids);
+VAStatus createSurfaces2(VADriverContextP context, unsigned int format, unsigned int width, unsigned int height,
     VASurfaceID* surfaces_ids, unsigned int surfaces_count, VASurfaceAttrib* attributes, unsigned int attributes_count);
-VAStatus RequestCreateSurfaces(
+VAStatus createSurfaces(
     VADriverContextP context, int width, int height, int format, int surfaces_count, VASurfaceID* surfaces_ids);
-VAStatus RequestDestroySurfaces(VADriverContextP context, VASurfaceID* surfaces_ids, int surfaces_count);
-VAStatus RequestSyncSurface(VADriverContextP context, VASurfaceID surface_id);
-VAStatus RequestQuerySurfaceAttributes(
+VAStatus destroySurfaces(VADriverContextP context, VASurfaceID* surfaces_ids, int surfaces_count);
+VAStatus syncSurface(VADriverContextP context, VASurfaceID surface_id);
+VAStatus querySurfaceAttributes(
     VADriverContextP context, VAConfigID config, VASurfaceAttrib* attributes, unsigned int* attributes_count);
-VAStatus RequestQuerySurfaceStatus(VADriverContextP context, VASurfaceID surface_id, VASurfaceStatus* status);
-VAStatus RequestPutSurface(VADriverContextP context, VASurfaceID surface_id, void* draw, short src_x, short src_y,
+VAStatus querySurfaceStatus(VADriverContextP context, VASurfaceID surface_id, VASurfaceStatus* status);
+VAStatus putSurface(VADriverContextP context, VASurfaceID surface_id, void* draw, short src_x, short src_y,
     unsigned short src_width, unsigned short src_height, short dst_x, short dst_y, unsigned short dst_width,
     unsigned short dst_height, VARectangle* cliprects, unsigned int cliprects_count, unsigned int flags);
-VAStatus RequestLockSurface(VADriverContextP context, VASurfaceID surface_id, unsigned int* fourcc,
-    unsigned int* luma_stride, unsigned int* chroma_u_stride, unsigned int* chroma_v_stride, unsigned int* luma_offset,
+VAStatus lockSurface(VADriverContextP context, VASurfaceID surface_id, unsigned int* fourcc, unsigned int* luma_stride,
+    unsigned int* chroma_u_stride, unsigned int* chroma_v_stride, unsigned int* luma_offset,
     unsigned int* chroma_u_offset, unsigned int* chroma_v_offset, unsigned int* buffer_name, void** buffer);
-VAStatus RequestUnlockSurface(VADriverContextP context, VASurfaceID surface_id);
-VAStatus RequestExportSurfaceHandle(
+VAStatus unlockSurface(VADriverContextP context, VASurfaceID surface_id);
+VAStatus exportSurfaceHandle(
     VADriverContextP context, VASurfaceID surface_id, uint32_t mem_type, uint32_t flags, void* descriptor);

@@ -49,18 +49,17 @@ extern "C" {
 
 class Context;
 
-#define V4L2_REQUEST_STR_VENDOR "v4l2-request"
-
-#define V4L2_REQUEST_MAX_PROFILES 11
-#define V4L2_REQUEST_MAX_ENTRYPOINTS 5
-#define V4L2_REQUEST_MAX_IMAGE_FORMATS 10
-#define V4L2_REQUEST_MAX_SUBPIC_FORMATS 4
-#define V4L2_REQUEST_MAX_DISPLAY_ATTRIBUTES 4
+#define V4L2_STR_VENDOR "v4l2"
+#define V4L2_MAX_PROFILES 11
+#define V4L2_MAX_ENTRYPOINTS 5
+#define V4L2_MAX_IMAGE_FORMATS 10
+#define V4L2_MAX_SUBPIC_FORMATS 4
+#define V4L2_MAX_DISPLAY_ATTRIBUTES 4
 
 extern const std::map<fourcc, std::function<std::vector<VAProfile>(const V4L2M2MDevice&)>> supported_profile_funcs;
 
-struct RequestData {
-    RequestData(const std::string& video_path, const std::optional<std::string> media_path)
+struct DriverData {
+    DriverData(const std::string& video_path, const std::optional<std::string> media_path)
         : device(video_path, media_path)
     {
     }
@@ -77,4 +76,4 @@ struct RequestData {
 };
 
 extern "C" VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context);
-VAStatus RequestTerminate(VADriverContextP va_context);
+VAStatus terminate(VADriverContextP va_context);

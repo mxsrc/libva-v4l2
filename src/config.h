@@ -40,16 +40,16 @@ struct Config {
     int attributes_count;
 };
 
-VAStatus RequestCreateConfig(VADriverContextP context, VAProfile profile, VAEntrypoint entrypoint,
-    VAConfigAttrib* attributes, int attributes_count, VAConfigID* config_id);
-VAStatus RequestDestroyConfig(VADriverContextP context, VAConfigID config_id);
-VAStatus RequestQueryConfigProfiles(VADriverContextP context, VAProfile* profiles, int* profiles_count);
-VAStatus RequestQueryConfigEntrypoints(
+VAStatus createConfig(VADriverContextP context, VAProfile profile, VAEntrypoint entrypoint, VAConfigAttrib* attributes,
+    int attributes_count, VAConfigID* config_id);
+VAStatus destroyConfig(VADriverContextP context, VAConfigID config_id);
+VAStatus queryConfigProfiles(VADriverContextP context, VAProfile* profiles, int* profiles_count);
+VAStatus queryConfigEntrypoints(
     VADriverContextP context, VAProfile profile, VAEntrypoint* entrypoints, int* entrypoints_count);
-VAStatus RequestQueryConfigAttributes(VADriverContextP context, VAConfigID config_id, VAProfile* profile,
+VAStatus queryConfigAttributes(VADriverContextP context, VAConfigID config_id, VAProfile* profile,
     VAEntrypoint* entrypoint, VAConfigAttrib* attributes, int* attributes_count);
-VAStatus RequestGetConfigAttributes(VADriverContextP context, VAProfile profile, VAEntrypoint entrypoint,
+VAStatus getConfigAttributes(VADriverContextP context, VAProfile profile, VAEntrypoint entrypoint,
     VAConfigAttrib* attributes, int attributes_count);
-VAStatus RequestQueryDisplayAttributes(VADriverContextP context, VADisplayAttribute* attributes, int* attributes_count);
-VAStatus RequestGetDisplayAttributes(VADriverContextP context, VADisplayAttribute* attributes, int attributes_count);
-VAStatus RequestSetDisplayAttributes(VADriverContextP context, VADisplayAttribute* attributes, int attributes_count);
+VAStatus queryDisplayAttributes(VADriverContextP context, VADisplayAttribute* attributes, int* attributes_count);
+VAStatus getDisplayAttributes(VADriverContextP context, VADisplayAttribute* attributes, int attributes_count);
+VAStatus setDisplayAttributes(VADriverContextP context, VADisplayAttribute* attributes, int attributes_count);
