@@ -27,19 +27,16 @@ project('libva-v4l2', 'cpp',
 
 cc = meson.get_compiler('cpp')
 
-if not (cc.get_define('LINUX_VERSION_MAJOR', prefix: '#include <linux/version.h>').to_int() >= 6)
-	error('Require at least Linux 6.0')
-endif
-
 libva_dep = dependency('libva', version : '>= 1.1.0')
 libdrm_dep = dependency('libdrm', version : '>= 2.4.52')
 libgstcodecparsers_dep = dependency('gstreamer-codecparsers-1.0', version : '>= 1.12', required: false)
 libgstcodecs_dep = cc.find_library('gstcodecs-1.0',  # Present but not advertised via pkgconfig.
 	has_headers: ['gst/codecs/gstvp9statefulparser.h'],
 	header_dependencies: libgstcodecparsers_dep,
-        required: false,
+	required: false,
 )
 libudev_dep = dependency('libudev', version : '>= 252')
+kernel_dep = declare_dependency(include_directories : get_option('kernel_headers'))
 
 va_api_version_array = libva_dep.version().split('.')
 va_api_major_version = va_api_version_array[0]

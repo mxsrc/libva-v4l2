@@ -1,0 +1,7 @@
+option(
+    'kernel_headers',
+    type : 'string',
+    value : 'include',
+    description: 'Path to sanitized Linux Kernel headers'
+)
+
