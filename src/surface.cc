@@ -279,7 +279,10 @@ VAStatus lockSurface(VADriverContextP context, VASurfaceID surface_id, unsigned 
     return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
-VAStatus unlockSurface(VADriverContextP context, VASurfaceID surface_id) { return VA_STATUS_ERROR_UNIMPLEMENTED; }
+VAStatus unlockSurface(VADriverContextP context, VASurfaceID surface_id)
+{
+    return VA_STATUS_ERROR_UNIMPLEMENTED;
+}
 
 VAStatus exportSurfaceHandle(
     VADriverContextP context, VASurfaceID surface_id, uint32_t mem_type, uint32_t flags, void* descriptor)

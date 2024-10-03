@@ -97,7 +97,10 @@ size_t prefix_data(uint8_t* data)
     return 3;
 }
 
-bool is_picture_null(VAPictureH264* pic) { return pic->picture_id == VA_INVALID_SURFACE; }
+bool is_picture_null(VAPictureH264* pic)
+{
+    return pic->picture_id == VA_INVALID_SURFACE;
+}
 
 h264_dpb_entry* dpb_find_invalid_entry(H264Context& context)
 {

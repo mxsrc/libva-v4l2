@@ -44,9 +44,15 @@ int media_request_alloc(int media_fd)
     return fd;
 }
 
-void media_request_reinit(int request_fd) { errno_wrapper(ioctl, request_fd, MEDIA_REQUEST_IOC_REINIT, NULL); }
+void media_request_reinit(int request_fd)
+{
+    errno_wrapper(ioctl, request_fd, MEDIA_REQUEST_IOC_REINIT, NULL);
+}
 
-void media_request_queue(int request_fd) { errno_wrapper(ioctl, request_fd, MEDIA_REQUEST_IOC_QUEUE, NULL); }
+void media_request_queue(int request_fd)
+{
+    errno_wrapper(ioctl, request_fd, MEDIA_REQUEST_IOC_QUEUE, NULL);
+}
 
 void media_request_wait_completion(int request_fd)
 {

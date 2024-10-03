@@ -171,4 +171,7 @@ VAStatus acquireBufferHandle(VADriverContextP context, VABufferID buffer_id, VAB
     return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
-VAStatus releaseBufferHandle(VADriverContextP context, VABufferID buffer_id) { return VA_STATUS_ERROR_UNIMPLEMENTED; }
+VAStatus releaseBufferHandle(VADriverContextP context, VABufferID buffer_id)
+{
+    return VA_STATUS_ERROR_UNIMPLEMENTED;
+}

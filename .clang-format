@@ -1,2 +1,3 @@
 BasedOnStyle:  Webkit
 ColumnLimit: 120
+AllowShortFunctionsOnASingleLine: Inline
