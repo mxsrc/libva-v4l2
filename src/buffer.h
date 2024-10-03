@@ -39,7 +39,6 @@ struct Buffer {
     Buffer(VABufferType type, unsigned count, unsigned size, VASurfaceID derived_surface_id);
 
     VABufferType type;
-    unsigned initial_count;
     unsigned count;
     std::unique_ptr<uint8_t> data;
     unsigned int size;

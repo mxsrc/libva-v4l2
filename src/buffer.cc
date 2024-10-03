@@ -51,9 +51,8 @@ extern "C" {
 
 Buffer::Buffer(VABufferType type, unsigned count, unsigned size, VASurfaceID derived_surface_id = VA_INVALID_ID)
     : type(type)
-    , initial_count(count)
     , count(count)
-    , data(static_cast<uint8_t*>(malloc(size * count)))
+    , data(static_cast<uint8_t*>(calloc(size, count)))
     , size(size)
     , derived_surface_id(derived_surface_id)
     , info({ .handle = static_cast<uintptr_t>(-1) })
@@ -141,9 +140,7 @@ VAStatus bufferSetNumElements(VADriverContextP context, VABufferID buffer_id, un
     }
     auto& buffer = driver_data->buffers.at(buffer_id);
 
-    if (count > buffer.initial_count)
-        return VA_STATUS_ERROR_INVALID_PARAMETER;
-
+    buffer.data.reset(static_cast<uint8_t*>(reallocarray(buffer.data.release(), buffer.size, count)));
     buffer.count = count;
 
     return VA_STATUS_SUCCESS;
