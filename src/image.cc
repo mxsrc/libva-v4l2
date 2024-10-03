@@ -49,7 +49,7 @@ VAStatus copy_surface_to_image(DriverData* driver_data, const Surface& surface, 
     unsigned int i;
 
     if (!driver_data->buffers.contains(image->buf)) {
-        return VA_STATUS_ERROR_INVALID_CONFIG;
+        return VA_STATUS_ERROR_INVALID_BUFFER;
     }
     auto& buffer = driver_data->buffers.at(image->buf);
 
@@ -175,7 +175,7 @@ VAStatus deriveImage(VADriverContextP context, VASurfaceID surface_id, VAImage* 
     surface.status = VASurfaceReady;
 
     if (!driver_data->buffers.contains(image->buf)) {
-        return VA_STATUS_ERROR_INVALID_CONFIG;
+        return VA_STATUS_ERROR_INVALID_BUFFER;
     }
     driver_data->buffers.at(image->buf).derived_surface_id = surface_id;
 

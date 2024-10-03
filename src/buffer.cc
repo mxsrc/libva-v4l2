@@ -111,7 +111,7 @@ VAStatus mapBuffer(VADriverContextP context, VABufferID buffer_id, void** data_m
     auto driver_data = static_cast<DriverData*>(context->pDriverData);
 
     if (!driver_data->buffers.contains(buffer_id)) {
-        return VA_STATUS_ERROR_INVALID_CONFIG;
+        return VA_STATUS_ERROR_INVALID_BUFFER;
     }
 
     /* Our buffers are always mapped. */
@@ -126,7 +126,7 @@ VAStatus unmapBuffer(VADriverContextP context, VABufferID buffer_id)
 
     /* Our buffers are always mapped. */
     if (!driver_data->buffers.contains(buffer_id)) {
-        return VA_STATUS_ERROR_INVALID_CONFIG;
+        return VA_STATUS_ERROR_INVALID_BUFFER;
     }
 
     return VA_STATUS_SUCCESS;
@@ -137,7 +137,7 @@ VAStatus bufferSetNumElements(VADriverContextP context, VABufferID buffer_id, un
     auto driver_data = static_cast<DriverData*>(context->pDriverData);
 
     if (!driver_data->buffers.contains(buffer_id)) {
-        return VA_STATUS_ERROR_INVALID_CONFIG;
+        return VA_STATUS_ERROR_INVALID_BUFFER;
     }
     auto& buffer = driver_data->buffers.at(buffer_id);
 
@@ -155,7 +155,7 @@ VAStatus bufferInfo(
     auto driver_data = static_cast<DriverData*>(context->pDriverData);
 
     if (!driver_data->buffers.contains(buffer_id)) {
-        return VA_STATUS_ERROR_INVALID_CONFIG;
+        return VA_STATUS_ERROR_INVALID_BUFFER;
     }
     auto& buffer = driver_data->buffers.at(buffer_id);
 
