@@ -23,16 +23,16 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "video.h"
+#include "format.h"
 
-#include <cstdlib>
-#include <cstring>
+#include <algorithm>
+#include <stdexcept>
 
 extern "C" {
 #include <linux/videodev2.h>
-#include <sys/ioctl.h>
 
 #include <libdrm/drm_fourcc.h>
+#include <va/va.h>
 }
 
 namespace {
@@ -46,33 +46,20 @@ BufferLayout nv12_derive_layout(unsigned width, unsigned height)
     };
 }
 
-const video_format formats[] = {
-    {
-        .description = "NV12 YUV",
-        .v4l2_format = V4L2_PIX_FMT_NV12,
-        .drm_format = DRM_FORMAT_NV12,
-        .drm_modifier = DRM_FORMAT_MOD_NONE,
-        .derive_layout = &nv12_derive_layout,
-    },
-    {
-        .description = "NV12 YUV non contiguous",
-        .v4l2_format = V4L2_PIX_FMT_NV12M,
-        .drm_format = DRM_FORMAT_NV12,
-        .drm_modifier = DRM_FORMAT_MOD_NONE,
-    },
-};
-
-const unsigned int formats_count = sizeof(formats) / sizeof(formats[0]);
-
 } // namespace
 
-const video_format* video_format_find(unsigned int pixelformat)
+const std::array<Format, 2> formats = {
+    Format { { V4L2_PIX_FMT_NV12, &nv12_derive_layout }, { VA_FOURCC_NV12, VA_RT_FORMAT_YUV420 },
+        { DRM_FORMAT_NV12, DRM_FORMAT_MOD_LINEAR } },
+    Format { { V4L2_PIX_FMT_NV12M, nullptr }, { VA_FOURCC_NV12, VA_RT_FORMAT_YUV420 },
+        { DRM_FORMAT_NV12, DRM_FORMAT_MOD_LINEAR } },
+};
+
+const Format& lookup_format(fourcc v4l2_fourcc)
 {
-    unsigned int i;
-
-    for (i = 0; i < formats_count; i++)
-        if (formats[i].v4l2_format == pixelformat)
-            return &formats[i];
-
-    return NULL;
+    auto it = std::ranges::find_if(formats, [&](auto&& f) { return f.v4l2.format == v4l2_fourcc; });
+    if (it == formats.end()) {
+        throw std::invalid_argument("Format not specified");
+    }
+    return *it;
 }

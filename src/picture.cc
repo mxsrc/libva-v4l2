@@ -111,9 +111,6 @@ VAStatus endPicture(VADriverContextP va_context, VAContextID context_id)
     auto driver_data = static_cast<DriverData*>(va_context->pDriverData);
     VAStatus status;
 
-    if (!driver_data->video_format)
-        return VA_STATUS_ERROR_OPERATION_FAILED;
-
     if (!driver_data->contexts.contains(context_id)) {
         return VA_STATUS_ERROR_INVALID_CONTEXT;
     }

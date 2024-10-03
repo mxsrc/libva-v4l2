@@ -105,10 +105,6 @@ VAStatus createContext(VADriverContextP va_context, VAConfigID config_id, int pi
         }
     }
 
-    if (!driver_data->video_format) {
-        return VA_STATUS_ERROR_OPERATION_FAILED;
-    }
-
     std::lock_guard<std::mutex> guard(driver_data->mutex);
     *context_id = smallest_free_key(driver_data->contexts);
     try {
@@ -149,10 +145,6 @@ VAStatus createContext(VADriverContextP va_context, VAConfigID config_id, int pi
 VAStatus destroyContext(VADriverContextP va_context, VAContextID context_id)
 {
     auto driver_data = static_cast<DriverData*>(va_context->pDriverData);
-
-    if (!driver_data->video_format) {
-        return VA_STATUS_ERROR_OPERATION_FAILED;
-    }
 
     std::lock_guard<std::mutex> guard(driver_data->mutex);
     if (!driver_data->contexts.contains(context_id)) {

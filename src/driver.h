@@ -43,9 +43,9 @@ extern "C" {
 #include "buffer.h"
 #include "config.h"
 #include "context.h"
+#include "format.h"
 #include "surface.h"
 #include "v4l2.h"
-#include "video.h"
 
 class Context;
 
@@ -70,8 +70,6 @@ struct DriverData {
     std::map<VABufferID, Buffer> buffers;
     std::map<VAImageID, VAImage> images;
     V4L2M2MDevice device;
-
-    const struct video_format* video_format = nullptr;
     std::mutex mutex;
 };
 

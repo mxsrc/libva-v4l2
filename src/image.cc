@@ -37,10 +37,10 @@ extern "C" {
 
 #include "buffer.h"
 #include "driver.h"
+#include "format.h"
 #include "surface.h"
 #include "utils.h"
 #include "v4l2.h"
-#include "video.h"
 
 namespace {
 
@@ -76,18 +76,18 @@ VAStatus createImage(VADriverContextP context, VAImageFormat* format, int width,
     VAStatus status;
     unsigned int i;
 
-    if (!driver_data->video_format)
-        return VA_STATUS_ERROR_OPERATION_FAILED;
-
     memset(image, 0, sizeof(*image));
     image->format = *format;
     image->width = width;
     image->height = height;
 
+    auto format_spec = lookup_format(driver_data->device.capture_format.fmt.pix_mp.pixelformat);
+
     struct v4l2_pix_format_mplane* driver_format = &driver_data->device.capture_format.fmt.pix_mp;
-    if (driver_data->video_format->derive_layout) {
+
+    if (format_spec.v4l2.derive_layout) {
         // Have to use the driver format to get the actual height, which may differ due to block alignment.
-        const auto layout = driver_data->video_format->derive_layout(driver_format->width, driver_format->height);
+        const auto layout = format_spec.v4l2.derive_layout(driver_format->width, driver_format->height);
 
         image->num_planes = layout.size();
         for (unsigned i = 0; i < image->num_planes; i += 1) {

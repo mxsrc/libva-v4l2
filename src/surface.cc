@@ -27,10 +27,10 @@
 
 #include "surface.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
-#include <ranges>
 #include <stdexcept>
 #include <system_error>
 
@@ -47,10 +47,21 @@ extern "C" {
 }
 
 #include "driver.h"
+#include "format.h"
 #include "media.h"
 #include "utils.h"
 #include "v4l2.h"
-#include "video.h"
+
+namespace {
+
+decltype(formats)::const_iterator matching_formats(const V4L2M2MDevice& device, uint32_t format)
+{
+    return std::ranges::find_if(formats, [&](auto&& f) {
+        return f.va.rt_format == format && device.format_supported(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, f.v4l2.format);
+    });
+}
+
+} // namespace
 
 VAStatus createSurfaces2(VADriverContextP context, unsigned int format, unsigned int width, unsigned int height,
     VASurfaceID* surfaces_ids, unsigned int surfaces_count, VASurfaceAttrib* attributes, unsigned int attributes_count)
@@ -60,24 +71,17 @@ VAStatus createSurfaces2(VADriverContextP context, unsigned int format, unsigned
 
     auto driver_data = static_cast<DriverData*>(context->pDriverData);
 
-    if (format != VA_RT_FORMAT_YUV420)
-        return VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT;
-
-    if (!driver_data->video_format) {
-        if (driver_data->device.format_supported(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_PIX_FMT_NV12)) {
-            driver_data->video_format = video_format_find(V4L2_PIX_FMT_NV12);
-        } else if (driver_data->device.format_supported(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_PIX_FMT_NV12M)) {
-            driver_data->video_format = video_format_find(V4L2_PIX_FMT_NV12M);
-        } else {
-            return VA_STATUS_ERROR_OPERATION_FAILED;
-        }
+    if (matching_formats(driver_data->device, format) == formats.end()) {
+        error_log(context, "No matching render target supported by device.\n");
+        return VA_STATUS_ERROR_ALLOCATION_FAILED;
     }
 
     std::lock_guard<std::mutex> guard(driver_data->mutex);
     for (unsigned i = 0; i < surfaces_count; i++) {
         surfaces_ids[i] = smallest_free_key(driver_data->surfaces);
-        auto [config, inserted] = driver_data->surfaces.emplace(std::make_pair(
-            surfaces_ids[i], Surface { .status = VASurfaceReady, .width = width, .height = height, .request_fd = -1 }));
+        auto [config, inserted] = driver_data->surfaces.emplace(std::make_pair(surfaces_ids[i],
+            Surface {
+                .status = VASurfaceReady, .width = width, .height = height, .format = format, .request_fd = -1 }));
         if (!inserted) {
             return VA_STATUS_ERROR_ALLOCATION_FAILED;
         }
@@ -93,8 +97,9 @@ void createSurfacesDeferred(DriverData* driver_data, std::span<VASurfaceID> surf
     }
     const auto& surface = driver_data->surfaces.at(surface_ids[0]);
 
-    driver_data->device.set_format(
-        V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, driver_data->video_format->v4l2_format, surface.width, surface.height);
+    auto [format, derive_layout] = matching_formats(driver_data->device, surface.format)->v4l2;
+
+    driver_data->device.set_format(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, format, surface.width, surface.height);
 
     v4l2_pix_format_mplane* driver_format = &driver_data->device.capture_format.fmt.pix_mp;
 
@@ -102,9 +107,8 @@ void createSurfacesDeferred(DriverData* driver_data, std::span<VASurfaceID> surf
 
     for (unsigned i = 0; i < surface_ids.size(); i++) {
         auto& surface = driver_data->surfaces.at(surface_ids[i]);
-        if (driver_data->video_format->derive_layout) { // (logical) single plane
-            surface.logical_destination_layout
-                = driver_data->video_format->derive_layout(driver_format->width, driver_format->height);
+        if (derive_layout) { // (logical) single plane
+            surface.logical_destination_layout = derive_layout(driver_format->width, driver_format->height);
         } else {
             for (unsigned j = 0; j < driver_format->num_planes; j += 1) {
                 surface.logical_destination_layout.push_back({
@@ -151,10 +155,6 @@ VAStatus destroySurfaces(VADriverContextP context, VASurfaceID* surfaces_ids, in
 VAStatus syncSurface(VADriverContextP context, VASurfaceID surface_id)
 {
     auto driver_data = static_cast<DriverData*>(context->pDriverData);
-
-    if (!driver_data->video_format) {
-        return VA_STATUS_ERROR_OPERATION_FAILED;
-    }
 
     if (!driver_data->surfaces.contains(surface_id)) {
         return VA_STATUS_ERROR_INVALID_SURFACE;
@@ -290,11 +290,9 @@ VAStatus exportSurfaceHandle(
     auto driver_data = static_cast<DriverData*>(context->pDriverData);
     auto surface_descriptor = static_cast<VADRMPRIMESurfaceDescriptor*>(descriptor);
 
-    if (!driver_data->video_format)
-        return VA_STATUS_ERROR_OPERATION_FAILED;
-
-    if (mem_type != VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2)
+    if (mem_type != VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2) {
         return VA_STATUS_ERROR_UNSUPPORTED_MEMORY_TYPE;
+    }
 
     if (!driver_data->surfaces.contains(surface_id)) {
         return VA_STATUS_ERROR_INVALID_SURFACE;
@@ -316,16 +314,17 @@ VAStatus exportSurfaceHandle(
     surface_descriptor->height = surface.height;
     surface_descriptor->num_objects = export_fds.size();
 
+    auto format_spec = lookup_format(driver_data->device.capture_format.fmt.pix_mp.pixelformat);
     const auto& mapping = destination_buffer.mapping();
     for (unsigned i = 0; i < export_fds.size(); i += 1) {
-        surface_descriptor->objects[i].drm_format_modifier = driver_data->video_format->drm_modifier;
+        surface_descriptor->objects[i].drm_format_modifier = format_spec.drm.modifier;
         surface_descriptor->objects[i].fd = export_fds[i];
         surface_descriptor->objects[i].size = mapping[i].size();
     }
 
     surface_descriptor->num_layers = 1;
 
-    surface_descriptor->layers[0].drm_format = driver_data->video_format->drm_format;
+    surface_descriptor->layers[0].drm_format = format_spec.drm.format;
     surface_descriptor->layers[0].num_planes = surface.logical_destination_layout.size();
 
     for (unsigned i = 0; i < surface_descriptor->layers[0].num_planes; i++) {

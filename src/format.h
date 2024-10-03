@@ -25,12 +25,10 @@
 
 #pragma once
 
+#include <array>
 #include <vector>
 
-extern "C" {
-#include <linux/videodev2.h>
-#include <stdint.h>
-}
+#include "v4l2.h"
 
 struct LogicalPlane {
     unsigned physical_plane_index;
@@ -40,12 +38,20 @@ struct LogicalPlane {
 };
 using BufferLayout = std::vector<LogicalPlane>;
 
-struct video_format {
-    const char* description;
-    unsigned v4l2_format;
-    unsigned drm_format;
-    uint64_t drm_modifier;
-    BufferLayout (*derive_layout)(unsigned, unsigned);
+struct Format {
+    struct {
+        fourcc format;
+        BufferLayout (*derive_layout)(unsigned, unsigned);
+    } v4l2;
+    struct {
+        fourcc format;
+        uint32_t rt_format;
+    } va;
+    struct {
+        fourcc format;
+        uint64_t modifier;
+    } drm;
 };
 
-const struct video_format* video_format_find(unsigned int pixelformat);
+extern const std::array<Format, 2> formats;
+const Format& lookup_format(fourcc v4l2_fourcc);

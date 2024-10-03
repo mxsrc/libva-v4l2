@@ -36,7 +36,7 @@ extern "C" {
 #include <va/va_backend.h>
 }
 
-#include "video.h"
+#include "format.h"
 
 struct DriverData;
 
@@ -50,6 +50,7 @@ struct Surface {
 
     unsigned int destination_index;
     BufferLayout logical_destination_layout;
+    uint32_t format;
 
     timeval timestamp;
 
