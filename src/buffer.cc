@@ -168,66 +168,7 @@ VAStatus bufferInfo(
 
 VAStatus acquireBufferHandle(VADriverContextP context, VABufferID buffer_id, VABufferInfo* buffer_info)
 {
-    auto driver_data = static_cast<DriverData*>(context->pDriverData);
-
-    if (!driver_data->buffers.contains(buffer_id)) {
-        return VA_STATUS_ERROR_INVALID_CONFIG;
-    }
-    auto& buffer = driver_data->buffers.at(buffer_id);
-
-    if (!driver_data->video_format) {
-        return VA_STATUS_ERROR_OPERATION_FAILED;
-    }
-
-    if (buffer.derived_surface_id == VA_INVALID_ID) {
-        return VA_STATUS_ERROR_INVALID_BUFFER;
-    }
-
-    if (!driver_data->surfaces.contains(buffer.derived_surface_id)) {
-        return VA_STATUS_ERROR_INVALID_SURFACE;
-    }
-    const auto& surface = driver_data->surfaces.at(buffer.derived_surface_id);
-
-    try {
-        auto export_fds = driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index)
-                              .export_(O_RDONLY);
-        if (export_fds.size() != 1) {
-            error_log(context, "Compressed buffer is multiplanar\n");
-            return VA_STATUS_ERROR_OPERATION_FAILED;
-        }
-        buffer_info->handle = static_cast<uintptr_t>(export_fds[0]);
-    } catch (std::runtime_error& e) {
-        error_log(context, "Failed to export buffer: %s\n", e.what());
-        return VA_STATUS_ERROR_OPERATION_FAILED;
-    }
-
-    buffer_info->type = buffer.type;
-    buffer_info->mem_size = buffer.size * buffer.count;
-
-    buffer.info = *buffer_info;
-
-    return VA_STATUS_SUCCESS;
+    return VA_STATUS_ERROR_UNIMPLEMENTED;
 }
 
-VAStatus releaseBufferHandle(VADriverContextP context, VABufferID buffer_id)
-{
-    auto driver_data = static_cast<DriverData*>(context->pDriverData);
-    int export_fd;
-
-    if (!driver_data->buffers.contains(buffer_id)) {
-        return VA_STATUS_ERROR_INVALID_CONFIG;
-    }
-    auto& buffer = driver_data->buffers.at(buffer_id);
-
-    if (buffer.info.handle == static_cast<uintptr_t>(-1)) {
-        return VA_STATUS_SUCCESS;
-    }
-
-    export_fd = static_cast<int>(buffer.info.handle);
-
-    close(export_fd);
-
-    buffer.info.handle = static_cast<uintptr_t>(-1);
-
-    return VA_STATUS_SUCCESS;
-}
+VAStatus releaseBufferHandle(VADriverContextP context, VABufferID buffer_id) { return VA_STATUS_ERROR_UNIMPLEMENTED; }
