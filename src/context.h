@@ -42,6 +42,7 @@ class Context {
 public:
     Context(DriverData* driver_data, VAConfigID config_id, int picture_width, int picture_height,
         std::span<VASurfaceID> surface_ids);
+    virtual ~Context() {}
 
     virtual VAStatus store_buffer(const Buffer& buffer) const = 0;
     virtual int set_controls() = 0;
@@ -51,6 +52,7 @@ public:
     int picture_width;
     int picture_height;
     DriverData* driver_data;
+    V4L2M2MDevice& device;
 };
 
 VAStatus createContext(VADriverContextP va_context, VAConfigID config_id, int picture_width, int picture_height,

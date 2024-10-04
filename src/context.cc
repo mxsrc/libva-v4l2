@@ -61,22 +61,24 @@ Context::Context(DriverData* driver_data, VAConfigID config_id, int picture_widt
     , picture_width(picture_width)
     , picture_height(picture_height)
     , driver_data(driver_data)
+    , device(driver_data->device)
 {
     // Now that the output format is set, we can set the capture format and allocate the surfaces.
-    createSurfacesDeferred(driver_data, surface_ids);
+    createSurfacesDeferred(driver_data, *this, surface_ids);
 
-    driver_data->device.request_buffers(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface_ids.size());
+    device.request_buffers(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface_ids.size());
 
     for (unsigned i = 0; i < surface_ids.size(); i++) {
-        driver_data->surfaces.at(i).source_buffer = std::cref(driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, i));
+        driver_data->surfaces.at(i).source_buffer = std::cref(device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, i));
     }
 
-    driver_data->device.set_streaming(true);
+    device.set_streaming(true);
 }
 
 VAStatus createContext(VADriverContextP va_context, VAConfigID config_id, int picture_width, int picture_height,
     int flags, VASurfaceID* surface_ids, int surfaces_count, VAContextID* context_id)
 {
+    // FIXME: Should create own V4L2M2MDevice to localize settings?
     auto driver_data = static_cast<DriverData*>(va_context->pDriverData);
 
     if (!driver_data->configs.contains(config_id)) {

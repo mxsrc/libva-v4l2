@@ -119,9 +119,9 @@ VAStatus endPicture(VADriverContextP va_context, VAContextID context_id)
 
     gettimeofday(&surface.timestamp, NULL);
 
-    if (driver_data->device.media_fd >= 0) {
+    if (context.device.media_fd >= 0) {
         if (surface.request_fd < 0) {
-            surface.request_fd = media_request_alloc(driver_data->device.media_fd);
+            surface.request_fd = media_request_alloc(context.device.media_fd);
         }
 
         status = context.set_controls();

@@ -37,6 +37,7 @@ extern "C" {
 #include <va/va_backend.h>
 }
 
+#include "context.h"
 #include "format.h"
 #include "v4l2.h"
 
@@ -82,7 +83,7 @@ struct Surface {
     int request_fd;
 };
 
-void createSurfacesDeferred(DriverData* driver_data, std::span<VASurfaceID> surface_ids);
+void createSurfacesDeferred(DriverData* driver_data, const Context& context, std::span<VASurfaceID> surface_ids);
 VAStatus createSurfaces2(VADriverContextP context, unsigned int format, unsigned int width, unsigned int height,
     VASurfaceID* surfaces_ids, unsigned int surfaces_count, VASurfaceAttrib* attributes, unsigned int attributes_count);
 VAStatus createSurfaces(

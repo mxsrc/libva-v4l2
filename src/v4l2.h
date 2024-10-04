@@ -48,12 +48,14 @@ public:
         void dequeue() const;
         std::vector<int> export_(unsigned flags) const;
         std::vector<std::span<uint8_t>> mapping() const { return mapping_; }
+        V4L2M2MDevice& owner() const { return owner_; }
 
         Buffer(V4L2M2MDevice& owner, v4l2_buf_type type, unsigned index);
         Buffer(Buffer&& other);
         Buffer& operator=(Buffer&& other);
         ~Buffer();
 
+    private:
         V4L2M2MDevice& owner_;
         v4l2_buf_type type_;
         unsigned index_;

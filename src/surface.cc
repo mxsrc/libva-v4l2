@@ -89,20 +89,20 @@ VAStatus createSurfaces2(VADriverContextP context, unsigned int format, unsigned
     return VA_STATUS_SUCCESS;
 }
 
-void createSurfacesDeferred(DriverData* driver_data, std::span<VASurfaceID> surface_ids)
+void createSurfacesDeferred(DriverData* driver_data, const Context& context, std::span<VASurfaceID> surface_ids)
 {
     if (surface_ids.size() < 1) {
         throw std::invalid_argument("No surfaces to be created");
     }
     const auto& surface = driver_data->surfaces.at(surface_ids[0]);
 
-    auto [format, derive_layout] = matching_formats(driver_data->device, surface.format)->v4l2;
+    auto [format, derive_layout] = matching_formats(context.device, surface.format)->v4l2;
 
-    driver_data->device.set_format(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, format, surface.width, surface.height);
+    context.device.set_format(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, format, surface.width, surface.height);
 
-    v4l2_pix_format_mplane* driver_format = &driver_data->device.capture_format.fmt.pix_mp;
+    v4l2_pix_format_mplane* driver_format = &context.device.capture_format.fmt.pix_mp;
 
-    driver_data->device.request_buffers(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface_ids.size());
+    context.device.request_buffers(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface_ids.size());
 
     for (unsigned i = 0; i < surface_ids.size(); i++) {
         auto& surface = driver_data->surfaces.at(surface_ids[i]);
@@ -121,7 +121,7 @@ void createSurfacesDeferred(DriverData* driver_data, std::span<VASurfaceID> surf
             }
         }
 
-        surface.destination_buffer = std::cref(driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, i));
+        surface.destination_buffer = std::cref(context.device.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, i));
     }
 }
 
@@ -311,7 +311,7 @@ VAStatus exportSurfaceHandle(
     surface_descriptor->height = surface.height;
     surface_descriptor->num_objects = export_fds.size();
 
-    auto format_spec = lookup_format(driver_data->device.capture_format.fmt.pix_mp.pixelformat);
+    auto format_spec = lookup_format(surface.destination_buffer->get().owner().capture_format.fmt.pix_mp.pixelformat);
     const auto& mapping = surface.destination_buffer->get().mapping();
     for (unsigned i = 0; i < export_fds.size(); i += 1) {
         surface_descriptor->objects[i].drm_format_modifier = format_spec.drm.modifier;

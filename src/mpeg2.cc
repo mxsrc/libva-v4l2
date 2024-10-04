@@ -113,8 +113,7 @@ int MPEG2Context::set_controls()
     sequence.chroma_format = 1; // 4:2:0
 
     try {
-        driver_data->device.set_control(
-            surface.request_fd, V4L2_CID_STATELESS_MPEG2_SEQUENCE, &sequence, sizeof(sequence));
+        device.set_control(surface.request_fd, V4L2_CID_STATELESS_MPEG2_SEQUENCE, &sequence, sizeof(sequence));
     } catch (std::runtime_error& e) {
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }
@@ -150,8 +149,7 @@ int MPEG2Context::set_controls()
             | (va_picture->picture_coding_extension.bits.progressive_frame ? V4L2_MPEG2_PIC_FLAG_PROGRESSIVE : 0));
 
     try {
-        driver_data->device.set_control(
-            surface.request_fd, V4L2_CID_STATELESS_MPEG2_PICTURE, &picture, sizeof(picture));
+        device.set_control(surface.request_fd, V4L2_CID_STATELESS_MPEG2_PICTURE, &picture, sizeof(picture));
     } catch (std::runtime_error& e) {
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }
@@ -175,7 +173,7 @@ int MPEG2Context::set_controls()
         }
 
         try {
-            driver_data->device.set_control(
+            device.set_control(
                 surface.request_fd, V4L2_CID_STATELESS_MPEG2_QUANTISATION, &quantisation, sizeof(quantisation));
         } catch (std::runtime_error& e) {
             return VA_STATUS_ERROR_OPERATION_FAILED;
