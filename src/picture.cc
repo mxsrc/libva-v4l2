@@ -130,7 +130,7 @@ VAStatus endPicture(VADriverContextP va_context, VAContextID context_id)
     }
 
     try {
-        driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index).queue();
+        surface.destination_buffer->get().queue();
         driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.source_index)
             .queue(surface.request_fd, &surface.timestamp, surface.source_size_used);
     } catch (std::system_error& e) {

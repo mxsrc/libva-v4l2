@@ -27,8 +27,9 @@
 
 #pragma once
 
+#include <functional>
+#include <optional>
 #include <span>
-#include <vector>
 
 extern "C" {
 #include <linux/videodev2.h>
@@ -37,6 +38,7 @@ extern "C" {
 }
 
 #include "format.h"
+#include "v4l2.h"
 
 struct DriverData;
 
@@ -48,7 +50,7 @@ struct Surface {
     unsigned int source_index;
     unsigned int source_size_used;
 
-    unsigned int destination_index;
+    std::optional<std::reference_wrapper<const V4L2M2MDevice::Buffer>> destination_buffer;
     BufferLayout logical_destination_layout;
     uint32_t format;
 

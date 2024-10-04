@@ -32,7 +32,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <stdexcept>
-#include <system_error>
 
 extern "C" {
 #include <fcntl.h>
@@ -122,7 +121,7 @@ void createSurfacesDeferred(DriverData* driver_data, std::span<VASurfaceID> surf
             }
         }
 
-        surface.destination_index = i;
+        surface.destination_buffer = std::cref(driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, i));
     }
 }
 
@@ -180,7 +179,7 @@ VAStatus syncSurface(VADriverContextP context, VASurfaceID surface_id)
 
     try {
         driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.source_index).dequeue();
-        driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index).dequeue();
+        surface.destination_buffer->get().dequeue();
     } catch (std::runtime_error& e) {
         error_log(context, "Failed to dequeue buffer: %s\n", e.what());
         return VA_STATUS_ERROR_OPERATION_FAILED;
@@ -299,11 +298,9 @@ VAStatus exportSurfaceHandle(
     }
     const auto& surface = driver_data->surfaces.at(surface_id);
 
-    auto& destination_buffer
-        = driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index);
     std::vector<int> export_fds;
     try {
-        export_fds = destination_buffer.export_(O_RDONLY);
+        export_fds = surface.destination_buffer->get().export_(O_RDONLY);
     } catch (std::runtime_error& e) {
         error_log(context, "Failed to export buffer: %s\n", e.what());
         return VA_STATUS_ERROR_OPERATION_FAILED;
@@ -315,7 +312,7 @@ VAStatus exportSurfaceHandle(
     surface_descriptor->num_objects = export_fds.size();
 
     auto format_spec = lookup_format(driver_data->device.capture_format.fmt.pix_mp.pixelformat);
-    const auto& mapping = destination_buffer.mapping();
+    const auto& mapping = surface.destination_buffer->get().mapping();
     for (unsigned i = 0; i < export_fds.size(); i += 1) {
         surface_descriptor->objects[i].drm_format_modifier = format_spec.drm.modifier;
         surface_descriptor->objects[i].fd = export_fds[i];

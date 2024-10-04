@@ -56,8 +56,7 @@ VAStatus copy_surface_to_image(DriverData* driver_data, const Surface& surface, 
 
     assert(image->num_planes == surface.logical_destination_layout.size());
     for (i = 0; i < surface.logical_destination_layout.size(); i++) {
-        const auto& mapping
-            = driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index).mapping();
+        const auto& mapping = surface.destination_buffer->get().mapping();
 
         const auto source = mapping[surface.logical_destination_layout[i].physical_plane_index].data()
             + surface.logical_destination_layout[i].offset;
@@ -154,7 +153,7 @@ VAStatus deriveImage(VADriverContextP context, VASurfaceID surface_id, VAImage* 
     auto& surface = driver_data->surfaces.at(surface_id);
 
     // Attempt to derive image from uninitialized surface
-    if (surface.logical_destination_layout.size() == 0) {
+    if (!surface.destination_buffer) {
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }
 
