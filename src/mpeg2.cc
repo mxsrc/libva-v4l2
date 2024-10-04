@@ -57,7 +57,7 @@ VAStatus MPEG2Context::store_buffer(const Buffer& buffer) const
     auto& surface = driver_data->surfaces.at(render_surface_id);
 
     const auto source_data
-        = driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.destination_index).mapping()[0];
+        = driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.source_index).mapping()[0];
 
     switch (buffer.type) {
     case VAPictureParameterBufferType:
