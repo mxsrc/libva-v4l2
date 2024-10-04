@@ -27,6 +27,7 @@
 
 #include "image.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstring>
 #include <va/va.h>
@@ -53,14 +54,20 @@ VAStatus copy_surface_to_image(DriverData* driver_data, const Surface& surface, 
     }
     auto& buffer = driver_data->buffers.at(image->buf);
 
+    assert(image->num_planes == surface.logical_destination_layout.size());
     for (i = 0; i < surface.logical_destination_layout.size(); i++) {
         const auto& mapping
             = driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface.destination_index).mapping();
 
-        memcpy(buffer.data.get() + image->offsets[i],
-            mapping[surface.logical_destination_layout[i].physical_plane_index].data()
-                + surface.logical_destination_layout[i].offset,
-            surface.logical_destination_layout[i].size);
+        const auto source = mapping[surface.logical_destination_layout[i].physical_plane_index].data()
+            + surface.logical_destination_layout[i].offset;
+        const auto dest = buffer.data.get() + image->offsets[i];
+
+        // Image planes may be smaller than buffer due to decoding blocks
+        const auto size
+            = ((i < (surface.logical_destination_layout.size() - 1)) ? image->offsets[i + 1] : image->data_size)
+            - image->offsets[i];
+        std::copy_n(source, size, dest);
     }
 
     return VA_STATUS_SUCCESS;
@@ -71,47 +78,37 @@ VAStatus copy_surface_to_image(DriverData* driver_data, const Surface& surface, 
 VAStatus createImage(VADriverContextP context, VAImageFormat* format, int width, int height, VAImage* image)
 {
     auto driver_data = static_cast<DriverData*>(context->pDriverData);
-    unsigned int destination_sizes[VIDEO_MAX_PLANES];
-    VABufferID buffer_id;
-    VAStatus status;
-    unsigned int i;
 
     memset(image, 0, sizeof(*image));
     image->format = *format;
     image->width = width;
     image->height = height;
 
-    auto format_spec = lookup_format(driver_data->device.capture_format.fmt.pix_mp.pixelformat);
-
-    struct v4l2_pix_format_mplane* driver_format = &driver_data->device.capture_format.fmt.pix_mp;
-
-    if (format_spec.v4l2.derive_layout) {
-        // Have to use the driver format to get the actual height, which may differ due to block alignment.
-        const auto layout = format_spec.v4l2.derive_layout(driver_format->width, driver_format->height);
-
-        image->num_planes = layout.size();
-        for (unsigned i = 0; i < image->num_planes; i += 1) {
-            destination_sizes[i] = layout[i].size;
-            image->pitches[i] = layout[i].pitch;
-        }
-    } else {
-        image->num_planes = driver_format->num_planes;
-        for (unsigned i = 0; i < image->num_planes; i += 1) {
-            destination_sizes[i] = driver_format->plane_fmt[i].sizeimage;
-            image->pitches[i] = driver_format->plane_fmt[i].bytesperline;
-        }
+    BufferLayout (*derive_layout)(unsigned, unsigned) = nullptr;
+    try {
+        derive_layout = lookup_format(format->fourcc).v4l2.derive_layout;
+    } catch (std::invalid_argument& e) { // TODO decouple planarity from format layout
+        error_log(context, "Image format not specified\n");
+        return VA_STATUS_ERROR_INVALID_IMAGE_FORMAT;
+    }
+    if (!derive_layout) {
+        error_log(context, "Image format not specified\n");
+        return VA_STATUS_ERROR_INVALID_IMAGE_FORMAT;
     }
 
-    for (i = 0; i < image->num_planes; i++) {
-        image->data_size += destination_sizes[i]; // The size returned by V4L2 covers buffers, not logical planes.
-        image->offsets[i] = i > 0 ? destination_sizes[i - 1] : 0;
+    const auto layout = derive_layout(width, height);
+
+    image->num_planes = layout.size();
+    for (unsigned i = 0; i < image->num_planes; i += 1) {
+        image->data_size += layout[i].size;
+        image->pitches[i] = layout[i].pitch;
+        image->offsets[i] = layout[i].offset;
     }
 
-    status = createBuffer(context, 0, VAImageBufferType, image->data_size, 1, NULL, &buffer_id);
+    VAStatus status = createBuffer(context, 0, VAImageBufferType, image->data_size, 1, NULL, &image->buf);
     if (status != VA_STATUS_SUCCESS) {
         return status;
     }
-    image->buf = buffer_id;
 
     std::lock_guard<std::mutex> guard(driver_data->mutex);
     image->image_id = smallest_free_key(driver_data->images);
@@ -155,6 +152,11 @@ VAStatus deriveImage(VADriverContextP context, VASurfaceID surface_id, VAImage* 
         return VA_STATUS_ERROR_INVALID_SURFACE;
     }
     auto& surface = driver_data->surfaces.at(surface_id);
+
+    // Attempt to derive image from uninitialized surface
+    if (surface.logical_destination_layout.size() == 0) {
+        return VA_STATUS_ERROR_OPERATION_FAILED;
+    }
 
     if (surface.status == VASurfaceRendering) {
         status = syncSurface(context, surface_id);
