@@ -167,8 +167,7 @@ VAStatus VP9Context::store_buffer(const Buffer& buffer) const
 {
     auto& surface = driver_data->surfaces.at(render_surface_id);
 
-    const auto source_data
-        = driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.source_index).mapping()[0];
+    const auto source_data = surface.source_buffer->get().mapping()[0];
 
     switch (buffer.type) {
     case VAPictureParameterBufferType:
@@ -204,9 +203,7 @@ int VP9Context::set_controls()
 
     GstVp9FrameHeader header = {};
 
-    if (parse_frame_header(
-            driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.source_index).mapping()[0],
-            &header)) {
+    if (parse_frame_header(surface.source_buffer->get().mapping()[0], &header)) {
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }
 

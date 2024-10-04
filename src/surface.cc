@@ -178,7 +178,7 @@ VAStatus syncSurface(VADriverContextP context, VASurfaceID surface_id)
     }
 
     try {
-        driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface.source_index).dequeue();
+        surface.source_buffer->get().dequeue();
         surface.destination_buffer->get().dequeue();
     } catch (std::runtime_error& e) {
         error_log(context, "Failed to dequeue buffer: %s\n", e.what());

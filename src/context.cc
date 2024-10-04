@@ -68,7 +68,7 @@ Context::Context(DriverData* driver_data, VAConfigID config_id, int picture_widt
     driver_data->device.request_buffers(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface_ids.size());
 
     for (unsigned i = 0; i < surface_ids.size(); i++) {
-        driver_data->surfaces.at(i).source_index = i;
+        driver_data->surfaces.at(i).source_buffer = std::cref(driver_data->device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, i));
     }
 
     driver_data->device.set_streaming(true);

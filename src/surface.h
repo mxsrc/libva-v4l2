@@ -47,7 +47,7 @@ struct Surface {
     unsigned width;
     unsigned height;
 
-    unsigned int source_index;
+    std::optional<std::reference_wrapper<const V4L2M2MDevice::Buffer>> source_buffer;
     unsigned int source_size_used;
 
     std::optional<std::reference_wrapper<const V4L2M2MDevice::Buffer>> destination_buffer;
