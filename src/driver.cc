@@ -25,7 +25,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "buffer.h"
+#include "driver.h"
 
 #include <cassert>
 #include <cstdarg>
@@ -43,9 +43,9 @@ extern "C" {
 #include <va/va_backend.h>
 }
 
+#include "buffer.h"
 #include "config.h"
 #include "context.h"
-#include "driver.h"
 #include "h264.h"
 #include "image.h"
 #include "mpeg2.h"
@@ -76,6 +76,12 @@ template <typename T> std::optional<T*> optional_ptr(T* ptr)
 }
 
 } // namespace
+
+DriverData::DriverData(const std::string& video_path, const std::optional<std::string>& media_path)
+    : devices()
+{
+    devices.emplace_back(video_path, media_path);
+}
 
 /* Set default visibility for the init function only. */
 VAStatus __attribute__((visibility("default"))) VA_DRIVER_INIT_FUNC(VADriverContextP context);

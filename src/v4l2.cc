@@ -30,7 +30,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <memory>
-#include <ranges>
 #include <stdexcept>
 #include <system_error>
 
@@ -266,7 +265,7 @@ std::vector<int> V4L2M2MDevice::Buffer::export_(unsigned flags) const
     return result;
 }
 
-V4L2M2MDevice::V4L2M2MDevice(const std::string& video_path, const std::optional<std::string> media_path)
+V4L2M2MDevice::V4L2M2MDevice(const std::string& video_path, const std::optional<std::string>& media_path)
     : video_fd(errno_wrapper(open, video_path.c_str(), O_RDWR | O_NONBLOCK))
     , media_fd((media_path) ? errno_wrapper(open, media_path->c_str(), O_RDWR | O_NONBLOCK) : -1)
     , capture_format(get_format(video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE))
@@ -275,6 +274,29 @@ V4L2M2MDevice::V4L2M2MDevice(const std::string& video_path, const std::optional<
     if (!(query_capabilities(video_fd) & (V4L2_CAP_VIDEO_M2M | V4L2_CAP_VIDEO_M2M_MPLANE))) {
         std::runtime_error("Missing device capabilities");
     }
+}
+
+V4L2M2MDevice::V4L2M2MDevice(V4L2M2MDevice&& other)
+    : video_fd(std::move(other.video_fd))
+    , media_fd(std::move(other.media_fd))
+    , capture_format(std::move(other.capture_format))
+    , output_format(std::move(other.output_format))
+    , supported_output_formats(std::move(other.supported_output_formats))
+    , supported_capture_formats(std::move(other.supported_capture_formats))
+    , capture_buffers(std::move(other.capture_buffers))
+    , output_buffers(std::move(other.output_buffers))
+{
+    other.capture_buffers.clear();
+    other.output_buffers.clear();
+    other.video_fd = -1;
+    other.media_fd = -1;
+}
+
+V4L2M2MDevice& V4L2M2MDevice::operator=(V4L2M2MDevice&& other)
+{
+    this->~V4L2M2MDevice();
+    new (this) V4L2M2MDevice(std::move(other));
+    return *this;
 }
 
 V4L2M2MDevice::~V4L2M2MDevice()

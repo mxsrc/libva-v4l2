@@ -66,7 +66,9 @@ public:
 
     static std::vector<std::pair<std::string, std::string>> enumerate_devices();
 
-    V4L2M2MDevice(const std::string& video_path, const std::optional<std::string> media_path);
+    V4L2M2MDevice(const std::string& video_path, const std::optional<std::string>& media_path);
+    V4L2M2MDevice(V4L2M2MDevice&& other);
+    V4L2M2MDevice& operator=(V4L2M2MDevice&& other);
     ~V4L2M2MDevice();
     void set_format(enum v4l2_buf_type type, unsigned int pixelformat, unsigned int width, unsigned int height);
     unsigned request_buffers(enum v4l2_buf_type type, unsigned count);
@@ -76,8 +78,8 @@ public:
     void set_controls(int request_fd, std::span<v4l2_ext_control> controls);
     void set_streaming(bool enable);
 
-    const int video_fd;
-    const int media_fd;
+    int video_fd;
+    int media_fd;
     v4l2_format capture_format;
     v4l2_format output_format;
     std::set<fourcc> supported_output_formats;

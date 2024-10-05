@@ -61,7 +61,7 @@ Context::Context(DriverData* driver_data, VAConfigID config_id, int picture_widt
     , picture_width(picture_width)
     , picture_height(picture_height)
     , driver_data(driver_data)
-    , device(driver_data->device)
+    , device(driver_data->devices[0])
 {
     // Now that the output format is set, we can set the capture format and allocate the surfaces.
     createSurfacesDeferred(driver_data, *this, surface_ids);
@@ -88,7 +88,7 @@ VAStatus createContext(VADriverContextP va_context, VAConfigID config_id, int pi
 
     fourcc pixelformat = 0;
     for (auto&& [format, profile_func] : supported_profile_funcs) {
-        const auto& supported_profiles = profile_func(driver_data->device);
+        const auto& supported_profiles = profile_func(driver_data->devices[0]);
         if (std::ranges::find(supported_profiles, config.profile) != supported_profiles.end()) {
             pixelformat = format;
             break;
@@ -98,7 +98,7 @@ VAStatus createContext(VADriverContextP va_context, VAConfigID config_id, int pi
         throw std::runtime_error("Invalid profile");
     }
 
-    driver_data->device.set_format(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, pixelformat, picture_width, picture_height);
+    driver_data->devices[0].set_format(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, pixelformat, picture_width, picture_height);
 
     auto surfaces = std::span(surface_ids, surfaces_count);
     for (auto&& surface : surfaces) {
@@ -155,13 +155,13 @@ VAStatus destroyContext(VADriverContextP va_context, VAContextID context_id)
     driver_data->contexts.erase(context_id);
 
     try {
-        driver_data->device.set_streaming(false);
+        driver_data->devices[0].set_streaming(false);
     } catch (std::system_error& e) {
         error_log(va_context, "Unable to disable streaming: %s\n", e.what());
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }
 
-    driver_data->device.request_buffers(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, 0);
+    driver_data->devices[0].request_buffers(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, 0);
 
     return VA_STATUS_SUCCESS;
 }

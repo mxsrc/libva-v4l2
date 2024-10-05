@@ -43,7 +43,6 @@ extern "C" {
 #include "buffer.h"
 #include "config.h"
 #include "context.h"
-#include "format.h"
 #include "surface.h"
 #include "v4l2.h"
 
@@ -59,17 +58,14 @@ class Context;
 extern const std::map<fourcc, std::function<std::vector<VAProfile>(const V4L2M2MDevice&)>> supported_profile_funcs;
 
 struct DriverData {
-    DriverData(const std::string& video_path, const std::optional<std::string> media_path)
-        : device(video_path, media_path)
-    {
-    }
+    DriverData(const std::string& video_path, const std::optional<std::string>& media_path);
 
     std::map<VAConfigID, Config> configs;
     std::map<VAContextID, std::unique_ptr<Context>> contexts;
     std::map<VASurfaceID, Surface> surfaces;
     std::map<VABufferID, Buffer> buffers;
     std::map<VAImageID, VAImage> images;
-    V4L2M2MDevice device;
+    std::vector<V4L2M2MDevice> devices;
     std::mutex mutex;
 };
 

@@ -70,7 +70,7 @@ VAStatus createSurfaces2(VADriverContextP context, unsigned int format, unsigned
 
     auto driver_data = static_cast<DriverData*>(context->pDriverData);
 
-    if (matching_formats(driver_data->device, format) == formats.end()) {
+    if (matching_formats(driver_data->devices[0], format) == formats.end()) {
         error_log(context, "No matching render target supported by device.\n");
         return VA_STATUS_ERROR_ALLOCATION_FAILED;
     }
