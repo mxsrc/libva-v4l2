@@ -30,8 +30,6 @@
 #include <map>
 #include <memory>
 #include <mutex>
-#include <optional>
-#include <string>
 
 extern "C" {
 #include <linux/videodev2.h>
@@ -55,7 +53,7 @@ class Context;
 #define V4L2_MAX_DISPLAY_ATTRIBUTES 4
 
 struct DriverData {
-    DriverData(const std::string& video_path, const std::optional<std::string>& media_path);
+    DriverData(const std::vector<std::pair<std::string, std::optional<std::string>>>& device_paths);
 
     std::map<VAConfigID, Config> configs;
     std::map<VAContextID, std::unique_ptr<Context>> contexts;

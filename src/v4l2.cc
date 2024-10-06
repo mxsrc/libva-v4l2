@@ -153,16 +153,16 @@ std::vector<std::string> enumerate_media_devices(udev* ctx)
 
 } // namespace
 
-std::vector<std::pair<std::string, std::string>> V4L2M2MDevice::enumerate_devices()
+std::vector<std::pair<std::string, std::optional<std::string>>> V4L2M2MDevice::enumerate_devices()
 {
-    std::vector<std::pair<std::string, std::string>> result;
+    std::vector<std::pair<std::string, std::optional<std::string>>> result;
 
     std::unique_ptr<udev, decltype(&udev_unref)> ctx(udev_new(), &udev_unref);
     for (auto&& media_device : enumerate_media_devices(ctx.get())) {
         for (auto&& video_device : enumerate_video_devices(ctx.get(), media_device)) {
             int fd = errno_wrapper(open, video_device.c_str(), O_RDONLY);
             if (query_capabilities(fd) & V4L2_CAP_VIDEO_M2M_MPLANE) {
-                result.emplace_back(media_device, video_device);
+                result.emplace_back(video_device, media_device);
             }
         }
     }

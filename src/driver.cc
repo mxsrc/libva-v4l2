@@ -51,21 +51,23 @@ extern "C" {
 #include "subpicture.h"
 #include "surface.h"
 #include "utils.h"
-#include "v4l2.h"
 
 namespace {
 
-template <typename T> std::optional<T*> optional_ptr(T* ptr)
+std::optional<std::string> getenv_opt(const std::string& name)
 {
-    return ptr ? std::optional<T*>(ptr) : std::optional<T*>();
+    auto val = getenv(name.c_str());
+    return val ? std::optional<std::string>(val) : std::optional<std::string>();
 }
 
 } // namespace
 
-DriverData::DriverData(const std::string& video_path, const std::optional<std::string>& media_path)
+DriverData::DriverData(const std::vector<std::pair<std::string, std::optional<std::string>>>& device_paths)
     : devices()
 {
-    devices.emplace_back(video_path, media_path);
+    for (auto&& [video_path, media_path] : device_paths) {
+        devices.emplace_back(video_path, media_path);
+    }
 }
 
 /* Set default visibility for the init function only. */
@@ -73,21 +75,17 @@ VAStatus __attribute__((visibility("default"))) VA_DRIVER_INIT_FUNC(VADriverCont
 
 extern "C" VAStatus VA_DRIVER_INIT_FUNC(VADriverContextP context)
 {
+
     auto devices = V4L2M2MDevice::enumerate_devices();
 
-    std::optional<const char*> media_path_env = optional_ptr(getenv("LIBVA_V4L2_MEDIA_PATH"));
-    std::optional<const char*> video_path_env = optional_ptr(getenv("LIBVA_V4L2_VIDEO_PATH"));
-
-    auto media_path_lookup = (devices.size() > 0) ? devices[0].first.c_str() : nullptr;
-    auto video_path_lookup = (devices.size() > 0) ? devices[0].second.c_str() : nullptr;
-
-    const auto media_path = media_path_env.value_or(media_path_lookup);
-    const auto video_path = video_path_env.value_or(video_path_lookup);
-
-    if (!media_path_env && !video_path_env && devices.size() > 1) {
-        info_log(context, "Initializing using %s & %s.\n", video_path, media_path);
+    if (const auto video_path_env = getenv_opt("LIBVA_V4L2_VIDEO_PATH"); video_path_env) {
+        const auto media_path_env = getenv_opt("LIBVA_V4L2_MEDIA_PATH");
+        info_log(context, "Overriding V4L2 device with %s & %s.\n", video_path_env.value().c_str(),
+            media_path_env.value_or("").c_str());
+        devices.clear();
+        devices.push_back({ video_path_env.value(), media_path_env });
     }
-    auto driver_data = new DriverData(video_path, media_path);
+    auto driver_data = new DriverData(devices);
 
     struct VADriverVTable* vtable = context->vtable;
 

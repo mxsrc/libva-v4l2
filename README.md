@@ -21,8 +21,8 @@ Alternatively, the library can be installed to the default driver path:
 meson install -Cbuild
 ```
 
-The driver probes the system for appropriate V4L2 devices, chosing the first one if multiple are present.
-This can be overriden by explicitly setting the devices to use:
+The driver probes the system for appropriate V4L2 devices, advertising all of their capabilities.
+This can be overriden by explicitly specifying a device pair to use:
 ```
 export LIBVA_V4L2_VIDEO_PATH=/dev/videoX LIBVA_V4L2_MEDIA_PATH=/dev/mediaY
 ```

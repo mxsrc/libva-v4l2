@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import subprocess
 
 from more_itertools import split_before
@@ -34,8 +35,7 @@ def codec_maxsize(description):
     return codec_spec.named['fourcc'], (size_spec.named['upper.width'], size_spec.named['upper.height'])
 
 
-def decodable():
-    device = os.getenv('LIBVA_V4L2_VIDEO_PATH')
+def _decodable(device):
     cmd = f'v4l2-ctl -d {device} --list-formats-out-ext'
     result = subprocess.check_output(cmd.split(' '), text=True)
     max_resolutions = [
@@ -58,6 +58,16 @@ def decodable():
         in max_resolutions
         if fourcc in mapping
     }
+
+
+def decodable():
+    devices = [os.getenv('LIBVA_V4L2_VIDEO_PATH')] if os.getenv('LIBVA_V4L2_VIDEO_PATH') else [p for p in Path('/dev').iterdir() if 'video' in p.name]
+
+    result = {}
+    for device in devices:
+        result |= _decodable(device)
+
+    return result
 
 
 caps = dict(decode=decodable())

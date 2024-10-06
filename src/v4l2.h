@@ -64,7 +64,7 @@ public:
         friend class V4L2M2MDevice;
     };
 
-    static std::vector<std::pair<std::string, std::string>> enumerate_devices();
+    static std::vector<std::pair<std::string, std::optional<std::string>>> enumerate_devices();
 
     V4L2M2MDevice(const std::string& video_path, const std::optional<std::string>& media_path);
     V4L2M2MDevice(V4L2M2MDevice&& other);
