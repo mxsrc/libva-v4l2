@@ -27,7 +27,6 @@
 
 #pragma once
 
-#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -54,8 +53,6 @@ class Context;
 #define V4L2_MAX_IMAGE_FORMATS 10
 #define V4L2_MAX_SUBPIC_FORMATS 4
 #define V4L2_MAX_DISPLAY_ATTRIBUTES 4
-
-extern const std::map<fourcc, std::function<std::vector<VAProfile>(const V4L2M2MDevice&)>> supported_profile_funcs;
 
 struct DriverData {
     DriverData(const std::string& video_path, const std::optional<std::string>& media_path);

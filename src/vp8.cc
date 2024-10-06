@@ -264,9 +264,9 @@ int VP8Context::set_controls()
     return VA_STATUS_SUCCESS;
 }
 
-std::vector<VAProfile> VP8Context::supported_profiles(const V4L2M2MDevice& device)
+std::set<VAProfile> VP8Context::supported_profiles(const V4L2M2MDevice& device)
 {
     return (device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP8_FRAME))
-        ? std::vector<VAProfile>({ VAProfileVP8Version0_3 })
-        : std::vector<VAProfile>();
+        ? std::set<VAProfile>({ VAProfileVP8Version0_3 })
+        : std::set<VAProfile>();
 };

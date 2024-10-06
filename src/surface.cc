@@ -53,7 +53,7 @@ extern "C" {
 
 namespace {
 
-decltype(formats)::const_iterator matching_formats(const V4L2M2MDevice& device, uint32_t format)
+decltype(formats)::const_iterator matching_format(const V4L2M2MDevice& device, uint32_t format)
 {
     return std::ranges::find_if(formats, [&](auto&& f) {
         return f.va.rt_format == format && device.format_supported(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, f.v4l2.format);
@@ -70,7 +70,8 @@ VAStatus createSurfaces2(VADriverContextP context, unsigned int format, unsigned
 
     auto driver_data = static_cast<DriverData*>(context->pDriverData);
 
-    if (matching_formats(driver_data->devices[0], format) == formats.end()) {
+    if (std::ranges::none_of(
+            driver_data->devices, [&](auto&& d) { return matching_format(d, format) != formats.end(); })) {
         error_log(context, "No matching render target supported by device.\n");
         return VA_STATUS_ERROR_ALLOCATION_FAILED;
     }
@@ -96,7 +97,7 @@ void createSurfacesDeferred(DriverData* driver_data, const Context& context, std
     }
     const auto& surface = driver_data->surfaces.at(surface_ids[0]);
 
-    auto [format, derive_layout] = matching_formats(context.device, surface.format)->v4l2;
+    auto [format, derive_layout] = matching_format(context.device, surface.format)->v4l2;
 
     context.device.set_format(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, format, surface.width, surface.height);
 

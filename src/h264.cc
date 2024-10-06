@@ -42,7 +42,6 @@ extern "C" {
 }
 
 #include "buffer.h"
-#include "config.h"
 #include "driver.h"
 #include "surface.h"
 #include "v4l2.h"
@@ -420,6 +419,13 @@ void h264_va_slice_to_predicted_weights(
 
 } // namespace
 
+H264Context::H264Context(DriverData* driver_data, V4L2M2MDevice& device, VAProfile profile, int picture_width,
+    int picture_height, std::span<VASurfaceID> surface_ids)
+    : Context(driver_data, device, V4L2_PIX_FMT_H264_SLICE, picture_width, picture_height, surface_ids)
+    , profile(va_profile_to_profile_idc(profile))
+{
+}
+
 VAStatus H264Context::store_buffer(const Buffer& buffer) const
 {
     auto& surface = driver_data->surfaces.at(render_surface_id);
@@ -465,11 +471,6 @@ int H264Context::set_controls()
 {
     auto& surface = driver_data->surfaces.at(render_surface_id);
 
-    if (!driver_data->configs.contains(config_id)) {
-        return VA_STATUS_ERROR_INVALID_CONFIG;
-    }
-    auto& config = driver_data->configs.at(config_id);
-
     v4l2_ctrl_h264_scaling_matrix matrix = {};
     v4l2_ctrl_h264_decode_params decode = {};
     v4l2_ctrl_h264_slice_params slice = {};
@@ -491,7 +492,7 @@ int H264Context::set_controls()
     h264_va_matrix_to_v4l2(driver_data, *this, surface.params.h264.matrix, &matrix);
     h264_va_slice_to_v4l2(driver_data, *this, surface.params.h264.slice, surface.params.h264.picture, &slice);
 
-    sps.profile_idc = va_profile_to_profile_idc(config.profile);
+    sps.profile_idc = profile;
     switch (surface.params.h264.slice->slice_type % 5) {
     case H264_SLICE_P:
         decode.flags |= V4L2_H264_DECODE_PARAM_FLAG_PFRAME;
@@ -547,11 +548,11 @@ int H264Context::set_controls()
     return VA_STATUS_SUCCESS;
 }
 
-std::vector<VAProfile> H264Context::supported_profiles(const V4L2M2MDevice& device)
+std::set<VAProfile> H264Context::supported_profiles(const V4L2M2MDevice& device)
 {
     // TODO: query `h264_profile` control for more details
     return (device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_H264_SLICE))
-        ? std::vector<VAProfile>({ VAProfileH264Main, VAProfileH264High, VAProfileH264ConstrainedBaseline,
+        ? std::set<VAProfile>({ VAProfileH264Main, VAProfileH264High, VAProfileH264ConstrainedBaseline,
               VAProfileH264MultiviewHigh, VAProfileH264StereoHigh })
-        : std::vector<VAProfile>();
+        : std::set<VAProfile>();
 };

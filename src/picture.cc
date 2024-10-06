@@ -39,20 +39,12 @@ extern "C" {
 #include <va/va.h>
 }
 
-#include "buffer.h"
-#include "config.h"
 #include "context.h"
 #include "driver.h"
-#include "h264.h"
 #include "media.h"
-#include "mpeg2.h"
 #include "surface.h"
 #include "utils.h"
 #include "v4l2.h"
-#include "vp8.h"
-#ifdef ENABLE_VP9
-#include "vp9.h"
-#endif
 
 using fourcc = uint32_t;
 

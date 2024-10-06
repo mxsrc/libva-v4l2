@@ -38,7 +38,6 @@ extern "C" {
 
 #include "driver.h"
 #include "surface.h"
-#include "utils.h"
 #include "v4l2.h"
 
 namespace {
@@ -231,11 +230,11 @@ int VP9Context::set_controls()
     return VA_STATUS_SUCCESS;
 }
 
-std::vector<VAProfile> VP9Context::supported_profiles(const V4L2M2MDevice& device)
+std::set<VAProfile> VP9Context::supported_profiles(const V4L2M2MDevice& device)
 {
     // TODO: query `va_profile` control for more details
     return (device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP9_FRAME))
-        ? std::vector<VAProfile>(
+        ? std::set<VAProfile>(
               { VAProfileVP9Profile0, VAProfileVP9Profile1, VAProfileVP9Profile2, VAProfileVP9Profile3 })
-        : std::vector<VAProfile>();
+        : std::set<VAProfile>();
 }

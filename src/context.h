@@ -40,14 +40,17 @@ struct DriverData;
 
 class Context {
 public:
-    Context(DriverData* driver_data, VAConfigID config_id, int picture_width, int picture_height,
+    static Context* create(DriverData* driver_data, VAProfile profile, int picture_width, int picture_height,
         std::span<VASurfaceID> surface_ids);
-    virtual ~Context() {}
+    static std::set<VAProfile> supported_profiles(const std::vector<V4L2M2MDevice>& devices);
+
+    Context(DriverData* driver_data, V4L2M2MDevice& device, fourcc pixelformat, int picture_width, int picture_height,
+        std::span<VASurfaceID> surface_ids);
+    virtual ~Context();
 
     virtual VAStatus store_buffer(const Buffer& buffer) const = 0;
     virtual int set_controls() = 0;
 
-    VAConfigID config_id;
     VASurfaceID render_surface_id;
     int picture_width;
     int picture_height;

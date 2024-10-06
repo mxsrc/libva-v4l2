@@ -30,10 +30,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
-#include <functional>
-#include <ranges>
 #include <span>
-#include <vector>
 
 extern "C" {
 #include <linux/videodev2.h>
@@ -42,23 +39,9 @@ extern "C" {
 #include <va/va.h>
 }
 
+#include "context.h"
 #include "driver.h"
 #include "utils.h"
-#include "v4l2.h"
-
-namespace {
-
-std::vector<VAProfile> supported_profiles(const V4L2M2MDevice& device)
-{
-    std::vector<VAProfile> result;
-    for (auto&& profile : supported_profile_funcs
-            | std::views::transform([&device](auto&& entry) { return entry.second(device); }) | std::views::join) {
-        result.push_back(profile);
-    }
-    return result;
-}
-
-} // namespace
 
 VAStatus createConfig(VADriverContextP context, VAProfile profile, VAEntrypoint entrypoint, VAConfigAttrib* attributes,
     int attributes_count, VAConfigID* config_id)
@@ -66,7 +49,7 @@ VAStatus createConfig(VADriverContextP context, VAProfile profile, VAEntrypoint 
     auto driver_data = static_cast<DriverData*>(context->pDriverData);
     int i, index;
 
-    const auto& supported = supported_profiles(driver_data->devices[0]);
+    const auto& supported = Context::supported_profiles(driver_data->devices);
     if (std::ranges::find(supported, profile) == supported.end()) {
         return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
     }
@@ -117,7 +100,7 @@ VAStatus queryConfigProfiles(VADriverContextP context, VAProfile* profiles_, int
     auto driver_data = static_cast<DriverData*>(context->pDriverData);
 
     std::span<VAProfile> profiles(profiles_, V4L2_MAX_PROFILES);
-    const auto& supported = supported_profiles(driver_data->devices[0]);
+    const auto& supported = Context::supported_profiles(driver_data->devices);
 
     *profile_count = std::min(profiles.size(), supported.size());
 
@@ -130,7 +113,7 @@ VAStatus queryConfigEntrypoints(
     VADriverContextP context, VAProfile profile, VAEntrypoint* entrypoints, int* entrypoints_count)
 {
     auto driver_data = static_cast<DriverData*>(context->pDriverData);
-    const auto& supported = supported_profiles(driver_data->devices[0]);
+    const auto& supported = Context::supported_profiles(driver_data->devices);
     if (std::ranges::find(supported, profile) != supported.end()) {
         entrypoints[0] = VAEntrypointVLD;
         *entrypoints_count = 1;

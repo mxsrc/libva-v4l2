@@ -28,7 +28,7 @@
 
 #pragma once
 
-#include <vector>
+#include <set>
 
 extern "C" {
 #include <va/va.h>
@@ -58,14 +58,13 @@ struct h264_dpb {
 
 class H264Context : public Context {
 public:
-    static std::vector<VAProfile> supported_profiles(const V4L2M2MDevice& device);
+    static std::set<VAProfile> supported_profiles(const V4L2M2MDevice& device);
 
-    H264Context(DriverData* driver_data, VAConfigID config_id, int picture_width, int picture_height,
-        std::span<VASurfaceID> surface_ids)
-        : Context(driver_data, config_id, picture_width, picture_height, surface_ids) {};
-
+    H264Context(DriverData* driver_data, V4L2M2MDevice& device, VAProfile profile, int picture_width,
+        int picture_height, std::span<VASurfaceID> surface_ids);
     VAStatus store_buffer(const Buffer& buffer) const override;
     int set_controls() override;
 
+    uint8_t profile;
     struct h264_dpb dpb;
 };

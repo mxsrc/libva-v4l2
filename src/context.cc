@@ -31,8 +31,6 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
-#include <ranges>
-#include <system_error>
 
 extern "C" {
 #include <linux/videodev2.h>
@@ -54,15 +52,61 @@ extern "C" {
 #include "vp9.h"
 #endif
 
-Context::Context(DriverData* driver_data, VAConfigID config_id, int picture_width, int picture_height,
+std::set<VAProfile> Context::supported_profiles(const std::vector<V4L2M2MDevice>& devices)
+{
+    std::set<VAProfile> result;
+    for (auto&& device : devices) {
+        for (auto&& profile : MPEG2Context::supported_profiles(device)) {
+            result.insert(profile);
+        }
+        for (auto&& profile : H264Context::supported_profiles(device)) {
+            result.insert(profile);
+        }
+        for (auto&& profile : VP8Context::supported_profiles(device)) {
+            result.insert(profile);
+        }
+#ifdef ENABLE_VP9
+        for (auto&& profile : VP9Context::supported_profiles(device)) {
+            result.insert(profile);
+        }
+#endif
+    }
+    return result;
+}
+
+Context* Context::create(DriverData* driver_data, VAProfile profile, int picture_width, int picture_height,
     std::span<VASurfaceID> surface_ids)
-    : config_id(config_id)
-    , render_surface_id(VA_INVALID_ID)
+{
+    for (auto&& device : driver_data->devices) {
+        if (MPEG2Context::supported_profiles(device).contains(profile)) {
+            return new MPEG2Context(driver_data, device, picture_width, picture_height, surface_ids);
+        }
+        if (H264Context::supported_profiles(device).contains(profile)) {
+            return new H264Context(driver_data, device, profile, picture_width, picture_height, surface_ids);
+        }
+        if (VP8Context::supported_profiles(device).contains(profile)) {
+            return new VP8Context(driver_data, device, picture_width, picture_height, surface_ids);
+        }
+#ifdef ENABLE_VP9
+        if (VP9Context::supported_profiles(device).contains(profile)) {
+            return new VP9Context(driver_data, device, picture_width, picture_height, surface_ids);
+        }
+#endif
+    }
+
+    throw std::invalid_argument("Unimplemented profile");
+}
+
+Context::Context(DriverData* driver_data, V4L2M2MDevice& dev, fourcc pixelformat, int picture_width, int picture_height,
+    std::span<VASurfaceID> surface_ids)
+    : render_surface_id(VA_INVALID_ID)
     , picture_width(picture_width)
     , picture_height(picture_height)
     , driver_data(driver_data)
-    , device(driver_data->devices[0])
+    , device(dev)
 {
+    device.set_format(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, pixelformat, picture_width, picture_height);
+
     // Now that the output format is set, we can set the capture format and allocate the surfaces.
     createSurfacesDeferred(driver_data, *this, surface_ids);
 
@@ -73,6 +117,12 @@ Context::Context(DriverData* driver_data, VAConfigID config_id, int picture_widt
     }
 
     device.set_streaming(true);
+}
+
+Context::~Context()
+{
+    device.set_streaming(false);
+    device.request_buffers(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, 0);
 }
 
 VAStatus createContext(VADriverContextP va_context, VAConfigID config_id, int picture_width, int picture_height,
@@ -86,20 +136,6 @@ VAStatus createContext(VADriverContextP va_context, VAConfigID config_id, int pi
     }
     const auto& config = driver_data->configs.at(config_id);
 
-    fourcc pixelformat = 0;
-    for (auto&& [format, profile_func] : supported_profile_funcs) {
-        const auto& supported_profiles = profile_func(driver_data->devices[0]);
-        if (std::ranges::find(supported_profiles, config.profile) != supported_profiles.end()) {
-            pixelformat = format;
-            break;
-        }
-    }
-    if (pixelformat == 0) {
-        throw std::runtime_error("Invalid profile");
-    }
-
-    driver_data->devices[0].set_format(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, pixelformat, picture_width, picture_height);
-
     auto surfaces = std::span(surface_ids, surfaces_count);
     for (auto&& surface : surfaces) {
         if (!driver_data->surfaces.contains(surface)) {
@@ -108,31 +144,11 @@ VAStatus createContext(VADriverContextP va_context, VAConfigID config_id, int pi
     }
 
     std::lock_guard<std::mutex> guard(driver_data->mutex);
-    *context_id = smallest_free_key(driver_data->contexts);
     try {
-        std::pair<decltype(driver_data->contexts)::iterator, bool> insert_result
-            = { driver_data->contexts.end(), false };
-        switch (pixelformat) {
-        case V4L2_PIX_FMT_MPEG2_SLICE:
-            insert_result = driver_data->contexts.emplace(std::make_pair(
-                *context_id, new MPEG2Context(driver_data, config_id, picture_width, picture_height, surfaces)));
-            break;
-        case V4L2_PIX_FMT_H264_SLICE:
-            insert_result = driver_data->contexts.emplace(std::make_pair(
-                *context_id, new H264Context(driver_data, config_id, picture_width, picture_height, surfaces)));
-            break;
-        case V4L2_PIX_FMT_VP8_FRAME:
-            insert_result = driver_data->contexts.emplace(std::make_pair(
-                *context_id, new VP8Context(driver_data, config_id, picture_width, picture_height, surfaces)));
-            break;
-#ifdef ENABLE_VP9
-        case V4L2_PIX_FMT_VP9_FRAME:
-            insert_result = driver_data->contexts.emplace(std::make_pair(
-                *context_id, new VP9Context(driver_data, config_id, picture_width, picture_height, surfaces)));
-            break;
-#endif
-        }
-        if (!insert_result.second) {
+        *context_id = smallest_free_key(driver_data->contexts);
+        auto [context, inserted] = driver_data->contexts.emplace(std::make_pair(
+            *context_id, Context::create(driver_data, config.profile, picture_width, picture_height, surfaces)));
+        if (!inserted) {
             error_log(va_context, "Failed to create context\n");
             return VA_STATUS_ERROR_ALLOCATION_FAILED;
         }
@@ -153,15 +169,6 @@ VAStatus destroyContext(VADriverContextP va_context, VAContextID context_id)
         return VA_STATUS_ERROR_INVALID_CONTEXT;
     }
     driver_data->contexts.erase(context_id);
-
-    try {
-        driver_data->devices[0].set_streaming(false);
-    } catch (std::system_error& e) {
-        error_log(va_context, "Unable to disable streaming: %s\n", e.what());
-        return VA_STATUS_ERROR_OPERATION_FAILED;
-    }
-
-    driver_data->devices[0].request_buffers(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, 0);
 
     return VA_STATUS_SUCCESS;
 }
