@@ -79,6 +79,14 @@ std::vector<std::span<uint8_t>> map_buffer(int video_fd, v4l2_buf_type type, uns
     };
     errno_wrapper(ioctl, video_fd, VIDIOC_QUERYBUF, &buffer);
 
+    if (!V4L2_TYPE_IS_MULTIPLANAR(type)) { // reduce singleplanar API to single-plane in multiplanar buffer
+        const auto offset = buffer.m.offset;
+        buffer.m.planes = planes;
+        buffer.m.planes[0].length = buffer.length;
+        buffer.m.planes[0].m.mem_offset = offset;
+        buffer.length = 1;
+    }
+
     std::vector<std::span<uint8_t>> result(buffer.length);
     for (unsigned i = 0; i < buffer.length; i++) {
         result[i] = { static_cast<uint8_t*>(mmap(NULL, buffer.m.planes[i].length, PROT_READ | PROT_WRITE, MAP_SHARED,
@@ -212,12 +220,12 @@ void V4L2M2MDevice::Buffer::queue(int request_fd, timeval* timestamp, unsigned s
         .length = static_cast<uint32_t>(mapping_.size()),
     };
 
-    for (unsigned i = 0; i < mapping_.size(); i++) {
-        if (V4L2_TYPE_IS_MULTIPLANAR(type_)) {
+    if (V4L2_TYPE_IS_MULTIPLANAR(type_)) {
+        for (unsigned i = 0; i < mapping_.size(); i++) {
             buffer.m.planes[i].bytesused = size;
-        } else {
-            buffer.bytesused = size;
         }
+    } else {
+        buffer.bytesused = size;
     }
 
     if (request_fd >= 0) {
