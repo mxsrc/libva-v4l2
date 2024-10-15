@@ -22,7 +22,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 project('libva-v4l2', 'cpp',
-	version: '1.0.0',
+	version: run_command(['git', 'rev-parse', '--short', 'HEAD']).stdout().strip(),
 	meson_version: '>= 0.56.0')
 
 cc = meson.get_compiler('cpp')
