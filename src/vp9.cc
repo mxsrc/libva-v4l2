@@ -233,7 +233,7 @@ int VP9Context::set_controls()
 std::set<VAProfile> VP9Context::supported_profiles(const V4L2M2MDevice& device)
 {
     // TODO: query `va_profile` control for more details
-    return (device.format_supported(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_PIX_FMT_VP9_FRAME))
+    return (device.format_supported(device.output_buf_type, V4L2_PIX_FMT_VP9_FRAME))
         ? std::set<VAProfile>(
               { VAProfileVP9Profile0, VAProfileVP9Profile1, VAProfileVP9Profile2, VAProfileVP9Profile3 })
         : std::set<VAProfile>();

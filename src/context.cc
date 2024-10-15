@@ -105,15 +105,15 @@ Context::Context(DriverData* driver_data, V4L2M2MDevice& dev, fourcc pixelformat
     , driver_data(driver_data)
     , device(dev)
 {
-    device.set_format(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, pixelformat, picture_width, picture_height);
+    device.set_format(device.output_buf_type, pixelformat, picture_width, picture_height);
 
     // Now that the output format is set, we can set the capture format and allocate the surfaces.
     createSurfacesDeferred(driver_data, *this, surface_ids);
 
-    device.request_buffers(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, surface_ids.size());
+    device.request_buffers(device.output_buf_type, surface_ids.size());
 
     for (unsigned i = 0; i < surface_ids.size(); i++) {
-        driver_data->surfaces.at(i).source_buffer = std::cref(device.buffer(V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, i));
+        driver_data->surfaces.at(i).source_buffer = std::cref(device.buffer(device.output_buf_type, i));
     }
 
     device.set_streaming(true);
@@ -122,7 +122,7 @@ Context::Context(DriverData* driver_data, V4L2M2MDevice& dev, fourcc pixelformat
 Context::~Context()
 {
     device.set_streaming(false);
-    device.request_buffers(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, 0);
+    device.request_buffers(device.capture_buf_type, 0);
 }
 
 VAStatus createContext(VADriverContextP va_context, VAConfigID config_id, int picture_width, int picture_height,
