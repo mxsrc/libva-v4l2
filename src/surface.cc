@@ -56,7 +56,7 @@ namespace {
 decltype(formats)::const_iterator matching_format(const V4L2M2MDevice& device, uint32_t format)
 {
     return std::ranges::find_if(formats, [&](auto&& f) {
-        return f.va.rt_format == format && device.format_supported(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, f.v4l2.format);
+        return f.va.rt_format == format && device.format_supported(device.capture_buf_type, f.v4l2.format);
     });
 }
 
@@ -99,11 +99,11 @@ void createSurfacesDeferred(DriverData* driver_data, const Context& context, std
 
     auto [format, derive_layout] = matching_format(context.device, surface.format)->v4l2;
 
-    context.device.set_format(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, format, surface.width, surface.height);
+    context.device.set_format(context.device.capture_buf_type, format, surface.width, surface.height);
 
     v4l2_pix_format_mplane* driver_format = &context.device.capture_format.fmt.pix_mp;
 
-    context.device.request_buffers(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, surface_ids.size());
+    context.device.request_buffers(context.device.capture_buf_type, surface_ids.size());
 
     for (unsigned i = 0; i < surface_ids.size(); i++) {
         auto& surface = driver_data->surfaces.at(surface_ids[i]);
@@ -122,7 +122,7 @@ void createSurfacesDeferred(DriverData* driver_data, const Context& context, std
             }
         }
 
-        surface.destination_buffer = std::cref(context.device.buffer(V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, i));
+        surface.destination_buffer = std::cref(context.device.buffer(context.device.capture_buf_type, i));
     }
 }
 
