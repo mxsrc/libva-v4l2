@@ -79,6 +79,12 @@ std::vector<std::span<uint8_t>> map_buffer(int video_fd, v4l2_buf_type type, uns
     };
     errno_wrapper(ioctl, video_fd, VIDIOC_QUERYBUF, &buffer);
 
+    if (!V4L2_TYPE_IS_MULTIPLANAR(type)) { // reduce singleplanar API to single-plane in multiplanar buffer
+        buffer.m.planes[0].length = buffer.length;
+        buffer.m.planes[0].m.mem_offset = buffer.m.offset;
+        buffer.length = 1;
+    }
+
     std::vector<std::span<uint8_t>> result(buffer.length);
     for (unsigned i = 0; i < buffer.length; i++) {
         result[i] = { static_cast<uint8_t*>(mmap(NULL, buffer.m.planes[i].length, PROT_READ | PROT_WRITE, MAP_SHARED,
@@ -161,7 +167,7 @@ std::vector<std::pair<std::string, std::optional<std::string>>> V4L2M2MDevice::e
     for (auto&& media_device : enumerate_media_devices(ctx.get())) {
         for (auto&& video_device : enumerate_video_devices(ctx.get(), media_device)) {
             int fd = errno_wrapper(open, video_device.c_str(), O_RDONLY);
-            if (query_capabilities(fd) & V4L2_CAP_VIDEO_M2M_MPLANE) {
+            if (query_capabilities(fd) & required_capabilities) {
                 result.emplace_back(video_device, media_device);
             }
         }
@@ -212,12 +218,12 @@ void V4L2M2MDevice::Buffer::queue(int request_fd, timeval* timestamp, unsigned s
         .length = static_cast<uint32_t>(mapping_.size()),
     };
 
-    for (unsigned i = 0; i < mapping_.size(); i++) {
-        if (V4L2_TYPE_IS_MULTIPLANAR(type_)) {
+    if (V4L2_TYPE_IS_MULTIPLANAR(type_)) {
+        for (unsigned i = 0; i < mapping_.size(); i++) {
             buffer.m.planes[i].bytesused = size;
-        } else {
-            buffer.bytesused = size;
         }
+    } else {
+        buffer.bytesused = size;
     }
 
     if (request_fd >= 0) {
@@ -268,10 +274,15 @@ std::vector<int> V4L2M2MDevice::Buffer::export_(unsigned flags) const
 V4L2M2MDevice::V4L2M2MDevice(const std::string& video_path, const std::optional<std::string>& media_path)
     : video_fd(errno_wrapper(open, video_path.c_str(), O_RDWR | O_NONBLOCK))
     , media_fd((media_path) ? errno_wrapper(open, media_path->c_str(), O_RDWR | O_NONBLOCK) : -1)
-    , capture_format(get_format(video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE))
-    , output_format(get_format(video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE))
+    , capabilities(query_capabilities(video_fd))
+    , capture_buf_type(
+          (capabilities & V4L2_CAP_VIDEO_M2M) ? V4L2_BUF_TYPE_VIDEO_CAPTURE : V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
+    , output_buf_type(
+          (capabilities & V4L2_CAP_VIDEO_M2M) ? V4L2_BUF_TYPE_VIDEO_OUTPUT : V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)
+    , capture_format(get_format(video_fd, capture_buf_type))
+    , output_format(get_format(video_fd, output_buf_type))
 {
-    if (!(query_capabilities(video_fd) & (V4L2_CAP_VIDEO_M2M | V4L2_CAP_VIDEO_M2M_MPLANE))) {
+    if (!(capabilities & required_capabilities)) {
         std::runtime_error("Missing device capabilities");
     }
 }
@@ -279,6 +290,9 @@ V4L2M2MDevice::V4L2M2MDevice(const std::string& video_path, const std::optional<
 V4L2M2MDevice::V4L2M2MDevice(V4L2M2MDevice&& other)
     : video_fd(std::move(other.video_fd))
     , media_fd(std::move(other.media_fd))
+    , capabilities(std::move(other.capabilities))
+    , capture_buf_type(std::move(other.capture_buf_type))
+    , output_buf_type(std::move(other.output_buf_type))
     , capture_format(std::move(other.capture_format))
     , output_format(std::move(other.output_format))
     , supported_output_formats(std::move(other.supported_output_formats))
@@ -386,8 +400,6 @@ void V4L2M2MDevice::set_controls(int request_fd, std::span<v4l2_ext_control> con
 
 void V4L2M2MDevice::set_streaming(bool enable)
 {
-    v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-    errno_wrapper(ioctl, video_fd, enable ? VIDIOC_STREAMON : VIDIOC_STREAMOFF, &type);
-    type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-    errno_wrapper(ioctl, video_fd, enable ? VIDIOC_STREAMON : VIDIOC_STREAMOFF, &type);
+    errno_wrapper(ioctl, video_fd, enable ? VIDIOC_STREAMON : VIDIOC_STREAMOFF, &capture_buf_type);
+    errno_wrapper(ioctl, video_fd, enable ? VIDIOC_STREAMON : VIDIOC_STREAMOFF, &output_buf_type);
 }
