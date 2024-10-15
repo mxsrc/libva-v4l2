@@ -161,7 +161,7 @@ std::vector<std::pair<std::string, std::optional<std::string>>> V4L2M2MDevice::e
     for (auto&& media_device : enumerate_media_devices(ctx.get())) {
         for (auto&& video_device : enumerate_video_devices(ctx.get(), media_device)) {
             int fd = errno_wrapper(open, video_device.c_str(), O_RDONLY);
-            if (query_capabilities(fd) & V4L2_CAP_VIDEO_M2M_MPLANE) {
+            if (query_capabilities(fd) & required_capabilities) {
                 result.emplace_back(video_device, media_device);
             }
         }
@@ -271,7 +271,7 @@ V4L2M2MDevice::V4L2M2MDevice(const std::string& video_path, const std::optional<
     , capture_format(get_format(video_fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE))
     , output_format(get_format(video_fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE))
 {
-    if (!(query_capabilities(video_fd) & (V4L2_CAP_VIDEO_M2M | V4L2_CAP_VIDEO_M2M_MPLANE))) {
+    if (!(query_capabilities(video_fd) & required_capabilities)) {
         std::runtime_error("Missing device capabilities");
     }
 }

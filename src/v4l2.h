@@ -66,6 +66,8 @@ public:
 
     static std::vector<std::pair<std::string, std::optional<std::string>>> enumerate_devices();
 
+    static const uint32_t required_capabilities = V4L2_CAP_VIDEO_M2M | V4L2_CAP_VIDEO_M2M_MPLANE;
+
     V4L2M2MDevice(const std::string& video_path, const std::optional<std::string>& media_path);
     V4L2M2MDevice(V4L2M2MDevice&& other);
     V4L2M2MDevice& operator=(V4L2M2MDevice&& other);
