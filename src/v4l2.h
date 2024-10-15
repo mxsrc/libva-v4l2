@@ -82,6 +82,9 @@ public:
 
     int video_fd;
     int media_fd;
+    const uint32_t capabilities;
+    const v4l2_buf_type capture_buf_type;
+    const v4l2_buf_type output_buf_type;
     v4l2_format capture_format;
     v4l2_format output_format;
     std::set<fourcc> supported_output_formats;
