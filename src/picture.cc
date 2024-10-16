@@ -62,8 +62,9 @@ VAStatus beginPicture(VADriverContextP va_context, VAContextID context_id, VASur
     }
     auto& surface = driver_data->surfaces.at(surface_id);
 
-    if (surface.status == VASurfaceRendering)
-        syncSurface(va_context, surface_id);
+    if (surface.status != VASurfaceReady) {
+        return VA_STATUS_ERROR_SURFACE_BUSY;
+    }
 
     surface.status = VASurfaceRendering;
     context.render_surface_id = surface_id;
@@ -130,10 +131,6 @@ VAStatus endPicture(VADriverContextP va_context, VAContextID context_id)
     }
 
     surface.source_size_used = 0;
-
-    status = syncSurface(va_context, context.render_surface_id);
-    if (status != VA_STATUS_SUCCESS)
-        return status;
 
     context.render_surface_id = VA_INVALID_ID;
     memset(&surface.params, 0, sizeof(surface.params));
