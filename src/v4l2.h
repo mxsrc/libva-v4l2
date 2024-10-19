@@ -76,8 +76,8 @@ public:
     unsigned request_buffers(enum v4l2_buf_type type, unsigned count);
     bool format_supported(v4l2_buf_type type, unsigned pixelformat) const;
     const Buffer& buffer(v4l2_buf_type type, unsigned index);
-    void set_control(int request_fd, unsigned id, void* data, unsigned size);
-    void set_controls(int request_fd, std::span<v4l2_ext_control> controls);
+    void set_ext_control(int request_fd, unsigned id, void* data, unsigned size);
+    void set_ext_controls(int request_fd, std::span<v4l2_ext_control> controls);
     void set_streaming(bool enable);
 
     int video_fd;

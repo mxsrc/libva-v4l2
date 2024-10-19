@@ -538,7 +538,7 @@ int H264Context::set_controls()
     };
 
     try {
-        device.set_controls(surface.request_fd, std::span(controls, i));
+        device.set_ext_controls(surface.request_fd, std::span(controls, i));
     } catch (std::runtime_error& e) {
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }

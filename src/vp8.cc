@@ -256,7 +256,7 @@ int VP8Context::set_controls()
         surface.params.vp8.iqmatrix, surface.params.vp8.probabilities);
 
     try {
-        device.set_control(surface.request_fd, V4L2_CID_STATELESS_VP8_FRAME, &frame, sizeof(frame));
+        device.set_ext_control(surface.request_fd, V4L2_CID_STATELESS_VP8_FRAME, &frame, sizeof(frame));
     } catch (std::runtime_error& e) {
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }

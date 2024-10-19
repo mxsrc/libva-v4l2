@@ -375,17 +375,17 @@ const V4L2M2MDevice::Buffer& V4L2M2MDevice::buffer(v4l2_buf_type type, unsigned 
     return (V4L2_TYPE_IS_CAPTURE(type) ? capture_buffers : output_buffers)[index];
 }
 
-void V4L2M2MDevice::set_control(int request_fd, unsigned id, void* data, unsigned size)
+void V4L2M2MDevice::set_ext_control(int request_fd, unsigned id, void* data, unsigned size)
 {
     v4l2_ext_control control = {
         .id = id,
         .size = size,
         .ptr = data,
     };
-    set_controls(request_fd, std::span(&control, 1));
+    set_ext_controls(request_fd, std::span(&control, 1));
 }
 
-void V4L2M2MDevice::set_controls(int request_fd, std::span<v4l2_ext_control> controls)
+void V4L2M2MDevice::set_ext_controls(int request_fd, std::span<v4l2_ext_control> controls)
 {
     struct v4l2_ext_controls meta = {
         .count = static_cast<uint32_t>(controls.size()),
