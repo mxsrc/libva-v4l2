@@ -375,6 +375,14 @@ const V4L2M2MDevice::Buffer& V4L2M2MDevice::buffer(v4l2_buf_type type, unsigned 
     return (V4L2_TYPE_IS_CAPTURE(type) ? capture_buffers : output_buffers)[index];
 }
 
+int32_t V4L2M2MDevice::get_control(uint32_t id) const {
+    v4l2_control ctrl = {
+        .id = id,
+    };
+    errno_wrapper(ioctl, video_fd, VIDIOC_G_CTRL, &ctrl);
+    return ctrl.value;
+}
+
 void V4L2M2MDevice::set_ext_control(int request_fd, unsigned id, void* data, unsigned size)
 {
     v4l2_ext_control control = {
