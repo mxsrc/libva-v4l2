@@ -423,6 +423,7 @@ H264Context::H264Context(DriverData* driver_data, V4L2M2MDevice& device, VAProfi
     int picture_height, std::span<VASurfaceID> surface_ids)
     : Context(driver_data, device, V4L2_PIX_FMT_H264_SLICE, picture_width, picture_height, surface_ids)
     , profile(va_profile_to_profile_idc(profile))
+    , mode(static_cast<v4l2_stateless_h264_decode_mode>(device.get_control(V4L2_CID_STATELESS_H264_DECODE_MODE)))
 {
 }
 

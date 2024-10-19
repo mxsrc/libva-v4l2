@@ -67,4 +67,5 @@ public:
 
     uint8_t profile;
     struct h264_dpb dpb;
+    v4l2_stateless_h264_decode_mode mode;
 };
