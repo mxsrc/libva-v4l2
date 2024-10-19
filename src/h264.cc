@@ -89,14 +89,6 @@ uint8_t va_profile_to_profile_idc(VAProfile profile)
     }
 }
 
-size_t prefix_data(uint8_t* data)
-{
-    data[0] = 0;
-    data[1] = 0;
-    data[2] = 1;
-    return 3;
-}
-
 bool is_picture_null(VAPictureH264* pic)
 {
     return pic->picture_id == VA_INVALID_SURFACE;
@@ -372,7 +364,7 @@ void h264_va_slice_to_v4l2(DriverData* driver_data, H264Context& context, VASlic
         for (int i = 0; i < VASlice->num_ref_idx_l0_active_minus1 + 1; i++) {
             VAPictureH264* pic = &VASlice->RefPicList0[i];
             h264_dpb_entry* entry;
-            v4l2_h264_reference ref;
+            v4l2_h264_reference ref = {};
 
             entry = dpb_lookup(context, pic, &ref);
             if (!entry)
@@ -388,7 +380,7 @@ void h264_va_slice_to_v4l2(DriverData* driver_data, H264Context& context, VASlic
         for (int i = 0; i < VASlice->num_ref_idx_l1_active_minus1 + 1; i++) {
             VAPictureH264* pic = &VASlice->RefPicList1[i];
             h264_dpb_entry* entry;
-            v4l2_h264_reference ref;
+            v4l2_h264_reference ref = {};
 
             entry = dpb_lookup(context, pic, &ref);
             if (!entry)
@@ -436,7 +428,7 @@ VAStatus H264Context::store_buffer(const Buffer& buffer) const
     switch (buffer.type) {
     case VASliceDataBufferType:
         if (mode == static_cast<v4l2_stateless_h264_decode_mode>(V4L2_STATELESS_H264_DECODE_MODE_FRAME_BASED)) {
-            surface.source_size_used += prefix_data(source_data.data() + surface.source_size_used);
+            surface.source_size_used = std::ranges::copy(std::initializer_list<uint8_t>{0, 0, 1}, source_data.data() + surface.source_size_used).out - source_data.data();
         }
 
         if (surface.source_size_used + buffer.size * buffer.count > source_data.size()) {
