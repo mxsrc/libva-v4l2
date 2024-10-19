@@ -165,19 +165,6 @@ VAStatus syncSurface(VADriverContextP context, VASurfaceID surface_id)
         return VA_STATUS_SUCCESS;
     }
 
-    if (surface.request_fd >= 0) {
-        try {
-            media_request_queue(surface.request_fd);
-            media_request_wait_completion(surface.request_fd);
-            media_request_reinit(surface.request_fd);
-        } catch (std::runtime_error& e) {
-            close(surface.request_fd);
-            surface.request_fd = -1;
-            error_log(context, "Failed to process request: %s\n", e.what());
-            return VA_STATUS_ERROR_OPERATION_FAILED;
-        }
-    }
-
     try {
         surface.source_buffer->get().dequeue();
         surface.destination_buffer->get().dequeue();

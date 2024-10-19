@@ -62,7 +62,7 @@ VAStatus beginPicture(VADriverContextP va_context, VAContextID context_id, VASur
     }
     auto& surface = driver_data->surfaces.at(surface_id);
 
-    if (surface.status != VASurfaceReady) {
+    if (surface.status == VASurfaceRendering) {
         return VA_STATUS_ERROR_SURFACE_BUSY;
     }
 
@@ -128,6 +128,19 @@ VAStatus endPicture(VADriverContextP va_context, VAContextID context_id)
     } catch (std::system_error& e) {
         error_log(va_context, "Unable to queue buffer: %s\n", e.what());
         return VA_STATUS_ERROR_OPERATION_FAILED;
+    }
+
+    if (surface.request_fd >= 0) {
+        try {
+            media_request_queue(surface.request_fd);
+            media_request_wait_completion(surface.request_fd);
+            media_request_reinit(surface.request_fd);
+        } catch (std::runtime_error& e) {
+            close(surface.request_fd);
+            surface.request_fd = -1;
+            error_log(va_context, "Failed to process request: %s\n", e.what());
+            return VA_STATUS_ERROR_OPERATION_FAILED;
+        }
     }
 
     surface.source_size_used = 0;
