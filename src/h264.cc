@@ -27,6 +27,7 @@
  */
 
 #include "h264.h"
+#include "linux/v4l2-controls.h"
 
 #include <cassert>
 #include <climits>
@@ -478,8 +479,6 @@ int H264Context::set_controls()
     v4l2_ctrl_h264_pps pps = {};
     v4l2_ctrl_h264_sps sps = {};
     h264_dpb_entry* output;
-    v4l2_ext_control controls[8] = {};
-    int i = 0;
 
     output = dpb_lookup(*this, &surface.params.h264.picture->CurrPic, NULL);
     if (!output)
@@ -503,43 +502,52 @@ int H264Context::set_controls()
         break;
     }
 
+    std::vector<v4l2_ext_control> controls = {
+        {
+            .id = V4L2_CID_STATELESS_H264_DECODE_PARAMS,
+            .size = sizeof(decode),
+            .ptr = &decode,
+        },
+
+        {
+            .id = V4L2_CID_STATELESS_H264_PPS,
+            .size = sizeof(pps),
+            .ptr = &pps,
+        },
+
+        {
+            .id = V4L2_CID_STATELESS_H264_SPS,
+            .size = sizeof(sps),
+            .ptr = &sps,
+        },
+        {
+            .id = V4L2_CID_STATELESS_H264_SCALING_MATRIX,
+            .size = sizeof(matrix),
+            .ptr = &matrix,
+        },
+    };
+
+    if (mode == static_cast<v4l2_stateless_h264_decode_mode>(V4L2_STATELESS_H264_DECODE_MODE_SLICE_BASED)) {
+        controls.push_back({
+            .id = V4L2_CID_STATELESS_H264_SLICE_PARAMS,
+            .size = sizeof(slice),
+            .ptr = &slice,
+        });
+    }
+
     if (V4L2_H264_CTRL_PRED_WEIGHTS_REQUIRED(&pps, &slice)) {
         v4l2_ctrl_h264_pred_weights weights = {};
         h264_va_slice_to_predicted_weights(surface.params.h264.slice, &slice, &weights);
 
-        controls[i++] = (v4l2_ext_control) {
+        controls.push_back({
             .id = V4L2_CID_STATELESS_H264_PRED_WEIGHTS,
             .size = sizeof(weights),
             .ptr = &weights,
-        };
+        });
     }
 
-    controls[i++] = (v4l2_ext_control) {
-        .id = V4L2_CID_STATELESS_H264_DECODE_PARAMS,
-        .size = sizeof(decode),
-        .ptr = &decode,
-    };
-
-    controls[i++] = (v4l2_ext_control) {
-        .id = V4L2_CID_STATELESS_H264_PPS,
-        .size = sizeof(pps),
-        .ptr = &pps,
-    };
-
-    controls[i++] = (v4l2_ext_control) {
-        .id = V4L2_CID_STATELESS_H264_SPS,
-        .size = sizeof(sps),
-        .ptr = &sps,
-    };
-
-    controls[i++] = (v4l2_ext_control) {
-        .id = V4L2_CID_STATELESS_H264_SCALING_MATRIX,
-        .size = sizeof(matrix),
-        .ptr = &matrix,
-    };
-
     try {
-        device.set_ext_controls(surface.request_fd, std::span(controls, i));
+        device.set_ext_controls(surface.request_fd, std::span(controls));
     } catch (std::runtime_error& e) {
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }
