@@ -435,13 +435,9 @@ VAStatus H264Context::store_buffer(const Buffer& buffer) const
     const auto source_data = surface.source_buffer->get().mapping()[0];
     switch (buffer.type) {
     case VASliceDataBufferType:
-        /*
-         * Since there is no guarantee that the allocation
-         * order is the same as the submission order (via
-         * RenderPicture), we can't use a V4L2 buffer directly
-         * and have to copy from a regular buffer.
-         */
-        surface.source_size_used += prefix_data(source_data.data() + surface.source_size_used);
+        if (mode == static_cast<v4l2_stateless_h264_decode_mode>(V4L2_STATELESS_H264_DECODE_MODE_FRAME_BASED)) {
+            surface.source_size_used += prefix_data(source_data.data() + surface.source_size_used);
+        }
 
         if (surface.source_size_used + buffer.size * buffer.count > source_data.size()) {
             return VA_STATUS_ERROR_NOT_ENOUGH_BUFFER;
