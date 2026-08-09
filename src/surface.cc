@@ -286,6 +286,10 @@ VAStatus exportSurfaceHandle(
     }
     const auto& surface = driver_data->surfaces.at(surface_id);
 
+    if (!surface.destination_buffer.has_value()) {
+        return VA_STATUS_ERROR_INVALID_SURFACE;
+    }
+
     std::vector<int> export_fds;
     try {
         export_fds = surface.destination_buffer->get().export_(O_RDONLY);
